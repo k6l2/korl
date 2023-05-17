@@ -274,9 +274,9 @@ korl_internal void korl_log_initialize(void)
         const wchar_t testString1[] = L"Ring Log Buffer Region";
         korl_string_copyUtf16(testString0, (au16){korl_arraySize(testString0), _korl_log_context.rawLog});
         korl_string_copyUtf16(testString1, (au16){korl_arraySize(testString0), KORL_C_CAST(u16*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + _korl_log_context.rawLogChunkBytes)});
-        korl_assert(0 == korl_string_compareUtf16(testString0, _korl_log_context.rawLog));
-        korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes)));
-        korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes)));
+        korl_assert(0 == korl_string_compareUtf16(testString0, _korl_log_context.rawLog, KORL_DEFAULT_C_STRING_SIZE_LIMIT));
+        korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) +   _korl_log_context.rawLogChunkBytes), KORL_DEFAULT_C_STRING_SIZE_LIMIT));
+        korl_assert(0 == korl_string_compareUtf16(testString1, KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, _korl_log_context.rawLog) + 2*_korl_log_context.rawLogChunkBytes), KORL_DEFAULT_C_STRING_SIZE_LIMIT));
         korl_memory_zero(_korl_log_context.rawLog, 2*_korl_log_context.rawLogChunkBytes);
     #endif
 }

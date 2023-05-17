@@ -64,21 +64,20 @@ korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle alloc
 /**
  * \return \c 0 if the two strings are equal
  */
-korl_internal int korl_string_compareUtf8(const char* a, const char* b);//@TODO: add arraySizeLimit param
-korl_internal int korl_string_compareAcu8(acu8 a, acu8 b);
+korl_internal int korl_string_compareUtf8(const char* a, const char* b, u$ arraySizeLimit);
 /**
  * \return \c 0 if the two strings are equal
  */
-korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b);//@TODO: add arraySizeLimit param
+korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b, u$ arraySizeLimit);
 /**
  * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
  * defined as the total number of characters; _not_ the total number of 
  * codepoints!
  */
-korl_internal u$  korl_string_sizeUtf8(const char* s);//@TODO: add arraySizeLimit param
+korl_internal u$  korl_string_sizeUtf8(const char* s, u$ arraySizeLimit);
 /**
  * \return the size of string \c s _excluding_ the null terminator
  */
-korl_internal u$  korl_string_sizeUtf16(const wchar_t* s);//@TODO: add arraySizeLimit param
+korl_internal u$  korl_string_sizeUtf16(const wchar_t* s, u$ arraySizeLimit);
 korl_internal u$ korl_string_hashAcu16(acu16 arrayCU16);
 korl_internal u$ korl_string_hashRawWide(const wchar_t* s, u$ arraySizeLimit);

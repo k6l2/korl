@@ -91,7 +91,7 @@ korl_internal void korl_memory_initialize(void)
     korl_assert(sizeof(wchar_t) == sizeof(*context->stbDaFileNameCharacterPool));// we are storing __FILEW__ characters in the Windows platform
     /* add the file name string of this file to the beginning of the file name character pool */
     {
-        const u$ rawWideStringSize = korl_string_sizeUtf16(__FILEW__) + 1/*null-terminator*/;
+        const u$ rawWideStringSize = korl_string_sizeUtf16(__FILEW__, KORL_DEFAULT_C_STRING_SIZE_LIMIT) + 1/*null-terminator*/;
         const u$ persistDataStartOffset = arrlenu(context->stbDaFileNameCharacterPool);
         mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
         wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + persistDataStartOffset;
@@ -234,7 +234,7 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_create(korl_memory_allocator_c
     korl_assert(newHandle);
     /* ensure that allocatorName has not been used in any other allocator */
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
-        if(0 == korl_string_compareUtf16(context->allocators[a].name, allocatorName))
+        if(0 == korl_string_compareUtf16(context->allocators[a].name, allocatorName, KORL_DEFAULT_C_STRING_SIZE_LIMIT))
         {
             korl_log(ERROR, "allocator name %s already in use", allocatorName);
             return 0;// return an invalid handle
@@ -348,7 +348,7 @@ korl_internal const wchar_t* _korl_memory_getPersistentString(const wchar_t* raw
             return context->stbDaFileNameStrings[i].data.data;
     /* otherwise, we need to add the string to the character pool & create a new 
         string entry to use */
-    const u$ rawWideStringSize = korl_string_sizeUtf16(rawWideString) + 1/*null-terminator*/;
+    const u$ rawWideStringSize = korl_string_sizeUtf16(rawWideString, KORL_DEFAULT_C_STRING_SIZE_LIMIT) + 1/*null-terminator*/;
     const u$ fileNameCharacterPoolSizePrevious = arrlenu(context->stbDaFileNameCharacterPool);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandlePersistentStrings), context->stbDaFileNameCharacterPool, arrlenu(context->stbDaFileNameCharacterPool) + rawWideStringSize);
     wchar_t*const persistDataStart = context->stbDaFileNameCharacterPool + fileNameCharacterPoolSizePrevious;
@@ -764,7 +764,7 @@ korl_internal bool korl_memory_allocator_findByName(const wchar_t* name, Korl_Me
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());
     for(Korl_MemoryPool_Size a = 0; a < KORL_MEMORY_POOL_SIZE(context->allocators); a++)
-        if(korl_string_compareUtf16(context->allocators[a].name, name) == 0)
+        if(korl_string_compareUtf16(context->allocators[a].name, name, KORL_DEFAULT_C_STRING_SIZE_LIMIT) == 0)
         {
             *out_allocatorHandle = context->allocators[a].handle;
             return true;

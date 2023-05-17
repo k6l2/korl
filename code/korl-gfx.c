@@ -551,7 +551,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
     for(; existingFontCacheIndex < arrlenu(context->stbDaFontCaches); existingFontCacheIndex++)
         // find the font cache with a matching font asset name AND render 
         //  parameters such as font pixel height, etc... //
-        if(   0 == korl_string_compareUtf16(utf16AssetNameFont.data, _korl_gfx_fontCache_getFontAssetName(context->stbDaFontCaches[existingFontCacheIndex])) 
+        if(   0 == korl_string_compareUtf16(utf16AssetNameFont.data, _korl_gfx_fontCache_getFontAssetName(context->stbDaFontCaches[existingFontCacheIndex]), KORL_DEFAULT_C_STRING_SIZE_LIMIT) 
            && context->stbDaFontCaches[existingFontCacheIndex]->pixelHeight == textPixelHeight 
            && (   context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == 0.f // the font cache has not yet been cached with outline glyphs
                || context->stbDaFontCaches[existingFontCacheIndex]->pixelOutlineThickness == textPixelOutline))
@@ -569,7 +569,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         /* calculate how much memory we need */
         korl_shared_const u16 GLYPH_PAGE_SQUARE_SIZE = 512;
         korl_shared_const u16 PACK_ROWS_CAPACITY     = 64;
-        const u$ assetNameFontBufferSize = korl_string_sizeUtf16(utf16AssetNameFont.data) + 1/*null terminator*/;
+        const u$ assetNameFontBufferSize = korl_string_sizeUtf16(utf16AssetNameFont.data, KORL_DEFAULT_C_STRING_SIZE_LIMIT) + 1/*null terminator*/;
         const u$ assetNameFontBufferBytes = assetNameFontBufferSize*sizeof(*utf16AssetNameFont.data);
         const u$ fontCacheRequiredBytes = sizeof(_Korl_Gfx_FontCache)
                                         + sizeof(_Korl_Gfx_FontGlyphPage)
@@ -633,7 +633,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     if(!batch->_assetNameFont || batch->_fontTextureHandle)
         return;
     _Korl_Gfx_FontCache* fontCache = _korl_gfx_matchFontCache((acu16){.data = batch->_assetNameFont
-                                                                     ,.size = korl_string_sizeUtf16(batch->_assetNameFont)}
+                                                                     ,.size = korl_string_sizeUtf16(batch->_assetNameFont, KORL_DEFAULT_C_STRING_SIZE_LIMIT)}
                                                              ,batch->_textPixelHeight
                                                              ,batch->_textPixelOutline);
     if(!fontCache)
@@ -1863,7 +1863,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
         assetNameFont = L"test-assets/source-sans/SourceSans3-Semibold.otf";//KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     /* calculate required amount of memory for the batch */
     korl_time_probeStart(measure_font);
-    const u$ assetNameFontBufferSize = korl_string_sizeUtf16(assetNameFont) + 1;
+    const u$ assetNameFontBufferSize = korl_string_sizeUtf16(assetNameFont, KORL_DEFAULT_C_STRING_SIZE_LIMIT) + 1;
     korl_time_probeStop(measure_font);
     const u$ assetNameFontBytes = assetNameFontBufferSize * sizeof(*assetNameFont);
     /** This value directly affects how much memory will be allocated for vertex 
@@ -1873,7 +1873,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
      * doing a sort of lazy-loading system here where the user is allowed to 
      * create & manipulate text batches even in the absence of a font asset. */
     korl_time_probeStart(measure_text);
-    const u$ textSize = korl_string_sizeUtf16(text);
+    const u$ textSize = korl_string_sizeUtf16(text, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     korl_time_probeStop(measure_text);
     const u$ textBufferSize = textSize + 1;
     const u$ textBytes = textBufferSize * sizeof(*text);

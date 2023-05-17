@@ -111,8 +111,9 @@ typedef struct acu16
     u$         size;// array size; _not_ size in bytes!
     const u16* data;
 } acu16;
-#define KORL_RAW_CONST_UTF8(x)  (korl_assert(sizeof(*x) == sizeof(u8 )), KORL_STRUCT_INITIALIZE(acu8 ){korl_string_sizeUtf8(x) , KORL_C_CAST(const u8* ,(x))})
-#define KORL_RAW_CONST_UTF16(x) (korl_assert(sizeof(*x) == sizeof(u16)), KORL_STRUCT_INITIALIZE(acu16){korl_string_sizeUtf16(x), KORL_C_CAST(const u16*,(x))})
+#define KORL_DEFAULT_C_STRING_SIZE_LIMIT 10'000
+#define KORL_RAW_CONST_UTF8(x)  (korl_assert(sizeof(*x) == sizeof(u8 )), KORL_STRUCT_INITIALIZE(acu8 ){korl_string_sizeUtf8(x, KORL_DEFAULT_C_STRING_SIZE_LIMIT) , KORL_C_CAST(const u8* ,(x))})
+#define KORL_RAW_CONST_UTF16(x) (korl_assert(sizeof(*x) == sizeof(u16)), KORL_STRUCT_INITIALIZE(acu16){korl_string_sizeUtf16(x, KORL_DEFAULT_C_STRING_SIZE_LIMIT), KORL_C_CAST(const u16*,(x))})
 /** calculate the size of an array 
  * (NOTE: does NOT work for dynamic arrays (only compile-time array sizes)!) */
 #define korl_arraySize(array) (sizeof(array) / sizeof((array)[0]))

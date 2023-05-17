@@ -71,7 +71,7 @@ korl_internal KORL_FUNCTION_korl_bluetooth_query(korl_bluetooth_query)
 #endif
             SOCKADDR_BTH*const socketAddressBluetooth = KORL_C_CAST(SOCKADDR_BTH*, wsaQuerySet->lpcsaBuffer->RemoteAddr.lpSockaddr);
             Korl_Bluetooth_QueryEntry newEntry;
-            newEntry.nameSize = korl_checkCast_u$_to_u8(korl_string_sizeUtf16(wsaQuerySet->lpszServiceInstanceName));
+            newEntry.nameSize = korl_checkCast_u$_to_u8(korl_string_sizeUtf16(wsaQuerySet->lpszServiceInstanceName, KORL_DEFAULT_C_STRING_SIZE_LIMIT));
             korl_assert(korl_arraySize(newEntry.name)    >= newEntry.nameSize + 1/*null-terminator*/);
             korl_assert(        sizeof(newEntry.address) >= sizeof(*socketAddressBluetooth));
             korl_assert(socketAddressBluetooth->addressFamily == AF_BTH);
@@ -122,7 +122,7 @@ korl_internal KORL_FUNCTION_korl_bluetooth_connect(korl_bluetooth_connect)
         {
             /* ensure that an existing connection doesn't exist for this queryEntry */
             //KORL-ISSUE-000-000-095: bluetooth: maybe compare addresses instead of device names?
-            korl_assert(0 != korl_string_compareUtf16(_korl_bluetooth_context.sockets[i].queryEntry.name, queryEntry->name));
+            korl_assert(0 != korl_string_compareUtf16(_korl_bluetooth_context.sockets[i].queryEntry.name, queryEntry->name, KORL_DEFAULT_C_STRING_SIZE_LIMIT));
             continue;
         }
         korlSocket = &_korl_bluetooth_context.sockets[i];

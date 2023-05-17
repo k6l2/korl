@@ -237,7 +237,7 @@ korl_internal Korl_Time_Counts korl_time_probeEnd(Korl_Time_ProbeHandle timeProb
 korl_internal void korl_time_probeDataU32(const wchar_t* label, u32 data)
 {
     korl_assert(arrlenu(_korl_time_context.stbDaTimeProbeStack) > 0);
-    const u$ labelSize  = korl_string_sizeUtf16(label);
+    const u$ labelSize  = korl_string_sizeUtf16(label, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     const u$ labelBytes = (labelSize + 1/*null-terminator*/) * sizeof(*label);
     const u32 bufferOffsetLabel = korl_checkCast_u$_to_u32(arrlenu(_korl_time_context.stbDaTimeProbeDataRaw));
     const u32 bufferOffsetData  = korl_checkCast_u$_to_u32(arrlenu(_korl_time_context.stbDaTimeProbeDataRaw) + labelBytes);
@@ -291,8 +291,8 @@ korl_internal void korl_time_probeLogReport(i32 maxProbeDepth)
             timeProbeCoverageCounts[timeProbe->parent - 1] += korl_time_timeStampCountDifference(timeProbe->timeStampStart, timeProbe->timeStampEnd);
         }
         if(timeProbe->label)
-            longestProbeLabel = KORL_MATH_MAX(longestProbeLabel, korl_string_sizeUtf16(timeProbe->label));
-        longestProbeFunction = KORL_MATH_MAX(longestProbeFunction, korl_string_sizeUtf16(timeProbe->function));
+            longestProbeLabel = KORL_MATH_MAX(longestProbeLabel, korl_string_sizeUtf16(timeProbe->label, KORL_DEFAULT_C_STRING_SIZE_LIMIT));
+        longestProbeFunction = KORL_MATH_MAX(longestProbeFunction, korl_string_sizeUtf16(timeProbe->function, KORL_DEFAULT_C_STRING_SIZE_LIMIT));
         while(arrlenu(stbDaTimeProbeStack) && (!timeProbe->parent || (timeProbe->parent && arrlast(stbDaTimeProbeStack) != timeProbe->parent)))
             arrpop(stbDaTimeProbeStack);
         deepestProbeDepth = KORL_MATH_MAX(deepestProbeDepth, arrlenu(stbDaTimeProbeStack));

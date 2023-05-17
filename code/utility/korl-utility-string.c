@@ -320,60 +320,64 @@ korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle alloc
     va_end(args);
     return result;
 }
-korl_internal int korl_string_compareUtf8(const char* a, const char* b)
+korl_internal int korl_string_compareUtf8(const char* a, const char* b, u$ arraySizeLimit)
 {
-    for(; *a && *b; ++a, ++b)
+    u$ i = 0;
+    for(; i < arraySizeLimit && *a && *b; ++a, ++b, ++i)
     {
         if(*a < *b)
             return -1;
-        else if(*a > *b)
+        if(*a > *b)
             return 1;
     }
+    korl_assert(i < arraySizeLimit);
     if(*a)
         return 1;
-    else if(*b)
+    if(*b)
         return -1;
     return 0;
 }
-korl_internal int korl_string_compareAcu8(acu8 a, acu8 b)
+korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b, u$ arraySizeLimit)
 {
-    return korl_memory_compare_acu8(a, b);// @TODO: uhhhh... woops!
-}
-korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b)
-{
-    for(; *a && *b; ++a, ++b)
+    u$ i = 0;
+    for(; i < arraySizeLimit && *a && *b; ++a, ++b, ++i)
     {
         if(*a < *b)
             return -1;
-        else if(*a > *b)
+        if(*a > *b)
             return 1;
     }
+    korl_assert(i < arraySizeLimit);
     if(*a)
         return 1;
-    else if(*b)
+    if(*b)
         return -1;
     return 0;
 }
-korl_internal u$  korl_string_sizeUtf8(const char* s)
+korl_internal u$  korl_string_sizeUtf8(const char* s, u$ arraySizeLimit)
 {
     if(!s)
         return 0;
     /*  [ t][ e][ s][ t][\0]
         [ 0][ 1][ 2][ 3][ 4]
         [sB]            [s ] */
+    u$ i = 0;
     const char* sBegin = s;
-    for(; *s; ++s) {}
+    for(; i < arraySizeLimit && *s; ++s, ++i) {}
+    korl_assert(i < arraySizeLimit);
     return korl_checkCast_i$_to_u$(s - sBegin);
 }
-korl_internal u$  korl_string_sizeUtf16(const wchar_t* s)
+korl_internal u$  korl_string_sizeUtf16(const wchar_t* s, u$ arraySizeLimit)
 {
     if(!s)
         return 0;
     /*  [ t][ e][ s][ t][\0]
         [ 0][ 1][ 2][ 3][ 4]
         [sB]            [s ] */
+    u$ i = 0;
     const wchar_t* sBegin = s;
-    for(; *s; ++s) {}
+    for(; i < arraySizeLimit && *s; ++s, ++i) {}
+    korl_assert(i < arraySizeLimit);
     return korl_checkCast_i$_to_u$(s - sBegin);
 }
 #define _KORL_STRING_U$_BITS                  ((sizeof (u$)) * 8)

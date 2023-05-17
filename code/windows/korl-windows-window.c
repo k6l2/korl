@@ -529,13 +529,13 @@ KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandCras
 {
     if(parametersSize != 2)
         korl_log(INFO, "crash command usage: `crash <type>`, where <type> == {\"write-zero\", \"assert\", \"stack-overflow\", \"log-error\"}");
-    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "write-zero"))
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "write-zero", KORL_DEFAULT_C_STRING_SIZE_LIMIT))
         *(int*)0 = 0;
-    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "assert"))
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "assert", KORL_DEFAULT_C_STRING_SIZE_LIMIT))
         korl_assert(false);
-    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "stack-overflow"))
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "stack-overflow", KORL_DEFAULT_C_STRING_SIZE_LIMIT))
         _korl_windows_window_commandCrash_stackOverflow(true);
-    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "log-error"))
+    else if(0 == korl_string_compareUtf8(KORL_C_CAST(const char*, parameters[1].data), "log-error", KORL_DEFAULT_C_STRING_SIZE_LIMIT))
         korl_log(ERROR, "rest in pepperonis");
     else
         korl_log(WARNING, "invalid parameter \"%hs\"", parameters[1].data);

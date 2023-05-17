@@ -161,29 +161,29 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
             if(KORL_MEMORY_POOL_SIZE(objectStack) == 1)
             {
                 korl_assert(jsonToken->type == JSMN_STRING);// top-level tokens of the root JSON object _must_ be key strings
-                if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("asset")))
+                if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("asset")))
                     objectType = KORL_GLTF_OBJECT_ASSET;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scene")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scene")))
                     objectType = KORL_GLTF_OBJECT_SCENE;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scenes")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scenes")))
                     objectType = KORL_GLTF_OBJECT_SCENES;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
                     objectType = KORL_GLTF_OBJECT_NODES;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("meshes")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("meshes")))
                     objectType = KORL_GLTF_OBJECT_MESHES;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("accessors")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("accessors")))
                     objectType = KORL_GLTF_OBJECT_ACCESSORS;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("bufferViews")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("bufferViews")))
                     objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("buffers")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("buffers")))
                     objectType = KORL_GLTF_OBJECT_BUFFERS;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("materials")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("materials")))
                     objectType = KORL_GLTF_OBJECT_MATERIALS;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("textures")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("textures")))
                     objectType = KORL_GLTF_OBJECT_TEXTURES;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("images")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("images")))
                     objectType = KORL_GLTF_OBJECT_IMAGES;
-                else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("samplers")))
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("samplers")))
                     objectType = KORL_GLTF_OBJECT_SAMPLERS;
             }
             else
@@ -195,7 +195,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_ASSET_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("version")))
+                    if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("version")))
                         objectType = KORL_GLTF_OBJECT_ASSET_OBJECT_VERSION;
                     break;}
                 case KORL_GLTF_OBJECT_SCENES:{
@@ -209,9 +209,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
                         objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NAME;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("nodes")))
                         objectType = KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES;
                     break;}
                 case KORL_GLTF_OBJECT_SCENES_ARRAY_ELEMENT_NODES:{
@@ -232,9 +232,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                    if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
                         objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mesh")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mesh")))
                         objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH;
                     break;}
                 case KORL_GLTF_OBJECT_MESHES:{
@@ -248,9 +248,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                    if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_NAME;
-                    if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("primitives")))
+                    if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("primitives")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES;
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES:{
@@ -265,11 +265,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("attributes")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("attributes")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("indices")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("indices")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("material")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("material")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_MATERIAL;
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES:{
@@ -278,11 +278,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("POSITION")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("POSITION")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("NORMAL")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("NORMAL")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("TEXCOORD_0")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("TEXCOORD_0")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0;
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS:{
@@ -299,17 +299,17 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("bufferView")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("bufferView")))
                         objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_BUFFER_VIEW;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("componentType")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("componentType")))
                         objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_COMPONENT_TYPE;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("count")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("count")))
                         objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_COUNT;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("type")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("type")))
                         objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_TYPE;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("max")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("max")))
                         objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("min")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("min")))
                         objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MIN;
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX:{
@@ -331,11 +331,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("buffer")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("buffer")))
                         objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BUFFER;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteLength")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteLength")))
                         objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_LENGTH;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteOffset")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteOffset")))
                         objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_OFFSET;
                     break;}
                 case KORL_GLTF_OBJECT_BUFFERS:{
@@ -349,7 +349,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_BUFFERS_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteLength")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteLength")))
                         objectType = KORL_GLTF_OBJECT_BUFFERS_ARRAY_ELEMENT_BYTE_LENGTH;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS:{
@@ -363,11 +363,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_NAME;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("pbrMetallicRoughness")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("pbrMetallicRoughness")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("extensions")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("extensions")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS:{
@@ -376,7 +376,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("KHR_materials_specular")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("KHR_materials_specular")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR:{
@@ -385,7 +385,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("specularColorTexture")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("specularColorTexture")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_SPECULAR_COLOR_TEXTURE;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_SPECULAR_COLOR_TEXTURE:{
@@ -394,7 +394,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_SPECULAR_COLOR_TEXTURE_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("index")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("index")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_SPECULAR_COLOR_TEXTURE_OBJECT_INDEX;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS:{
@@ -403,7 +403,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("baseColorTexture")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("baseColorTexture")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE:{
@@ -412,7 +412,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE_OBJECT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("index")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("index")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE_OBJECT_INDEX;
                     break;}
                 case KORL_GLTF_OBJECT_TEXTURES:{
@@ -426,9 +426,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("sampler")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("sampler")))
                         objectType = KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT_SAMPLER;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("source")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("source")))
                         objectType = KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT_SOURCE;
                     break;}
                 case KORL_GLTF_OBJECT_IMAGES:{
@@ -442,11 +442,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_IMAGES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
                         objectType = KORL_GLTF_OBJECT_IMAGES_ARRAY_ELEMENT_NAME;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("bufferView")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("bufferView")))
                         objectType = KORL_GLTF_OBJECT_IMAGES_ARRAY_ELEMENT_BUFFER_VIEW;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mimeType")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mimeType")))
                         objectType = KORL_GLTF_OBJECT_IMAGES_ARRAY_ELEMENT_MIME_TYPE;
                     break;}
                 case KORL_GLTF_OBJECT_SAMPLERS:{
@@ -460,9 +460,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(     0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("magFilter")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("magFilter")))
                         objectType = KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT_MAG_FILTER;
-                    else if(0 == korl_string_compareAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("minFilter")))
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("minFilter")))
                         objectType = KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT_MIN_FILTER;
                     break;}
                 default: break;
@@ -544,19 +544,19 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 if(currentAccessor)
                 {
                     const acu8 jsonAcu8 = {.data = chunk->data + jsonToken->start, .size = jsonToken->end - jsonToken->start};
-                    if(     0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("SCALAR"), jsonAcu8))
+                    if(     0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("SCALAR"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_SCALAR;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("VEC2"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("VEC2"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC2;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("VEC3"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("VEC3"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("VEC4"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("VEC4"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("MAT2"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("MAT2"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT2;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("MAT3"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("MAT3"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("MAT4"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("MAT4"), jsonAcu8))
                         currentAccessor->type = KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4;
                     else
                         korl_log(ERROR, "invalid accessor type \"%.*hs\"", jsonAcu8.size, jsonAcu8.data);
@@ -619,9 +619,9 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 if(currentImage)
                 {
                     const acu8 jsonAcu8 = {.data = chunk->data + jsonToken->start, .size = jsonToken->end - jsonToken->start};
-                    if(     0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("image/png"), jsonAcu8))
+                    if(     0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("image/png"), jsonAcu8))
                         currentImage->mimeType = KORL_CODEC_GLTF_MIME_TYPE_IMAGE_PNG;
-                    else if(0 == korl_string_compareAcu8(KORL_RAW_CONST_UTF8("image/jpeg"), jsonAcu8))
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("image/jpeg"), jsonAcu8))
                         currentImage->mimeType = KORL_CODEC_GLTF_MIME_TYPE_IMAGE_JPEG;
                     else
                         korl_log(ERROR, "invalid mime type \"%*.hs\"", jsonAcu8.size, jsonAcu8.data);

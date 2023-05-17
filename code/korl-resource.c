@@ -154,7 +154,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
         korl_shared_const u16* IMAGE_EXTENSIONS[] = {L".png", L".jpg", L".jpeg"};
         for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
         {
-            const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i]);
+            const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             if(fileName.size < extensionSize)
                 continue;
             if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, IMAGE_EXTENSIONS[i]}))
@@ -169,7 +169,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
         korl_shared_const u16* SHADER_EXTENSIONS[] = {L".spv"};
         for(u32 i = 0; i < korl_arraySize(SHADER_EXTENSIONS); i++)
         {
-            const u$ extensionSize = korl_string_sizeUtf16(SHADER_EXTENSIONS[i]);
+            const u$ extensionSize = korl_string_sizeUtf16(SHADER_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             if(fileName.size < extensionSize)
                 continue;
             if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, SHADER_EXTENSIONS[i]}))
@@ -184,7 +184,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
         korl_shared_const u16* SCENE3D_EXTENSIONS[] = {L".glb"};
         for(u32 i = 0; i < korl_arraySize(SCENE3D_EXTENSIONS); i++)
         {
-            const u$ extensionSize = korl_string_sizeUtf16(SCENE3D_EXTENSIONS[i]);
+            const u$ extensionSize = korl_string_sizeUtf16(SCENE3D_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             if(fileName.size < extensionSize)
                 continue;
             if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, SCENE3D_EXTENSIONS[i]}))
@@ -199,7 +199,7 @@ korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHa
         korl_shared_const u16* AUDIO_EXTENSIONS[] = {L".wav", L".ogg"};
         for(u32 i = 0; i < korl_arraySize(AUDIO_EXTENSIONS); i++)
         {
-            const u$ extensionSize = korl_string_sizeUtf16(AUDIO_EXTENSIONS[i]);
+            const u$ extensionSize = korl_string_sizeUtf16(AUDIO_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             if(fileName.size < extensionSize)
                 continue;
             if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, AUDIO_EXTENSIONS[i]}))

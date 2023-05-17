@@ -409,7 +409,7 @@ korl_internal void _korl_stringPool_appendFormatVaListUtf8(Korl_StringPool* cont
     /* create the formatted string */
     char*const cStringFormat = korl_string_formatVaListUtf8(context->allocatorHandle, formatUtf8, args);
     /* perform the append */
-    const u$ additionalStringSize = korl_string_sizeUtf8(cStringFormat);
+    const u$ additionalStringSize = korl_string_sizeUtf8(cStringFormat, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     str->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf8, (str->rawSizeUtf8 + additionalStringSize + 1/*null terminator*/)*sizeof(u8), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf8 + str->rawSizeUtf8*sizeof(u8), 
@@ -433,7 +433,7 @@ korl_internal void _korl_stringPool_appendFormatVaListUtf16(Korl_StringPool* con
     /* create the formatted string */
     wchar_t*const cStringFormat = korl_string_formatVaListUtf16(context->allocatorHandle, formatUtf16, args);
     /* perform the append */
-    const u$ additionalStringSize = korl_string_sizeUtf16(cStringFormat);
+    const u$ additionalStringSize = korl_string_sizeUtf16(cStringFormat, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     _Korl_StringPool_String*const str = &(context->stbDaStrings[s]);
     str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_copy(context->characterPool + str->poolByteOffsetUtf16 + str->rawSizeUtf16*sizeof(u16), 
@@ -484,7 +484,7 @@ korl_internal void korl_stringPool_collectDefragmentPointers(Korl_StringPool* co
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf8(Korl_StringPool* context, const i8* cStringUtf8, const wchar_t* file, int line)
 {
     Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, cStringUtf8
-                                                                        ,korl_checkCast_u$_to_u32(korl_string_sizeUtf8(cStringUtf8))
+                                                                        ,korl_checkCast_u$_to_u32(korl_string_sizeUtf8(cStringUtf8, KORL_DEFAULT_C_STRING_SIZE_LIMIT))
                                                                         ,_KORL_STRINGPOOL_STRING_FLAG_UTF8
                                                                         ,file, line);
     return result;
@@ -492,7 +492,7 @@ korl_internal Korl_StringPool_String korl_stringPool_newFromUtf8(Korl_StringPool
 korl_internal Korl_StringPool_String korl_stringPool_newFromUtf16(Korl_StringPool* context, const u16* cStringUtf16, const wchar_t* file, int line)
 {
     Korl_StringPool_String result = _korl_stringPool_stringFromRawCommon(context, cStringUtf16
-                                                                        ,korl_checkCast_u$_to_u32(korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16)))
+                                                                        ,korl_checkCast_u$_to_u32(korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16), KORL_DEFAULT_C_STRING_SIZE_LIMIT))
                                                                         ,_KORL_STRINGPOOL_STRING_FLAG_UTF16
                                                                         ,file, line);
     return result;
@@ -674,7 +674,8 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf16(Kor
     }
     /* do the raw string comparison */
     const int resultCompare = korl_string_compareUtf16(korl_checkCast_cpu16_to_cpwchar(KORL_C_CAST(u16*, context->characterPool + _string->poolByteOffsetUtf16))
-                                                      ,korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+                                                      ,korl_checkCast_cpu16_to_cpwchar(cStringUtf16)
+                                                      ,KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
     else if(resultCompare < 0)
@@ -743,7 +744,8 @@ korl_internal Korl_StringPool_CompareResult korl_stringPool_compareWithUtf8(Korl
     string->_DEBUGGER_ONLY_DO_NOT_USE.lastRawUtf8 = KORL_C_CAST(const char*, context->characterPool + _string->poolByteOffsetUtf8);
     /* do the raw string comparison */
     const int resultCompare = korl_string_compareUtf8(korl_checkCast_cpu8_to_cpchar(context->characterPool + _string->poolByteOffsetUtf8)
-                                                     ,cStringUtf8);
+                                                     ,cStringUtf8
+                                                     ,KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     if(resultCompare == 0)
         return KORL_STRINGPOOL_COMPARE_RESULT_EQUAL;
     else if(resultCompare < 0)
@@ -1104,7 +1106,7 @@ korl_internal void korl_stringPool_appendUtf8(Korl_StringPool_String* string, co
         on the UTF-8 raw string */
     _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     /* actually perform the append */
-    const u$ additionalStringSize = korl_string_sizeUtf8(cStringUtf8);
+    const u$ additionalStringSize = korl_string_sizeUtf8(cStringUtf8, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     _Korl_StringPool_String*const _string = &(context->stbDaStrings[s]);
     _string->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, _string->poolByteOffsetUtf8, (_string->rawSizeUtf8 + additionalStringSize + 1/*null terminator*/)*sizeof(u8), file, line);
     korl_memory_copy(context->characterPool + _string->poolByteOffsetUtf8 + _string->rawSizeUtf8*sizeof(u8), 
@@ -1124,7 +1126,7 @@ korl_internal void korl_stringPool_appendUtf16(Korl_StringPool_String* string, c
         on the UTF-16 raw string */
     _korl_stringPool_setStringFlags(context, &(context->stbDaStrings[s]), _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     /* actually perform the append */
-    const u$ additionalStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+    const u$ additionalStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16), KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     _Korl_StringPool_String*const _string = &(context->stbDaStrings[s]);
     _string->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, _string->poolByteOffsetUtf16, (_string->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_copy(context->characterPool + _string->poolByteOffsetUtf16 + _string->rawSizeUtf16*sizeof(u16), 
@@ -1159,7 +1161,7 @@ korl_internal void korl_stringPool_prependUtf8(Korl_StringPool_String* string, c
         on the UTF-8 raw string */
     _korl_stringPool_setStringFlags(context, str, _KORL_STRINGPOOL_STRING_FLAG_UTF8);
     /* grow the string, move it, and copy the c-string to the beginning */
-    const u$ additionalStringSize = korl_string_sizeUtf8(cStringUtf8);
+    const u$ additionalStringSize = korl_string_sizeUtf8(cStringUtf8, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     str->poolByteOffsetUtf8 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf8, (str->rawSizeUtf8 + additionalStringSize + 1/*null terminator*/)*sizeof(u8), file, line);
     korl_memory_move(context->characterPool + str->poolByteOffsetUtf8 + additionalStringSize*sizeof(u8), 
                      context->characterPool + str->poolByteOffsetUtf8, 
@@ -1182,7 +1184,7 @@ korl_internal void korl_stringPool_prependUtf16(Korl_StringPool_String* string, 
         on the UTF-16 raw string */
     _korl_stringPool_setStringFlags(context, str, _KORL_STRINGPOOL_STRING_FLAG_UTF16);
     /* grow the string, move it, and copy the c-string to the beginning */
-    const u$ additionalStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+    const u$ additionalStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16), KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     str->poolByteOffsetUtf16 = _korl_stringPool_reallocate(context, str->poolByteOffsetUtf16, (str->rawSizeUtf16 + additionalStringSize + 1/*null terminator*/)*sizeof(u16), file, line);
     korl_memory_move(context->characterPool + str->poolByteOffsetUtf16 + additionalStringSize*sizeof(u16), 
                      context->characterPool + str->poolByteOffsetUtf16, 
@@ -1248,7 +1250,7 @@ korl_internal u32 korl_stringPool_findUtf8(Korl_StringPool_String* string, const
           0   1   2   3   4   5   6   7   8   9  10
                                 [ r][ i][ n][ g][\0]
                                   0   1   2   3   4 */
-    const u$ searchStringSize = korl_string_sizeUtf8(cStringUtf8);
+    const u$ searchStringSize = korl_string_sizeUtf8(cStringUtf8, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     if(searchStringSize > str->rawSizeUtf8)
         return str->rawSizeUtf8;// the search string can't even fit inside this string
     for(u32 i = characterOffsetStart; i <= str->rawSizeUtf8 - searchStringSize; i++)
@@ -1271,7 +1273,7 @@ korl_internal u32 korl_stringPool_findUtf16(Korl_StringPool_String* string, cons
           0   1   2   3   4   5   6   7   8   9  10
                                 [ r][ i][ n][ g][\0]
                                   0   1   2   3   4 */
-    const u$ searchStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16));
+    const u$ searchStringSize = korl_string_sizeUtf16(korl_checkCast_cpu16_to_cpwchar(cStringUtf16), KORL_DEFAULT_C_STRING_SIZE_LIMIT);
     if(searchStringSize > str->rawSizeUtf16)
         return str->rawSizeUtf16;// the search string can't even fit inside this string
     for(u32 i = characterOffsetStart; i <= str->rawSizeUtf16 - searchStringSize; i++)

@@ -50,13 +50,13 @@ korl_internal acu8 korl_codec_configuration_toUtf8(Korl_Codec_Configuration* con
         {
         case KORL_CODEC_CONFIGURATION_MAP_VALUE_TYPE_U32:{
             char*const newLine   = korl_string_formatUtf8(allocatorResult, "%hs = %u\n", m->key, m->value.subType._u32);
-            const u$ newLineSize = korl_string_sizeUtf8(newLine);
+            const u$ newLineSize = korl_string_sizeUtf8(newLine, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             _korl_codec_configuration_appendLine(newLine, newLineSize, allocatorResult, &buffer, &bufferBytes, &bufferBytesUsed);
             korl_free(allocatorResult, newLine);
             break;}
         case KORL_CODEC_CONFIGURATION_MAP_VALUE_TYPE_I32:{
             char*const newLine   = korl_string_formatUtf8(allocatorResult, "%hs = %i\n", m->key, m->value.subType._i32);
-            const u$ newLineSize = korl_string_sizeUtf8(newLine);
+            const u$ newLineSize = korl_string_sizeUtf8(newLine, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             _korl_codec_configuration_appendLine(newLine, newLineSize, allocatorResult, &buffer, &bufferBytes, &bufferBytesUsed);
             korl_free(allocatorResult, newLine);
             break;}

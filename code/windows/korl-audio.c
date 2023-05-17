@@ -179,7 +179,7 @@ korl_internal HRESULT STDMETHODCALLTYPE _korl_audio_mmNotificationClient_onDefau
         if(pwstrDefaultDeviceId)/* it is possible that there is no default device available, in which case this string pointer is just NULL */
         {
             korl_log(INFO, "default multimedia|render audio device changed; id=\"%ws\"", pwstrDefaultDeviceId);
-            const u$ pwstrDefaultDeviceIdSize = korl_string_sizeUtf16(pwstrDefaultDeviceId);
+            const u$ pwstrDefaultDeviceIdSize = korl_string_sizeUtf16(pwstrDefaultDeviceId, KORL_DEFAULT_C_STRING_SIZE_LIMIT);
             pwstrDefaultDeviceIdCopy = CoTaskMemAlloc((pwstrDefaultDeviceIdSize + 1/*null terminator*/)*sizeof(*pwstrDefaultDeviceId));
             korl_memory_copy(pwstrDefaultDeviceIdCopy, pwstrDefaultDeviceId, (pwstrDefaultDeviceIdSize + 1/*null terminator*/)*sizeof(*pwstrDefaultDeviceId));
         }
@@ -292,7 +292,7 @@ korl_internal Korl_Audio_Format korl_audio_format(void)
     if(previousChangedDeviceId)
     {
         korl_log(INFO, "new default device Id: \"%ws\"", previousChangedDeviceId);
-        if(context->output.isOpen && 0 != korl_string_compareUtf16(previousChangedDeviceId, context->output.pwstrDeviceId))
+        if(context->output.isOpen && 0 != korl_string_compareUtf16(previousChangedDeviceId, context->output.pwstrDeviceId, KORL_DEFAULT_C_STRING_SIZE_LIMIT))
             _korl_audio_output_close();
         if(!context->output.isOpen)
         {
