@@ -1982,8 +1982,14 @@ korl_internal KORL_FUNCTION_korl_gfx_batchAddLine(korl_gfx_batchAddLine)
     (*pContext)->_vertexColors    = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, (*pContext)->_vertexPositions) + newVertexCount*_KORL_GFX_POSITION_DIMENSIONS*sizeof(f32));
     korl_memory_move((*pContext)->_vertexColors, previousVertexColors, (*pContext)->_vertexCount*sizeof(Korl_Vulkan_Color4u8));
     (*pContext)->_vertexCount     = newVertexCount;
-    /* set the properties of the new line */
     korl_assert(positionDimensions == 2 || positionDimensions == 3);
+    /* zero vertex position data if necessary */
+    if(positionDimensions < _KORL_GFX_POSITION_DIMENSIONS)
+    {
+        korl_assert(sizeof(*(*pContext)->_vertexPositions) == sizeof(f32));
+        korl_memory_zero((*pContext)->_vertexPositions + (newVertexCount - 2)*_KORL_GFX_POSITION_DIMENSIONS, 2*_KORL_GFX_POSITION_DIMENSIONS*sizeof(f32));
+    }
+    /* set the properties of the new line */
     for(u8 d = 0; d < positionDimensions; d++)
     {
         KORL_C_CAST(Korl_Math_V3f32*, (*pContext)->_vertexPositions)[newVertexCount - 2].elements[d] = p0[d];
