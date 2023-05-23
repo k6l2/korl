@@ -1,1 +1,1 @@
-%KORL_PROJECT_ROOT%\build\%KORL_EXE_NAME%.exe %*
+START /B %KORL_PROJECT_ROOT%\build\%KORL_EXE_NAME%.exe %*
