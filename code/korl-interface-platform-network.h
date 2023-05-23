@@ -35,6 +35,9 @@ typedef union Korl_Network_Address
                                                       ,const u8* dataBuffer, u$ dataBufferSize\
                                                       ,const Korl_Network_Address*const netAddressReceiver, u16 netPortReceiver)
 /** 
+ * \param o_dataBuffer currently, korl-network considers a buffer of insufficient 
+ *            size to be an ERROR; the user is advised to provide a buffer of 
+ *            size \c KORL_NETWORK_MAX_DATAGRAM_BYTES to this function
  * \return (1) the # of elements written to o_dataBuffer  (2) the received data 
  *         into `o_dataBuffer` (3) the network address from which the data was 
  *         sent into `o_netAddressSender`.  If an error occurs, a value < 0 is 
