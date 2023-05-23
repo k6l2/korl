@@ -94,7 +94,6 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     korl_gui_widgetTextFormat(L"orphan widget test2");
     return memory->continueRunning;
 }
-#define STBDS_UNIT_TESTS // for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests
 #include "utility/korl-utility-stb-ds.c"
 #include "utility/korl-stringPool.c"
 #include "utility/korl-checkCast.c"

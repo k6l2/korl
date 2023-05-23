@@ -1,11 +1,15 @@
 #include "utility/korl-utility-stb-ds.h"
 #include "utility/korl-checkCast.h"
+#include "korl-interface-platform.h"
 korl_internal void korl_stb_ds_arrayAppendU8(void* memoryContext, u8** pStbDsArray, const void* data, u$ bytes)
 {
     const u$ arrayLengthInitial = arrlenu(*pStbDsArray);
     mcarrsetlen(memoryContext, *pStbDsArray, arrayLengthInitial + bytes);
     korl_memory_copy(*pStbDsArray + arrayLengthInitial, data, bytes);
 }
+#ifndef STBDS_UNIT_TESTS
+#   define STBDS_UNIT_TESTS// for the sake of detecting any other C++ warnings; we aren't going to actually run any of these tests
+#endif
 #define STB_DS_IMPLEMENTATION
 #define STBDS_ASSERT(x) korl_assert(x)
 #include "stb/stb_ds.h"
