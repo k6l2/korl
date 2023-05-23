@@ -6,11 +6,14 @@
 #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
 #endif
+#define KORL_WINDOWS_VERSION 0x0A00// extracted from sdkddkver.h; _WIN32_WINNT_WIN10                  0x0A00
+#define WINVER       KORL_WINDOWS_VERSION
+#define _WIN32_WINNT KORL_WINDOWS_VERSION
 #pragma warning(push)
     /* warning C4255: "no function prototype given: converting '()' to '(void)'" 
         It seems Windows.h doesn't conform well to C, surprise surprise! */
     #pragma warning(disable : 4255)
-    #include <Windows.h>
+    #include <WS2tcpip.h>// needed for korl-network & korl-bluetooth; includes <WinSock2.h>, which includes <Windows.h>
 #pragma warning(pop)
 #include <initguid.h>/* needed in order to use the DEFINE_GUID macro; supposedly, you're supposed to include this _before_ including headers that use GUIDs defined by things like COM APIs, but I've actually found that if you move this include further down, it doesn't cause any build errors or anything...  I'll leave it above those headers just in case though. ¯\_(ツ)_/¯ */
 #include <windowsx.h>/* for GET_X_LPARAM, GET_Y_LPARAM, etc... */
@@ -24,7 +27,6 @@
 #include <SetupAPI.h>/* for gamepad module (SetupDiGetClassDevs, etc...) */
 #include <Dbt.h>/* for gamepad module (DEV_BROADCAST_DEVICEINTERFACE_*, etc...) */
 #include <devioctl.h>/* needed in order to use the CTL_CODE macro */
-#include <WinSock2.h>/* for bluetooth module */
 #include <ws2bth.h>/* for bluetooth module; specifically the SOCKADDR_BTH struct */
 #include <Audioclient.h>/* for WASAPI; this needs to be here since it _requires_ the near/far macros*/
 #ifdef near// defined from somewhere inside Windows.h

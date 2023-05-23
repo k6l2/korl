@@ -16,6 +16,7 @@
 #include "korl-interface-platform-bluetooth.h"
 #include "korl-interface-platform-sfx.h"
 #include "korl-interface-platform-math.h"
+#include "korl-interface-platform-network.h"
 /* korl-log interface *********************************************************/
 typedef enum KorlEnumLogLevel
     { KORL_LOG_LEVEL_ASSERT

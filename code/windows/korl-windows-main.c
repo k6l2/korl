@@ -22,6 +22,7 @@
 #include "utility/korl-utility-string.h"
 #include "korl-audio.h"
 #include "korl-sfx.h"
+#include "korl-network.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -66,6 +67,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     korl_time_probeStart(init_module_sfx);          korl_sfx_initialize();                       korl_time_probeStop(init_module_sfx);
     korl_time_probeStart(init_module_resource);     korl_resource_initialize();                  korl_time_probeStop(init_module_resource);
     korl_time_probeStart(init_module_bluetooth);    korl_bluetooth_initialize();                 korl_time_probeStop(init_module_bluetooth);
+    korl_time_probeStart(init_module_network);      korl_network_initialize();                   korl_time_probeStop(init_module_network);
     korl_time_probeStart(init_module_gamepad);      korl_windows_gamepad_initialize();           korl_time_probeStop(init_module_gamepad);
     korl_time_probeStart(init_module_window);       korl_windows_window_initialize();            korl_time_probeStop(init_module_window);
     korl_time_probeStart(create_window);            korl_windows_window_create(1024, 576);       korl_time_probeStop(create_window);
@@ -127,6 +129,7 @@ shutdownSuccess:
 #include "korl-jsmn.c"
 #include "korl-codec-glb.c"
 #include "korl-math.c"
+#include "korl-network.c"
 #include "utility/korl-stringPool.c"
 #include "utility/korl-utility-math.c"
 #include "utility/korl-checkCast.c"
