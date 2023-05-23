@@ -85,7 +85,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     /* test "server" logic */
     if(memory->socketReceiver)
     {
-        u8 udpBuffer[KORL_NETWORK_MAX_DATAGRAM_BYTES];// I don't think it's actually necessary to have a buffer this large; @TODO: test this with a small buffer & larger message
+        u8 udpBuffer[KORL_NETWORK_MAX_DATAGRAM_BYTES];// for now, it is generally necessary to use the largest possible buffer, as korl-network considers a receive buffer overflow as an error; I may change this in the future if it's possible to "peek" the next datagram to check its size
         struct
         {
             Korl_Network_Address address;
