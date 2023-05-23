@@ -75,6 +75,7 @@ typedef struct Korl_Gfx_Camera
         KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT,
     } type;
     Korl_Math_V3f32 position;
+    //KORL-ISSUE-000-000-162: gfx: the camera should _not_ store `target`, as this requires the user to constantly change the camera's position _and_ target when they want to just move the camera around; also, we shouldn't store `worldUpNormal` here, as this implies this is a specialized camera type, like based on pitch/yaw or something
     Korl_Math_V3f32 target;
     Korl_Math_V3f32 worldUpNormal;
     /** If the viewport scissor coordinates are stored as ratios, they can 
