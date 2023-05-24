@@ -2197,10 +2197,12 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
     }
     korl_vulkan_setDrawState(&drawState);
-    Korl_Vulkan_DrawVertexData drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle);
-    if(drawVertexData.vertexBuffer.type != KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED)
-        /* we can't draw the scene3d if it has not yet loaded*/
-        korl_vulkan_draw(&drawVertexData);
+    u32 meshPrimitiveCount = 0;
+    const Korl_Vulkan_DrawVertexData* drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle, utf8MeshName, &meshPrimitiveCount);
+    if(!drawVertexData)
+        return;/* we can't draw the scene3d if it has not yet loaded*/
+    for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
+        korl_vulkan_draw(drawVertexData + mp);
 }
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
 {

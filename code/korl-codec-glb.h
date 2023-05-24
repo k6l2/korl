@@ -156,7 +156,8 @@ korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.ma
                                                                             ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
 korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_getMeshPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
+korl_internal acu8                            korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
+korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
 korl_internal Korl_Codec_Gltf_Accessor*       korl_codec_gltf_getAccessors(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_BufferView*     korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Buffer*         korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context);

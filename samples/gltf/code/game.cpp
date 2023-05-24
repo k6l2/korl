@@ -117,7 +117,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
         for(i32 x = -5; x < 5; x++)
         {
             scene3d._model.position = {KORL_C_CAST(f32, x) * 150.f, KORL_C_CAST(f32, y) * 150.f, 0};
-            korl_gfx_draw(&scene3d);
+            korl_gfx_draw(&scene3d, KORL_RAW_CONST_UTF8("Cube"));
         }
     for(u$ i = 0; i < korl_arraySize(lights); i++)
     {
@@ -128,7 +128,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
         scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;
         scene3d._model.position = light->position;
         scene3d._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
-        korl_gfx_draw(&scene3d);
+        korl_gfx_draw(&scene3d, KORL_RAW_CONST_UTF8("Cube"));
     }
     /* debug */
     Korl_Gfx_Batch*const batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);

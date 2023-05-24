@@ -80,8 +80,6 @@
 [ ] KORL-ISSUE-000-000-149: vulkan: HACK; uvAabb fragment shader push constant is hacky & very implementation-specific; I would much rather allow the user to be able to configure their own push constants or something
 [ ] KORL-ISSUE-000-000-150: vulkan: incomplete normals vertex attribute support
 [ ] KORL-ISSUE-000-000-151: vulkan: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
-[ ] KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple mesh primitives
-[ ] KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
 [ ] KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
 [ ] KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
 [ ] KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
@@ -234,6 +232,8 @@
 [x] KORL-ISSUE-000-000-138: gui: crash when all windows are minimized
 [x] KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
 [x] KORL-ISSUE-000-000-143: asset/resource/gfx: not sure where the root of this issue is; sometimes randomly (but experimentally, most often from a cold start), a texture file-asset-backed resource will fail to render; after investigating a memoryState in renderdoc, it seems the texture is loading just fine, and the Batch UVs are all 0 for some reason?; this was actually resolved by commit a0922667fca8892dc3a7b738e425086fb621e11e I think
+[x] KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple mesh primitives
+[x] KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
 [x] KORL-PERFORMANCE-000-000-000: (minor) these pointers all reference contiguous memory regions which immediately follow this struct itself, ergo can be converted to offsets, saving us space but making the code less readable
 [x] KORL-PERFORMANCE-000-000-008: even if we do end up needing to store the asset strings, it would likely be better if we store the strings in a separate string pool, and store a handle to that string here for faster iteration over device assets - we're wasting like an entire cache line per device asset lol
 [x] KORL-PERFORMANCE-000-000-009: pass model as push constant instead?  Timings required.

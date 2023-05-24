@@ -58,8 +58,8 @@ typedef struct _Korl_Resource
                 } shader;
                 struct
                 {
-                    Korl_Codec_Gltf* gltf;
-                    Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandleGlbBinaryChunk;
+                    Korl_Codec_Gltf*            gltf;
+                    Korl_Vulkan_DrawVertexData* meshPrimitiveDrawVertexData;// an array with enough elements to store all glTF MeshPrimitives; contains vertex buffer DeviceMemory_AllocationHandles, which must be freed when destroyed; stored in transient memory; size is calculated by iterating over gltf.meshes.size, and for each mesh.primitives.size; unfortunately, this means we can't randomly access the buffers of a specific mesh, since without another data structure we don't know which offset into this array that mesh's primitives are located, but that should be okay for the near future, as I'm not going to be working with crazy complicated assets for a while most likely
                 } scene3d;
             } subType;
         } graphics;
@@ -133,10 +133,25 @@ korl_internal void _korl_resource_unload(_Korl_Resource*const resource, const _K
             resource->subType.graphics.subType.shader.handle = 0;
             break;}
         case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
+            Korl_Codec_Gltf*const      gltf   = resource->subType.graphics.subType.scene3d.gltf;
+            Korl_Codec_Gltf_Mesh*const meshes = korl_codec_gltf_getMeshes(gltf);
+            u$ meshPrimitiveOffset = 0;
+            for(u32 m = 0; m < gltf->meshes.size; m++)
+            {
+                Korl_Codec_Gltf_Mesh*const           mesh           = meshes + m;
+                Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_mesh_getPrimitives(gltf, mesh);
+                for(u32 mp = 0; mp < mesh->primitives.size; mp++)
+                {
+                    Korl_Vulkan_DrawVertexData*const drawVertexData = resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData + meshPrimitiveOffset + mp;
+                    korl_assert(drawVertexData->vertexBuffer.type == KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION);
+                    korl_vulkan_deviceAsset_destroy(drawVertexData->vertexBuffer.subType.handleDeviceMemoryAllocation);
+                }
+                meshPrimitiveOffset += mesh->primitives.size;
+            }
+            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData);
+            resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData = NULL;
             korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.gltf);
             resource->subType.graphics.subType.scene3d.gltf = NULL;
-            korl_vulkan_deviceAsset_destroy(resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk);
-            resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk = 0;
             break;}
         default: break;
         }
@@ -300,15 +315,26 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                 Korl_Codec_Gltf_Accessor*const   accessors   = korl_codec_gltf_getAccessors(gltf);
                 Korl_Codec_Gltf_BufferView*const bufferViews = korl_codec_gltf_getBufferViews(gltf);
                 Korl_Codec_Gltf_Buffer*const     buffers     = korl_codec_gltf_getBuffers(gltf);
-                korl_assert(gltf->meshes.size == 1);// KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
                 korl_assert(gltf->buffers.size == 1);// safe to assume GLB files have 1 buffer
+                if(gltf->meshes.size)
+                {
+                    u$ meshPrimitivesTotal = 0;
+                    for(u32 m = 0; m < gltf->meshes.size; m++)
+                    {
+                        Korl_Codec_Gltf_Mesh*const mesh = meshes + m;
+                        meshPrimitivesTotal += mesh->primitives.size;
+                    }
+                    resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData = korl_allocate(context->allocatorHandleTransient
+                                                                                                          ,meshPrimitivesTotal * sizeof(*resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData));
+                }
+                u$ meshPrimitiveOffset = 0;// the offset in the meshPrimitiveDeviceMemoryAllocationHandles array in which the current mesh's meshPrimitives begin
                 for(u32 m = 0; m < gltf->meshes.size; m++)
                 {
-                    Korl_Codec_Gltf_Mesh*const mesh = meshes + m;
-                    Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_getMeshPrimitives(gltf, mesh);
-                    korl_assert(mesh->primitives.size == 1);// KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple mesh primitives
+                    Korl_Codec_Gltf_Mesh*const           mesh           = meshes + m;
+                    Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_mesh_getPrimitives(gltf, mesh);
                     for(u32 mp = 0; mp < mesh->primitives.size; mp++)
                     {
+                        Korl_Vulkan_DrawVertexData*const meshPrimitiveDrawVertexData = resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData + meshPrimitiveOffset + mp;
                         /* creation of the mesh primitive's vertex buffer; chances are good that there is a lot more data in the GLB's 
                             binary chunk, so we must figure out which vertex attributes we need for the vertex buffer, then use the 
                             Accessor + BufferView for each vertex attribute we can determine the range of the binary chunk the data 
@@ -384,19 +410,34 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             vertexAttributeTotalBytes[vertexAttributeCount] = bufferView->byteLength;
                             vertexAttributeCount++;
                         }
+                        meshPrimitiveDrawVertexData->vertexBuffer.type = KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION;
                         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoBuffer);
                         createInfoBuffer.bytes                          = currentVertexBufferOffset;
                         createInfoBuffer.vertexAttributeDescriptorCount = vertexAttributeCount;
                         createInfoBuffer.vertexAttributeDescriptors     = vertexAttributeDescriptors;
-                        resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoBuffer, 0/*0 => generate new handle*/);
+                        meshPrimitiveDrawVertexData->vertexBuffer.subType.handleDeviceMemoryAllocation = korl_vulkan_deviceAsset_createVertexBuffer(&createInfoBuffer, 0/*0 => generate new handle*/);
                         /* fill the vertex buffer with our GLB binary chunk data from/to the appropriate offsets */
                         currentVertexBufferOffset = 0;
-                        for(u$ va = 0; va < vertexAttributeCount; va++)
+                        for(u$ va = 0; va < vertexAttributeCount; currentVertexBufferOffset += vertexAttributeTotalBytes[va++])
+                            korl_vulkan_vertexBuffer_update(meshPrimitiveDrawVertexData->vertexBuffer.subType.handleDeviceMemoryAllocation
+                                                           ,KORL_C_CAST(u8*, gltf) + gltf->bytes + vertexAttributeBufferViewByteOffsets[va]
+                                                           ,vertexAttributeTotalBytes[va]
+                                                           ,currentVertexBufferOffset);
+                        /* populate the rest of the mesh primitive's draw vertex data with the necessary data with respect to its glTF properties */
+                        switch(meshPrimitive->mode)
                         {
-                            korl_vulkan_vertexBuffer_update(resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk, KORL_C_CAST(u8*, gltf) + gltf->bytes + vertexAttributeBufferViewByteOffsets[va], vertexAttributeTotalBytes[va], currentVertexBufferOffset);
-                            currentVertexBufferOffset += vertexAttributeTotalBytes[va];
+                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES: meshPrimitiveDrawVertexData->primitiveType = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES; break;
+                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES:     meshPrimitiveDrawVertexData->primitiveType = KORL_VULKAN_PRIMITIVETYPE_LINES;     break;
+                        default:
+                            korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
                         }
+                        korl_assert(meshPrimitive->attributes.position >= 0);
+                        const Korl_Codec_Gltf_Accessor*const accessorPosition = accessors + meshPrimitive->attributes.position;
+                        const Korl_Codec_Gltf_Accessor*const accessorIndices  = meshPrimitive->indices >= 0 ? accessors + meshPrimitive->indices : NULL;
+                        meshPrimitiveDrawVertexData->vertexCount = accessorPosition->count;
+                        meshPrimitiveDrawVertexData->indexCount  = accessorIndices ? korl_vulkan_safeCast_u$_to_vertexIndex(accessorIndices->count) : 0;
                     }
+                    meshPrimitiveOffset += mesh->primitives.size;
                 }
                 //KORL-ISSUE-000-000-158: resource: decode textures from the GLB binary chunk & upload to graphics device
                 resource->subType.graphics.subType.scene3d.gltf = gltf;
@@ -845,12 +886,12 @@ korl_internal Korl_Vulkan_DrawState_Material korl_resource_scene3d_getMaterial(K
     //KORL-ISSUE-000-000-159: resource: obtain textures from GLTF material
     return material;
 }
-korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d)
+korl_internal const Korl_Vulkan_DrawVertexData* korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, drawVertexData);
     if(!handleResourceScene3d)
-        return drawVertexData;
+        return NULL;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceScene3d);
@@ -860,30 +901,32 @@ korl_internal Korl_Vulkan_DrawVertexData korl_resource_scene3d_getDrawVertexData
     if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     if(!resource->subType.graphics.subType.scene3d.gltf)
-        return drawVertexData;
+        return NULL;
+    /* at this point, we know the glTF data is loaded & ready to render */
     const Korl_Codec_Gltf*const                gltf               = resource->subType.graphics.subType.scene3d.gltf;
-    const Korl_Codec_Gltf_Accessor*const       accessors          = korl_codec_gltf_getAccessors(gltf);
     const Korl_Codec_Gltf_Mesh*const           meshes             = korl_codec_gltf_getMeshes(gltf);
-    const u32                                  meshIndex          = 0; korl_assert(meshIndex < gltf->meshes.size); //KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
-    const Korl_Codec_Gltf_Mesh*const           mesh               = meshes + meshIndex;
-    const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives     = korl_codec_gltf_getMeshPrimitives(gltf, mesh);
-    const u32                                  meshPrimitiveIndex = 0; korl_assert(meshPrimitiveIndex < mesh->primitives.size);//KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple meshe primitives
-    const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive      = meshPrimitives + meshPrimitiveIndex;
-    switch(meshPrimitive->mode)
+    /* find which mesh the user wants to draw based on the requested name */
+    const Korl_Codec_Gltf_Mesh* mesh = NULL;
+    u$                          meshPrimitiveOffset = 0;
+    for(u32 m = 0; m < gltf->meshes.size && !mesh; m++)
     {
-    case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES: drawVertexData.primitiveType = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES; break;
-    case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES:     drawVertexData.primitiveType = KORL_VULKAN_PRIMITIVETYPE_LINES;     break;
-    default:
-        korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
+        const Korl_Codec_Gltf_Mesh*const meshCurrent = meshes + m;
+        const acu8 meshName = korl_codec_gltf_mesh_getName(gltf, meshCurrent);
+        if(0 == korl_memory_compare_acu8(utf8MeshName, meshName))
+            mesh = meshCurrent;
+        else
+            meshPrimitiveOffset += meshCurrent->primitives.size;
     }
-    korl_assert(meshPrimitive->attributes.position >= 0);
-    const Korl_Codec_Gltf_Accessor*const accessorPosition = accessors + meshPrimitive->attributes.position;
-    const Korl_Codec_Gltf_Accessor*const accessorIndices  = meshPrimitive->indices >= 0 ? accessors + meshPrimitive->indices : NULL;
-    drawVertexData.vertexCount = accessorPosition->count;
-    drawVertexData.indexCount  = accessorIndices ? korl_vulkan_safeCast_u$_to_vertexIndex(accessorIndices->count) : 0;
-    drawVertexData.vertexBuffer.type                                 = KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION;
-    drawVertexData.vertexBuffer.subType.handleDeviceMemoryAllocation = resource->subType.graphics.subType.scene3d.deviceMemoryAllocationHandleGlbBinaryChunk;
-    return drawVertexData;
+    if(!mesh)
+    {
+        korl_log(ERROR, "failed to find mesh \"%.*hs\" in SCENE3D resource", utf8MeshName.size, utf8MeshName.data);
+        return NULL;
+    }
+    /* the Vulkan_DrawVertexData for all this mesh's meshPrimitives was already 
+        constructed when the Resource finished loading & decoding; all we need 
+        to do is return this const data array to the user */
+    *o_meshPrimitiveCount = mesh->primitives.size;
+    return resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData + meshPrimitiveOffset;
 }
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

@@ -753,7 +753,11 @@ korl_internal Korl_Codec_Gltf_Mesh* korl_codec_gltf_getMeshes(const Korl_Codec_G
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Mesh*, KORL_C_CAST(u8*, context) + context->meshes.byteOffset);
 }
-korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_getMeshPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh)
+korl_internal acu8 korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh)
+{
+    return (acu8){.size = mesh->rawUtf8Name.size, .data = KORL_C_CAST(u8*, context) + mesh->rawUtf8Name.byteOffset};
+}
+korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh)
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Mesh_Primitive*, KORL_C_CAST(u8*, context) + mesh->primitives.byteOffset);
 }
