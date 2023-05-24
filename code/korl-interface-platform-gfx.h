@@ -346,5 +346,6 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(name)         void                  name(Korl_Gfx_Batch**const pContext, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                  name(u8 red, u8 green, u8 blue)
 #define KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(name)             void                  name(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d)
+//KORL-ISSUE-000-000-157: once this issue is fixed, we can remove the `acu8 utf8MeshName` parameter from `korl_gfx_draw`
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context, acu8 utf8MeshName)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                  name(const Korl_Gfx_Light*const lights, u$ lightsSize)
