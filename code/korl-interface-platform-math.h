@@ -5,6 +5,7 @@
 #define KORL_FUNCTION_korl_math_round_f64_to_i64(name) i64  name(f64 x)
 #define KORL_FUNCTION_korl_math_f32_modulus(name)      f32  name(f32 numerator, f32 denominator)
 #define KORL_FUNCTION_korl_math_sine(name)             f32  name(f32 x)
+#define KORL_FUNCTION_korl_math_arcSine(name)          f32  name(f32 x)
 #define KORL_FUNCTION_korl_math_cosine(name)           f32  name(f32 x)
 #define KORL_FUNCTION_korl_math_arcCosine(name)        f32  name(f32 x)
 #define KORL_FUNCTION_korl_math_tangent(name)          f32  name(f32 x)

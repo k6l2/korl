@@ -39,6 +39,10 @@ korl_internal inline KORL_FUNCTION_korl_math_sine(korl_math_sine)
 {
     return sinf(x);
 }
+korl_internal inline KORL_FUNCTION_korl_math_arcSine(korl_math_arcSine)
+{
+    return asinf(x);
+}
 korl_internal inline KORL_FUNCTION_korl_math_cosine(korl_math_cosine)
 {
     return cosf(x);
