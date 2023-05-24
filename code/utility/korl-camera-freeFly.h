@@ -29,3 +29,4 @@ typedef struct Korl_Camera_FreeFly
 korl_internal void            korl_camera_freeFly_setInput(Korl_Camera_FreeFly*const context, Korl_Camera_FreeFly_InputFlags inputFlag, bool isActive);
 korl_internal void            korl_camera_freeFly_step(Korl_Camera_FreeFly*const context, f32 deltaSeconds);
 korl_internal Korl_Math_V3f32 korl_camera_freeFly_forward(const Korl_Camera_FreeFly*const context);
+korl_internal Korl_Gfx_Camera korl_camera_freeFly_createGfxCamera(const Korl_Camera_FreeFly*const context);

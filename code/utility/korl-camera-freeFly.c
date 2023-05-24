@@ -72,11 +72,6 @@ korl_internal void korl_camera_freeFly_step(Korl_Camera_FreeFly*const context, f
         KORL_MATH_ASSIGN_CLAMP(context->yawPitch.pitch, -KORL_PI32/2, KORL_PI32/2);
         korl_math_v3f32_assignAdd(&context->position, korl_math_v3f32_multiplyScalar(context->velocity, deltaSeconds));
     }
-    const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_RIGHT, context->yawPitch.pitch, true);
-    const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_UP   , context->yawPitch.yaw  , true);
-    const Korl_Math_V3f32      cameraForward         = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD, false);
-    const Korl_Math_V3f32      cameraUp              = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_UP, false);
-    korl_gfx_useCamera(korl_gfx_createCameraFov(90, 10, 1e16f, context->position, korl_math_v3f32_add(context->position, cameraForward), cameraUp));
 }
 korl_internal Korl_Math_V3f32 korl_camera_freeFly_forward(const Korl_Camera_FreeFly*const context)
 {
@@ -84,4 +79,12 @@ korl_internal Korl_Math_V3f32 korl_camera_freeFly_forward(const Korl_Camera_Free
     const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_UP   , context->yawPitch.yaw  , true);
     const Korl_Math_V3f32      cameraForward         = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD, false);
     return cameraForward;
+}
+korl_internal Korl_Gfx_Camera korl_camera_freeFly_createGfxCamera(const Korl_Camera_FreeFly*const context)
+{
+    const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_RIGHT, context->yawPitch.pitch, true);
+    const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_UP   , context->yawPitch.yaw  , true);
+    const Korl_Math_V3f32      cameraForward         = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD, false);
+    const Korl_Math_V3f32      cameraUp              = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_UP, false);
+    return korl_gfx_createCameraFov(90, 10, 1e16f, context->position, korl_math_v3f32_add(context->position, cameraForward), cameraUp);
 }

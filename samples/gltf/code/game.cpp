@@ -64,7 +64,6 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     memory->seconds += deltaSeconds;
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
-    /* camera... */
     korl_camera_freeFly_step(&memory->camera, deltaSeconds);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
@@ -98,6 +97,8 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
                           ,.outer = korl_math_cosine(0.2f * KORL_PI32)}}
         };
     korl_gfx_light_use(lights, korl_arraySize(lights));
+    /* camera... */
+    korl_gfx_useCamera(korl_camera_freeFly_createGfxCamera(&memory->camera));
     /* action! */
     Korl_Gfx_Drawable scene3d;
     korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
