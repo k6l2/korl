@@ -110,10 +110,6 @@ typedef struct Korl_Gfx_Camera
         } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
-typedef enum Korl_Gfx_Drawable_Type
-    // KORL-ISSUE-000-000-157: gfx: it doesn't make much sense to draw a "SCENE3D"; Drawable types should really be more primitive, such as "MODEL", "TEXT", "MESH"
-    {KORL_GFX_DRAWABLE_TYPE_SCENE3D
-} Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Material_Properties
 {
     Korl_Math_V4f32 factorColorBase;
@@ -149,22 +145,27 @@ typedef struct Korl_Gfx_Drawable_MaterialSlot
     Korl_Gfx_Material material;
     bool              used;
 } Korl_Gfx_Drawable_MaterialSlot;
+typedef enum Korl_Gfx_Drawable_Type
+    {KORL_GFX_DRAWABLE_TYPE_MESH
+} Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Drawable
 {
+    Korl_Gfx_Drawable_Type type;
     struct
     {
         Korl_Math_V3f32      position;
         Korl_Math_V3f32      scale;
         Korl_Math_Quaternion rotation;
     } _model;
-    Korl_Gfx_Drawable_Type type;
     union
     {
         struct
         {
-            Korl_Resource_Handle           resourceHandle;
+            Korl_Resource_Handle           resourceHandleScene3d;
             Korl_Gfx_Drawable_MaterialSlot materialSlots[1];
-        } scene3d;
+            u8                             rawUtf8Scene3dMeshName[32];//KORL-ISSUE-000-000-163: gfx: we should be able to refactor korl-resource such that we can obtain a ResourceHandle to a "child" MESH resource of a SCENE3D resource, removing the need to have to store the mesh name string of the mesh we're trying to use
+            u8                             rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
+        } mesh;
     } subType;
 } Korl_Gfx_Drawable;
 typedef enum Korl_Gfx_Light_Type
@@ -345,7 +346,5 @@ typedef struct Korl_Gfx_Font_Metrics
  * same allocation */
 #define KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(name)         void                  name(Korl_Gfx_Batch**const pContext, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                  name(u8 red, u8 green, u8 blue)
-#define KORL_FUNCTION_korl_gfx_drawable_scene3d_initialize(name)             void                  name(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d)
-//KORL-ISSUE-000-000-157: once this issue is fixed, we can remove the `acu8 utf8MeshName` parameter from `korl_gfx_draw`
-#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context, acu8 utf8MeshName)
+#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                  name(const Korl_Gfx_Light*const lights, u$ lightsSize)

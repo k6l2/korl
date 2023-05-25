@@ -100,36 +100,36 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
     /* camera... */
     korl_gfx_useCamera(korl_camera_freeFly_createGfxCamera(&memory->camera));
     /* action! */
-    Korl_Gfx_Drawable scene3d;
-    korl_gfx_drawable_scene3d_initialize(&scene3d, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY));
-    scene3d._model.scale    = KORL_MATH_V3F32_ONE * 50;
     //KORL-FEATURE-000-000-060: gfx: add "Material" asset/resource; we should be able to define materials in some kind of file (GLB, JSON, etc.)
-    scene3d.subType.scene3d.materialSlots[0] = {.material = {.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
-                                                                           ,.factorColorEmissive = {0, 0.8f, 0.05f}
-                                                                           ,.factorColorSpecular = KORL_MATH_V4F32_ONE
-                                                                           ,.shininess           = 32}
-                                                            ,.maps = {.resourceHandleTextureBase     = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-base.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                                     ,.resourceHandleTextureSpecular = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-specular.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                                     ,.resourceHandleTextureEmissive = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-emissive.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)}
-                                                            ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                                        ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/crate.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}}
-                                               ,.used = true};
+    const Korl_Gfx_Material material = {.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                      ,.factorColorEmissive = {0, 0.8f, 0.05f}
+                                                      ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                      ,.shininess           = 32}
+                                       ,.maps = {.resourceHandleTextureBase     = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-base.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                ,.resourceHandleTextureSpecular = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-specular.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                ,.resourceHandleTextureEmissive = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/crate-emissive.png"), KORL_ASSETCACHE_GET_FLAG_LAZY)}
+                                       ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                   ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/crate.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+    Korl_Gfx_Drawable mesh;
+    korl_gfx_drawable_mesh_initialize(&mesh, korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"data/cube.glb"), KORL_ASSETCACHE_GET_FLAG_LAZY), KORL_RAW_CONST_UTF8("Cube"));
+    mesh._model.scale    = KORL_MATH_V3F32_ONE * 50;
+    mesh.subType.mesh.materialSlots[0] = {.material = material, .used = true};
     for(i32 y = -5; y < 5; y++)
         for(i32 x = -5; x < 5; x++)
         {
-            scene3d._model.position = {KORL_C_CAST(f32, x) * 150.f, KORL_C_CAST(f32, y) * 150.f, 0};
-            korl_gfx_draw(&scene3d, KORL_RAW_CONST_UTF8("Cube"));
+            mesh._model.position = {KORL_C_CAST(f32, x) * 150.f, KORL_C_CAST(f32, y) * 150.f, 0};
+            korl_gfx_draw(&mesh);
         }
     for(u$ i = 0; i < korl_arraySize(lights); i++)
     {
         const Korl_Gfx_Light*const light = lights + i;
         if(light->type == KORL_GFX_LIGHT_TYPE_DIRECTIONAL)
             continue;
-        scene3d.subType.scene3d.materialSlots[0].used = false;
-        scene3d._model.scale    = KORL_MATH_V3F32_ONE * 10;
-        scene3d._model.position = light->position;
-        scene3d._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
-        korl_gfx_draw(&scene3d, KORL_RAW_CONST_UTF8("Cube"));
+        mesh.subType.mesh.materialSlots[0].used = false;
+        mesh._model.scale    = KORL_MATH_V3F32_ONE * 10;
+        mesh._model.position = light->position;
+        mesh._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
+        korl_gfx_draw(&mesh);
     }
     /* debug */
     Korl_Gfx_Batch*const batchAxis = korl_gfx_createBatchAxisLines(memory->allocatorStack);

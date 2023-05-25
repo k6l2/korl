@@ -2180,10 +2180,10 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     Korl_Vulkan_DrawState_Material material;
     /* if the user provided a material to use with this VertexData, then we just 
         override whatever Material was provided by the SCENE3D Resource */
-    if(context->subType.scene3d.materialSlots->used)
-        material = context->subType.scene3d.materialSlots[0].material;
+    if(context->subType.mesh.materialSlots->used)
+        material = context->subType.mesh.materialSlots[0].material;
     else
-        material = korl_resource_scene3d_getMaterial(context->subType.scene3d.resourceHandle);
+        material = korl_resource_scene3d_getMaterial(context->subType.mesh.resourceHandleScene3d);
     // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
     drawState.model    = &model;
@@ -2198,7 +2198,9 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     }
     korl_vulkan_setDrawState(&drawState);
     u32 meshPrimitiveCount = 0;
-    const Korl_Vulkan_DrawVertexData* drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.scene3d.resourceHandle, utf8MeshName, &meshPrimitiveCount);
+    const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
+                                    ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
+    const Korl_Vulkan_DrawVertexData* drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.mesh.resourceHandleScene3d, utf8MeshName, &meshPrimitiveCount);
     if(!drawVertexData)
         return;/* we can't draw the scene3d if it has not yet loaded*/
     for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
