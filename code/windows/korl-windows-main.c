@@ -136,3 +136,4 @@ shutdownSuccess:
 #include "utility/korl-utility-stb-ds.c"
 #include "utility/korl-utility-string.c"
 #include "utility/korl-utility-memory.c"
+#include "utility/korl-utility-gfx.c"

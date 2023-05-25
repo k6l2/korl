@@ -1,5 +1,6 @@
 #include "utility/korl-utility-math.h"
 #include "utility/korl-checkCast.h"
+#include "korl-interface-platform.h"
 #ifndef KORL_MATH_ASSERT
     #define KORL_MATH_ASSERT(condition) korl_assert(condition)
 #endif
@@ -310,6 +311,11 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const 
     result.y = vA->z*vB->x - vA->x*vB->z;
     result.z = vA->x*vB->y - vA->y*vB->x;
     return result;
+}
+korl_internal Korl_Math_V3f32 korl_math_v3f32_tripleProduct(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB, Korl_Math_V3f32 vC)
+{
+    const Korl_Math_V3f32 temp = korl_math_v3f32_cross(&vA, &vB);
+    return korl_math_v3f32_cross(&temp, &vC);
 }
 korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {

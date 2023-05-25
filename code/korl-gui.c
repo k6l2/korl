@@ -8,6 +8,7 @@
 #include "korl-stb-ds.h"
 #include "korl-algorithm.h"
 #include "utility/korl-utility-string.h"
+#include "utility/korl-utility-gfx.h"
 typedef struct _Korl_Gui_UsedWidget
 {
     _Korl_Gui_Widget* widget;
@@ -1471,9 +1472,8 @@ korl_internal void korl_gui_frameEnd(void)
     }
     /* prepare the view/projection graphics state */
     const Korl_Math_V2u32 surfaceSize = korl_vulkan_getSurfaceSize();
-    Korl_Gfx_Camera cameraOrthographic = korl_gfx_createCameraOrtho(korl_checkCast_i$_to_f32(arrlen(context->stbDaUsedWidgets) + 1/*+1 so the back widget will still be _above_ the rear clip plane*/)/*clipDepth; each used widget can have its own integral portion of the depth buffer, so if we have 2 widgets, the first can be placed at depth==-2, and the second can be placed at depth==-1; individual graphics components at each depth can safely be placed within this range without having to worry about interfering with other widget graphics, since we have already sorted the widgets from back=>front*/);
-    cameraOrthographic.position.xy = 
-    cameraOrthographic.target.xy   = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
+    Korl_Gfx_Camera cameraOrthographic = korl_gfx_camera_createOrtho(korl_checkCast_i$_to_f32(arrlen(context->stbDaUsedWidgets) + 1/*+1 so the back widget will still be _above_ the rear clip plane*/)/*clipDepth; each used widget can have its own integral portion of the depth buffer, so if we have 2 widgets, the first can be placed at depth==-2, and the second can be placed at depth==-1; individual graphics components at each depth can safely be placed within this range without having to worry about interfering with other widget graphics, since we have already sorted the widgets from back=>front*/);
+    cameraOrthographic.position.xy = (Korl_Math_V2f32){surfaceSize.x/2.f, surfaceSize.y/2.f};
     korl_gfx_useCamera(cameraOrthographic);
     /* process _all_ sorted in-use widgets for this frame */
     korl_shared_const Korl_Math_V2f32 ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
@@ -1560,7 +1560,7 @@ korl_internal void korl_gui_frameEnd(void)
             scissorSize.x     += 2*PANEL_BORDER_PIXELS;
             scissorSize.y     += 2*PANEL_BORDER_PIXELS;
         }
-        korl_gfx_cameraSetScissor(&cameraOrthographic, scissorPosition.x,scissorPosition.y, scissorSize.x,scissorSize.y);
+        korl_gfx_camera_setScissor(&cameraOrthographic, scissorPosition.x,scissorPosition.y, scissorSize.x,scissorSize.y);
         korl_gfx_useCamera(cameraOrthographic);
         korl_time_probeStop(setup_camera);
         switch(widget->type)

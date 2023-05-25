@@ -66,18 +66,21 @@ korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ADD                 = {.color = 
                                                                       ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}};
 korl_global_const Korl_Gfx_Blend KORL_GFX_BLEND_ADD_PREMULTIPLIED   = {.color = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}
                                                                       ,.alpha = {KORL_BLEND_OP_ADD, KORL_BLEND_FACTOR_ONE, KORL_BLEND_FACTOR_ONE}};
+typedef enum Korl_Gfx_Camera_Type
+    {KORL_GFX_CAMERA_TYPE_PERSPECTIVE
+    ,KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC
+    ,KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT
+} Korl_Gfx_Camera_Type;
+typedef enum Korl_Gfx_Camera_ScissorType
+    {KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO// default
+    ,KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE
+} Korl_Gfx_Camera_ScissorType;
 typedef struct Korl_Gfx_Camera
 {
-    enum
-    {
-        KORL_GFX_CAMERA_TYPE_PERSPECTIVE,
-        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC,
-        KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT,
-    } type;
+    Korl_Gfx_Camera_Type type;
     Korl_Math_V3f32 position;
-    //KORL-ISSUE-000-000-162: gfx: the camera should _not_ store `target`, as this requires the user to constantly change the camera's position _and_ target when they want to just move the camera around; also, we shouldn't store `worldUpNormal` here, as this implies this is a specialized camera type, like based on pitch/yaw or something
-    Korl_Math_V3f32 target;
-    Korl_Math_V3f32 worldUpNormal;
+    Korl_Math_V3f32 normalForward;
+    Korl_Math_V3f32 normalUp;
     /** If the viewport scissor coordinates are stored as ratios, they can 
      * always be valid up until the time the camera gets used to draw, allowing 
      * the swap chain dimensions to change however it likes without requiring us 
@@ -89,11 +92,7 @@ typedef struct Korl_Gfx_Camera
      * positive coordinate space of both axes.  */
     Korl_Math_V2f32 _viewportScissorPosition;// should default to {0,0}
     Korl_Math_V2f32 _viewportScissorSize;// should default to {1,1}
-    enum
-    {
-        KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO,// default
-        KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE,
-    } _scissorType;
+    Korl_Gfx_Camera_ScissorType _scissorType;
     union
     {
         struct
@@ -269,32 +268,8 @@ typedef struct Korl_Gfx_Font_Metrics
     f32 lineGap;
 } Korl_Gfx_Font_Metrics;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics name(acu16 utf16AssetNameFont, f32 textPixelHeight)
-#define KORL_FUNCTION_korl_gfx_createCameraFov(name)                         Korl_Gfx_Camera       name(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 target, Korl_Math_V3f32 up)
-#define KORL_FUNCTION_korl_gfx_createCameraOrtho(name)                       Korl_Gfx_Camera       name(f32 clipDepth)
-#define KORL_FUNCTION_korl_gfx_createCameraOrthoFixedHeight(name)            Korl_Gfx_Camera       name(f32 fixedHeight, f32 clipDepth)
-#define KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(name)            void                  name(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians)
 #define KORL_FUNCTION_korl_gfx_useCamera(name)                               void                  name(Korl_Gfx_Camera camera)
 #define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)                       Korl_Gfx_Camera       name(void)
-/** Note that scissor coordinates use swap chain coordinates, where the origin 
- * is the upper-left corner of the swap chain, & {+X,+Y} points to the 
- * bottom-right.  */
-//KORL-ISSUE-000-000-004
-#define KORL_FUNCTION_korl_gfx_cameraSetScissor(name)                        void                  name(Korl_Gfx_Camera*const context, f32 x, f32 y, f32 sizeX, f32 sizeY)
-/** 
- * Note that scissor coordinates use swap chain coordinates, where the origin is 
- * the upper-left corner of the swap chain, & {+X,+Y} points to the bottom-right.  */
-#define KORL_FUNCTION_korl_gfx_cameraSetScissorPercent(name)                 void                  name(Korl_Gfx_Camera*const context, f32 viewportRatioX, f32 viewportRatioY, f32 viewportRatioWidth, f32 viewportRatioHeight)
-/** Translate the camera such that the orthographic camera's origin is located 
- * at the position in the swapchain's coordinate space relative to the 
- * bottom-left corner.
- * Negative size ratio values are valid.
- * This function does NOT flip the coordinate space or anything like that!
- * Examples:
- * - by default (without calling this function) the origin will be 
- *   \c {0.5f,0.5f}, which is the center of the screen
- * - if you want the origin to be in the bottom-left corner of the window, pass 
- *   \c {0.f,0.f} as size ratio coordinates */
-#define KORL_FUNCTION_korl_gfx_cameraOrthoSetOriginAnchor(name)              void                  name(Korl_Gfx_Camera*const context, f32 swapchainSizeRatioOriginX, f32 swapchainSizeRatioOriginY)
 #define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)                      Korl_Math_V2f32       name(const Korl_Gfx_Camera*const context)
 /** \return \c {{NaN,NaN,NaN},{NaN,NaN,NaN}} if the coordinate transform fails */
 #define KORL_FUNCTION_korl_gfx_camera_windowToWorld(name)                    Korl_Gfx_ResultRay3d  name(const Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition)

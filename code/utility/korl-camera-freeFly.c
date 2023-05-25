@@ -1,4 +1,5 @@
 #include "korl-camera-freeFly.h"
+#include "utility/korl-utility-gfx.h"
 korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD = { 0, -1, 0};// blender model space
 korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_RIGHT   = {-1,  0, 0};// blender model space
 korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_UP      = { 0,  0, 1};// blender model space
@@ -86,5 +87,5 @@ korl_internal Korl_Gfx_Camera korl_camera_freeFly_createGfxCamera(const Korl_Cam
     const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_UP   , context->yawPitch.yaw  , true);
     const Korl_Math_V3f32      cameraForward         = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD, false);
     const Korl_Math_V3f32      cameraUp              = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_UP, false);
-    return korl_gfx_createCameraFov(90, 10, 1e16f, context->position, korl_math_v3f32_add(context->position, cameraForward), cameraUp);
+    return korl_gfx_camera_createFov(90, 10, 1e16f, context->position, cameraForward, cameraUp);
 }

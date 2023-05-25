@@ -752,7 +752,8 @@ korl_internal Korl_Math_M4f32 _korl_gfx_camera_projection(const Korl_Gfx_Camera*
 }
 korl_internal Korl_Math_M4f32 _korl_gfx_camera_view(const Korl_Gfx_Camera*const context)
 {
-    return korl_math_m4f32_lookAt(&context->position, &context->target, &context->worldUpNormal);
+    const Korl_Math_V3f32 cameraTarget = korl_math_v3f32_add(context->position, context->normalForward);
+    return korl_math_m4f32_lookAt(&context->position, &cameraTarget, &context->normalUp);
 }
 korl_internal void korl_gfx_initialize(void)
 {
@@ -1186,56 +1187,6 @@ korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16Asse
     }
     return textBaselineCursor;
 }
-korl_internal KORL_FUNCTION_korl_gfx_createCameraFov(korl_gfx_createCameraFov)
-{
-    KORL_ZERO_STACK(Korl_Gfx_Camera, result);
-    result.position                                 = position;
-    result.target                                   = target;
-    result.worldUpNormal                            = up;
-    result._viewportScissorPosition                 = (Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                     = (Korl_Math_V2f32){1, 1};
-    result.subCamera.perspective.clipNear           = clipNear;
-    result.subCamera.perspective.clipFar            = clipFar;
-    result.subCamera.perspective.fovVerticalDegrees = fovVerticalDegrees;
-    return result;
-}
-korl_internal KORL_FUNCTION_korl_gfx_createCameraOrtho(korl_gfx_createCameraOrtho)
-{
-    KORL_ZERO_STACK(Korl_Gfx_Camera, result);
-    result.type                                = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC;
-    result.position                            = KORL_MATH_V3F32_ZERO;
-    result.worldUpNormal                       = KORL_MATH_V3F32_Y;
-    result.target                              = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
-    result._viewportScissorPosition            = (Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                = (Korl_Math_V2f32){1, 1};
-    result.subCamera.orthographic.clipDepth    = clipDepth;
-    result.subCamera.orthographic.originAnchor = (Korl_Math_V2f32){0.5f, 0.5f};
-    return result;
-}
-korl_internal KORL_FUNCTION_korl_gfx_createCameraOrthoFixedHeight(korl_gfx_createCameraOrthoFixedHeight)
-{
-    KORL_ZERO_STACK(Korl_Gfx_Camera, result);
-    result.type                                = KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT;
-    result.position                            = KORL_MATH_V3F32_ZERO;
-    result.worldUpNormal                       = KORL_MATH_V3F32_Y;
-    result.target                              = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
-    result._viewportScissorPosition            = (Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                = (Korl_Math_V2f32){1, 1};
-    result.subCamera.orthographic.fixedHeight  = fixedHeight;
-    result.subCamera.orthographic.clipDepth    = clipDepth;
-    result.subCamera.orthographic.originAnchor = (Korl_Math_V2f32){0.5f, 0.5f};
-    return result;
-}
-korl_internal KORL_FUNCTION_korl_gfx_cameraFov_rotateAroundTarget(korl_gfx_cameraFov_rotateAroundTarget)
-{
-    korl_assert(context->type == KORL_GFX_CAMERA_TYPE_PERSPECTIVE);
-    const Korl_Math_V3f32 newTargetOffset = 
-        korl_math_quaternion_transformV3f32(
-            korl_math_quaternion_fromAxisRadians(axisOfRotation, radians, false), 
-            korl_math_v3f32_subtract(context->position, context->target), 
-            true);
-    context->position = korl_math_v3f32_add(context->target, newTargetOffset);
-}
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
     _Korl_Gfx_Context*const context = _korl_gfx_context;
@@ -1263,7 +1214,7 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
         break;}
     }
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_SceneProperties, sceneProperties);
-    sceneProperties.view = korl_math_m4f32_lookAt(&camera.position, &camera.target, &camera.worldUpNormal);
+    sceneProperties.view = _korl_gfx_camera_view(&camera);
     switch(camera.type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
@@ -1310,51 +1261,6 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 korl_internal KORL_FUNCTION_korl_gfx_camera_getCurrent(korl_gfx_camera_getCurrent)
 {
     return _korl_gfx_context->currentCameraState;
-}
-korl_internal KORL_FUNCTION_korl_gfx_cameraSetScissor(korl_gfx_cameraSetScissor)
-{
-    f32 x2 = x + sizeX;
-    f32 y2 = y + sizeY;
-    if(x < 0) x = 0;
-    if(y < 0) y = 0;
-    if(x2 < 0) x2 = 0;
-    if(y2 < 0) y2 = 0;
-    context->_viewportScissorPosition.x = x;
-    context->_viewportScissorPosition.y = y;
-    context->_viewportScissorSize.x     = x2 - x;
-    context->_viewportScissorSize.y     = y2 - y;
-    context->_scissorType               = KORL_GFX_CAMERA_SCISSOR_TYPE_ABSOLUTE;
-}
-korl_internal KORL_FUNCTION_korl_gfx_cameraSetScissorPercent(korl_gfx_cameraSetScissorPercent)
-{
-    f32 x2 = viewportRatioX + viewportRatioWidth;
-    f32 y2 = viewportRatioY + viewportRatioHeight;
-    if(viewportRatioX < 0) viewportRatioX = 0;
-    if(viewportRatioY < 0) viewportRatioY = 0;
-    if(x2 < 0) x2 = 0;
-    if(y2 < 0) y2 = 0;
-    context->_viewportScissorPosition.x = viewportRatioX;
-    context->_viewportScissorPosition.y = viewportRatioY;
-    context->_viewportScissorSize.x     = x2 - viewportRatioX;
-    context->_viewportScissorSize.y     = y2 - viewportRatioY;
-    context->_scissorType               = KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO;
-}
-korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoSetOriginAnchor(korl_gfx_cameraOrthoSetOriginAnchor)
-{
-    switch(context->type)
-    {
-    case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
-        korl_assert(!"origin anchor not supported for perspective camera");
-        break;}
-    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
-        context->subCamera.orthographic.originAnchor.x = swapchainSizeRatioOriginX;
-        context->subCamera.orthographic.originAnchor.y = swapchainSizeRatioOriginY;
-        break;}
-    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-        context->subCamera.orthographic.originAnchor.x = swapchainSizeRatioOriginX;
-        context->subCamera.orthographic.originAnchor.y = swapchainSizeRatioOriginY;
-        break;}
-    }
 }
 korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetSize)
 {
