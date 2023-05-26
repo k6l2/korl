@@ -447,6 +447,102 @@ korl_internal f32 korl_math_v4f32_dot(const Korl_Math_V4f32*const vA, const Korl
          + vA->elements[2] * vB->elements[2]
          + vA->elements[3] * vB->elements[3];
 }
+korl_internal Korl_Math_V4f32 korl_math_v4f32_add(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA.elements); i++)
+        vA.elements[i] += vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_addScalar(Korl_Math_V4f32 v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v.elements); i++)
+        v.elements[i] += scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_subtract(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA.elements); i++)
+        vA.elements[i] -= vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_subtractScalar(Korl_Math_V4f32 v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v.elements); i++)
+        v.elements[i] -= scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_multiply(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA.elements); i++)
+        vA.elements[i] *= vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_multiplyScalar(Korl_Math_V4f32 v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v.elements); i++)
+        v.elements[i] *= scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_divide(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA.elements); i++)
+        vA.elements[i] /= vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_divideScalar(Korl_Math_V4f32 v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v.elements); i++)
+        v.elements[i] /= scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignAdd(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA->elements); i++)
+        vA->elements[i] += vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignAddScalar(Korl_Math_V4f32*const v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v->elements); i++)
+        v->elements[i] += scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignSubtract(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA->elements); i++)
+        vA->elements[i] -= vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignSubtractScalar(Korl_Math_V4f32*const v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v->elements); i++)
+        v->elements[i] -= scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignMultiply(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA->elements); i++)
+        vA->elements[i] *= vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignMultiplyScalar(Korl_Math_V4f32*const v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v->elements); i++)
+        v->elements[i] *= scalar;
+    return v;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignDivide(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB)
+{
+    for(u8 i = 0; i < korl_arraySize(vA->elements); i++)
+        vA->elements[i] /= vB.elements[i];
+    return vA;
+}
+korl_internal Korl_Math_V4f32* korl_math_v4f32_assignDivideScalar(Korl_Math_V4f32*const v, f32 scalar)
+{
+    for(u8 i = 0; i < korl_arraySize(v->elements); i++)
+        v->elements[i] /= scalar;
+    return v;
+}
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized)
 {
     korl_assert(!(   korl_math_isNearlyZero(axis.x)
@@ -511,9 +607,8 @@ korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quat
 {
     if(!qIsNormalized)
         q = korl_math_v4f32_normal(q);
-    q = korl_math_quaternion_hamilton(
-        korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){v.x, v.y, v.z, 0.f}), 
-        korl_math_quaternion_conjugate(q));
+    q = korl_math_quaternion_hamilton(korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){v.x, v.y, v.z, 0.f})
+                                     ,korl_math_quaternion_conjugate(q));
     return q.xyz;
 }
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation)
@@ -944,10 +1039,6 @@ korl_internal Korl_Math_V2u32& operator/=(Korl_Math_V2u32& vA, Korl_Math_V2u32 v
     vA = korl_math_v2u32_divide(vA, vB);
     return vA;
 }
-korl_internal Korl_Math_Quaternion operator*(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
-{
-    return korl_math_quaternion_multiply(qA, qB);
-}
 korl_internal Korl_Math_V2f32 operator*(Korl_Math_Quaternion q, Korl_Math_V2f32 v)
 {
     return korl_math_quaternion_transformV2f32(q, v, false);
@@ -1041,6 +1132,94 @@ korl_internal Korl_Math_V3f32 operator*(Korl_Math_V3f32 v, f32 scalar)
 korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v)
 {
     return korl_math_v3f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator+(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    return korl_math_v4f32_add(vA, vB);
+}
+korl_internal Korl_Math_V4f32  operator+(Korl_Math_V4f32 v, f32 scalar)
+{
+    return korl_math_v4f32_addScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator+(f32 scalar, Korl_Math_V4f32 v)
+{
+    return korl_math_v4f32_addScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator-(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    return korl_math_v4f32_subtract(vA, vB);
+}
+korl_internal Korl_Math_V4f32  operator-(Korl_Math_V4f32 v, f32 scalar)
+{
+    return korl_math_v4f32_subtractScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator-(f32 scalar, Korl_Math_V4f32 v)
+{
+    return korl_math_v4f32_subtractScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator*(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    return korl_math_v4f32_multiply(vA, vB);
+}
+korl_internal Korl_Math_V4f32  operator*(Korl_Math_V4f32 v, f32 scalar)
+{
+    return korl_math_v4f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator*(f32 scalar, Korl_Math_V4f32 v)
+{
+    return korl_math_v4f32_multiplyScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator/(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
+{
+    return korl_math_v4f32_divide(vA, vB);
+}
+korl_internal Korl_Math_V4f32  operator/(Korl_Math_V4f32 v, f32 scalar)
+{
+    return korl_math_v4f32_divideScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32  operator/(f32 scalar, Korl_Math_V4f32 v)
+{
+    return korl_math_v4f32_divideScalar(v, scalar);
+}
+korl_internal Korl_Math_V4f32& operator+=(Korl_Math_V4f32& vA, Korl_Math_V4f32 vB)
+{
+    korl_math_v4f32_assignAdd(&vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V4f32& operator+=(Korl_Math_V4f32& v, f32 scalar)
+{
+    korl_math_v4f32_assignAddScalar(&v, scalar);
+    return v;
+}
+korl_internal Korl_Math_V4f32& operator-=(Korl_Math_V4f32& vA, Korl_Math_V4f32 vB)
+{
+    korl_math_v4f32_assignSubtract(&vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V4f32& operator-=(Korl_Math_V4f32& v, f32 scalar)
+{
+    korl_math_v4f32_assignSubtractScalar(&v, scalar);
+    return v;
+}
+korl_internal Korl_Math_V4f32& operator*=(Korl_Math_V4f32& vA, Korl_Math_V4f32 vB)
+{
+    korl_math_v4f32_assignMultiply(&vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V4f32& operator*=(Korl_Math_V4f32& v, f32 scalar)
+{
+    korl_math_v4f32_assignMultiplyScalar(&v, scalar);
+    return v;
+}
+korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& vA, Korl_Math_V4f32 vB)
+{
+    korl_math_v4f32_assignDivide(&vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& v, f32 scalar)
+{
+    korl_math_v4f32_assignDivideScalar(&v, scalar);
+    return v;
 }
 korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v)
 {
