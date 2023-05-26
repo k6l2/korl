@@ -276,6 +276,7 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
                     which can communicate with multiple controllers. */
                 // korl_log(INFO, "DeviceIoControl => ERROR_DEVICE_NOT_CONNECTED; disconnecting gamepad...");
                 continue;}
+            // KORL-ISSUE-000-000-164: gamepad: handle ERROR_BAD_COMMAND case (when I unplug controller?)
             default: {
                 korl_logLastError("DeviceIoControl failed");
                 continue;}
