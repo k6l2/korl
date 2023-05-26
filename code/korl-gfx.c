@@ -770,6 +770,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
 {
     _korl_gfx_context->surfaceSize = surfaceSize;
     _korl_gfx_context->seconds    += deltaSeconds;
+    KORL_MEMORY_POOL_EMPTY(_korl_gfx_context->pendingLights);
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
