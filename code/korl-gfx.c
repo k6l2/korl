@@ -11,6 +11,7 @@
 #include "utility/korl-stringPool.h"
 #include "korl-resource.h"
 #include "utility/korl-utility-string.h"
+#include "utility/korl-utility-gfx.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
@@ -709,52 +710,6 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     batch->_fontTextureHandle       = fontGlyphPage->resourceHandleTexture;
     batch->_glyphMeshBufferVertices = fontGlyphPage->resourceHandleSsboGlyphMeshVertices;
 }
-korl_internal Korl_Math_M4f32 _korl_gfx_camera_projection(const Korl_Gfx_Camera*const context)
-{
-    _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
-    switch(context->type)
-    {
-    case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
-        const f32 viewportWidthOverHeight = gfxContext->surfaceSize.y == 0 
-            ? 1.f 
-            :  KORL_C_CAST(f32, gfxContext->surfaceSize.x)
-             / KORL_C_CAST(f32, gfxContext->surfaceSize.y);
-        return korl_math_m4f32_projectionFov(context->subCamera.perspective.fovVerticalDegrees
-                                            ,viewportWidthOverHeight
-                                            ,context->subCamera.perspective.clipNear
-                                            ,context->subCamera.perspective.clipFar);}
-    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
-        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, gfxContext->surfaceSize.x);
-        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, gfxContext->surfaceSize.y);
-        const f32 right  = KORL_C_CAST(f32, gfxContext->surfaceSize.x) - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, gfxContext->surfaceSize.x);
-        const f32 top    = KORL_C_CAST(f32, gfxContext->surfaceSize.y) - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, gfxContext->surfaceSize.y);
-        const f32 far    = -context->subCamera.orthographic.clipDepth;
-        const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-        return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
-    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
-        const f32 viewportWidthOverHeight = gfxContext->surfaceSize.y == 0 
-            ? 1.f 
-            :  KORL_C_CAST(f32, gfxContext->surfaceSize.x) 
-             / KORL_C_CAST(f32, gfxContext->surfaceSize.y);
-        /* w / fixedHeight == windowAspectRatio */
-        const f32 width  = context->subCamera.orthographic.fixedHeight * viewportWidthOverHeight;
-        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*width;
-        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*context->subCamera.orthographic.fixedHeight;
-        const f32 right  = width       - context->subCamera.orthographic.originAnchor.x*width;
-        const f32 top    = context->subCamera.orthographic.fixedHeight - context->subCamera.orthographic.originAnchor.y*context->subCamera.orthographic.fixedHeight;
-        const f32 far    = -context->subCamera.orthographic.clipDepth;
-        const f32 near   = 1e-7f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
-        return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
-    default:{
-        korl_log(ERROR, "invalid camera type: %i", context->type);
-        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Math_M4f32);}
-    }
-}
-korl_internal Korl_Math_M4f32 _korl_gfx_camera_view(const Korl_Gfx_Camera*const context)
-{
-    const Korl_Math_V3f32 cameraTarget = korl_math_v3f32_add(context->position, context->normalForward);
-    return korl_math_m4f32_lookAt(&context->position, &cameraTarget, &context->normalUp);
-}
 korl_internal void korl_gfx_initialize(void)
 {
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
@@ -1215,7 +1170,7 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
         break;}
     }
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_SceneProperties, sceneProperties);
-    sceneProperties.view = _korl_gfx_camera_view(&camera);
+    sceneProperties.view = korl_gfx_camera_view(&camera);
     switch(camera.type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
@@ -1286,82 +1241,60 @@ korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetS
 korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_windowToWorld)
 {
     _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
-    Korl_Gfx_ResultRay3d result = {.position ={korl_math_f32_nan(),korl_math_f32_nan(),korl_math_f32_nan()}
-                                  ,.direction={korl_math_f32_nan(),korl_math_f32_nan(),korl_math_f32_nan()}};
+    Korl_Gfx_ResultRay3d result = {.position  = {korl_math_f32_nan(), korl_math_f32_nan(), korl_math_f32_nan()}
+                                  ,.direction = {korl_math_f32_nan(), korl_math_f32_nan(), korl_math_f32_nan()}};
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
-    const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
-    const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
-    const Korl_Math_M4f32 viewInverse       = korl_math_m4f32_invert(&view);
-    const Korl_Math_M4f32 projectionInverse = korl_math_m4f32_invert(&projection);
-    if(korl_math_f32_isNan(viewInverse.r0c0))
+    const Korl_Math_M4f32 view                  = korl_gfx_camera_view(context);
+    const Korl_Math_M4f32 projection            = korl_gfx_camera_projection(context, gfxContext->surfaceSize);
+    const Korl_Math_M4f32 viewProjection        = korl_math_m4f32_multiply(&projection, &view);
+    const Korl_Math_M4f32 viewProjectionInverse = korl_math_m4f32_invert(&viewProjection);
+    if(korl_math_f32_isNan(viewProjectionInverse.r0c0))
     {
-        korl_log(WARNING, "failed to invert view matrix");
-        return result;
-    }
-    if(korl_math_f32_isNan(projectionInverse.r0c0))
-    {
-        korl_log(WARNING, "failed to invert projection matrix");
+        korl_log(WARNING, "failed to invert view-projection matrix");
         return result;
     }
     const Korl_Math_V2f32 v2f32WindowPos = {KORL_C_CAST(f32, windowPosition.x)
                                            ,KORL_C_CAST(f32, windowPosition.y)};
-    /* We can determine if a projection matrix is orthographic or frustum based 
-        on the last element of the W row.  See: 
-        http://www.songho.ca/opengl/gl_projectionmatrix.html */
-    korl_assert(   projection.r3c3 == 1 
-                || projection.r3c3 == 0);
-    const bool isOrthographic = projection.r3c3 == 1;
     /* viewport-space => normalized-device-space */
     //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
-    const Korl_Math_V2f32 eyeRayNds = 
-        {  2*v2f32WindowPos.x / gfxContext->surfaceSize.x - 1
-        , -2*v2f32WindowPos.y / gfxContext->surfaceSize.y + 1 };
+    const Korl_Math_V2f32 eyeRayNds = {  2.f * v2f32WindowPos.x / KORL_C_CAST(f32, gfxContext->surfaceSize.x) - 1.f
+                                      , -2.f * v2f32WindowPos.y / KORL_C_CAST(f32, gfxContext->surfaceSize.y) + 1.f };
     /* normalized-device-space => homogeneous-clip-space */
-    /* arbitrarily set the eye ray direction vector as far to the "back" of the 
-        homogeneous clip space box; we set the Z coordinate to 0, since Vulkan 
+    /* here the eye ray becomes two coordinates, since the eye ray pierces the 
+        clip-space box, which can be described as a line segment defined by the 
+        eye ray's intersection w/ the near & far planes; the near & far clip 
+        planes defined by korl-vulkan are 1 & 0 respectively, since Vulkan 
         (with no extensions, which I don't want to use) requires a normalized 
-        depth buffer */
+        depth buffer, and korl-vulkan uses a "reverse" depth buffer */
     //KORL-ISSUE-000-000-102: gfx: testing required; ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
-    const Korl_Math_V4f32 eyeRayDirectionHcs = {eyeRayNds.x, eyeRayNds.y, 0, 1};
-    /* homogeneous-clip-space => eye-space */
-    Korl_Math_V4f32 eyeRayDirectionEs = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayDirectionHcs);
-    if(!isOrthographic)
-        eyeRayDirectionEs.w = 0;
-    /* eye-space => world-space */
-    const Korl_Math_V4f32 eyeRayDirectionWs = korl_math_m4f32_multiplyV4f32(&viewInverse, &eyeRayDirectionEs);
-    if(isOrthographic)
-    {
-        /* the orthographic eye position should be as far to the "front" of the 
-            homogenous clip space box, which means setting the Z coordinate to a 
-            value of 1 */
-        //KORL-ISSUE-000-000-102: gfx: testing required; ASSUMPTION: right-handed HC-space coordinate system that spans [0,1]; need to actually test to see if this works
-        const Korl_Math_V4f32 eyeRayPositionHcs = {eyeRayNds.x, eyeRayNds.y, 1, 1};
-        const Korl_Math_V4f32 eyeRayPositionEs  = korl_math_m4f32_multiplyV4f32(&projectionInverse, &eyeRayPositionHcs);
-        const Korl_Math_V4f32 eyeRayPositionWs  = korl_math_m4f32_multiplyV4f32(&viewInverse      , &eyeRayPositionEs);
-        result.position  = eyeRayPositionWs.xyz;
-        result.direction = korl_math_v3f32_normal(korl_math_v3f32_subtract(eyeRayDirectionWs.xyz, eyeRayPositionWs.xyz));
-    }
-    else
-    {
-        /* camera's eye position can be easily derived from the inverse view 
-            matrix: https://stackoverflow.com/a/39281556/4526664 */
-        result.position  = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){viewInverse.r0c3, viewInverse.r1c3, viewInverse.r2c3};
-        result.direction = korl_math_v3f32_normal(eyeRayDirectionWs.xyz);
-    }
+    const Korl_Math_V4f32 eyeRayHcsFar  = {eyeRayNds.x, eyeRayNds.y, 0.f, 1.f};
+    const Korl_Math_V4f32 eyeRayHcsNear = {eyeRayNds.x, eyeRayNds.y, 1.f, 1.f};
+    /* homogeneous-clip-space => UNSCALED world-space; unscaled because transforms through projection matrix likely modify the `w` component, so to get the "true" V3f32, we need to multiply all components by `1 / w` */
+    const Korl_Math_V4f32 eyeRayFarUnscaled  = korl_math_m4f32_multiplyV4f32(&viewProjectionInverse, &eyeRayHcsFar);
+    const Korl_Math_V4f32 eyeRayNearUnscaled = korl_math_m4f32_multiplyV4f32(&viewProjectionInverse, &eyeRayHcsNear);
+    /* UNSCALED world-space => TRUE world-space */
+    const Korl_Math_V3f32 eyeRayFar  = korl_math_v3f32_multiplyScalar(eyeRayFarUnscaled.xyz, 1.f / eyeRayFarUnscaled.w);
+    const Korl_Math_V3f32 eyeRayNear = korl_math_v3f32_multiplyScalar(eyeRayNearUnscaled.xyz, 1.f / eyeRayNearUnscaled.w);
+    /* compute the ray using the final transformed eye ray line segment */
+    const Korl_Math_V3f32 eyeRayNearToFar         = korl_math_v3f32_subtract(eyeRayFar, eyeRayNear);
+    const f32             eyeRayNearToFarDistance = korl_math_v3f32_magnitude(&eyeRayNearToFar);
+    result.position        = eyeRayNear;
+    result.direction       = korl_math_v3f32_normalKnownMagnitude(eyeRayNearToFar, eyeRayNearToFarDistance);
+    result.segmentDistance = eyeRayNearToFarDistance;
     return result;
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldToWindow)
 {
     _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
-    const Korl_Math_M4f32 view       = _korl_gfx_camera_view(context);
-    const Korl_Math_M4f32 projection = _korl_gfx_camera_projection(context);
+    const Korl_Math_M4f32 view       = korl_gfx_camera_view(context);
+    const Korl_Math_M4f32 projection = korl_gfx_camera_projection(context, gfxContext->surfaceSize);
     //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
     const Korl_Math_Aabb2f32 viewport     = {.min={0,0}
                                             ,.max={KORL_C_CAST(f32, gfxContext->surfaceSize.x)
                                                   ,KORL_C_CAST(f32, gfxContext->surfaceSize.y)}};
     const Korl_Math_V2f32    viewportSize = korl_math_aabb2f32_size(viewport);
-    /* transform from world=>camera=>clip space */
+    /* transform from world => camera => clip space */
     const Korl_Math_V4f32 worldPoint       = {worldPosition.x, worldPosition.y, worldPosition.z, 1};
     const Korl_Math_V4f32 cameraSpacePoint = korl_math_m4f32_multiplyV4f32(&view, &worldPoint);
     const Korl_Math_V4f32 clipSpacePoint   = korl_math_m4f32_multiplyV4f32(&projection, &cameraSpacePoint);
@@ -1369,15 +1302,12 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldT
         return (Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};
     /* calculate normalized-device-coordinate-space 
         y is inverted here because screen-space y axis is flipped! */
-    const Korl_Math_V3f32 ndcSpacePoint = 
-        { clipSpacePoint.x /  clipSpacePoint.w
-        , clipSpacePoint.y / -clipSpacePoint.w
-        , clipSpacePoint.z /  clipSpacePoint.w };
-    /* Calculate screen-space.  GLSL formula: 
-        ((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
-    const Korl_Math_V2f32 result = 
-        { ((ndcSpacePoint.x + 1.f) / 2.f) * viewportSize.x + viewport.min.x
-        , ((ndcSpacePoint.y + 1.f) / 2.f) * viewportSize.y + viewport.min.y };
+    const Korl_Math_V3f32 ndcSpacePoint = { clipSpacePoint.x /  clipSpacePoint.w
+                                          , clipSpacePoint.y / -clipSpacePoint.w
+                                          , clipSpacePoint.z /  clipSpacePoint.w };
+    /* Calculate screen-space.  GLSL formula: ((ndcSpacePoint.xy + 1.0) / 2.0) * viewSize + viewOffset */
+    const Korl_Math_V2f32 result = { ((ndcSpacePoint.x + 1.f) / 2.f) * viewportSize.x + viewport.min.x
+                                   , ((ndcSpacePoint.y + 1.f) / 2.f) * viewportSize.y + viewport.min.y };
     return result;
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)

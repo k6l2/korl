@@ -259,6 +259,7 @@ typedef struct Korl_Gfx_ResultRay3d
 {
     Korl_Math_V3f32 position;
     Korl_Math_V3f32 direction;
+    f32             segmentDistance;
 } Korl_Gfx_ResultRay3d;
 /** to calculate the total spacing between two lines, use the formula: (ascent - decent) + lineGap */
 typedef struct Korl_Gfx_Font_Metrics

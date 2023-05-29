@@ -226,6 +226,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*co
  */
 korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const m);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*const mA, const Korl_Math_M4f32*const mB);
+korl_internal Korl_Math_V3f32 korl_math_m4f32_multiplyV3f32(const Korl_Math_M4f32*const m, Korl_Math_V3f32 v);
 korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32(const Korl_Math_M4f32*const m, const Korl_Math_V4f32*const v);
 korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32Copy(const Korl_Math_M4f32*const m, Korl_Math_V4f32 v);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_projectionFov(f32 verticalFovDegrees, f32 viewportWidthOverHeight, f32 clipNear, f32 clipFar);
@@ -237,24 +238,26 @@ korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y,
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPointsV2(const Korl_Math_V2f32* points, u$ pointsSize);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpandedV2(Korl_Math_V2f32 v, f32 expandX, f32 expandY);
-korl_internal void korl_math_aabb2f32_expand(Korl_Math_Aabb2f32*const aabb, f32 expandXY);
-korl_internal Korl_Math_V2f32 korl_math_aabb2f32_size(Korl_Math_Aabb2f32 aabb);
-korl_internal bool korl_math_aabb2f32_contains(Korl_Math_Aabb2f32 aabb, f32 x, f32 y);
-korl_internal bool korl_math_aabb2f32_containsV2f32(Korl_Math_Aabb2f32 aabb, Korl_Math_V2f32 v);
+korl_internal void               korl_math_aabb2f32_expand(Korl_Math_Aabb2f32*const aabb, f32 expandXY);
+korl_internal Korl_Math_V2f32    korl_math_aabb2f32_size(Korl_Math_Aabb2f32 aabb);
+korl_internal bool               korl_math_aabb2f32_contains(Korl_Math_Aabb2f32 aabb, f32 x, f32 y);
+korl_internal bool               korl_math_aabb2f32_containsV2f32(Korl_Math_Aabb2f32 aabb, Korl_Math_V2f32 v);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_union(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_intersect(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB);
-korl_internal bool korl_math_aabb2f32_areIntersecting(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB);
-korl_internal void korl_math_aabb2f32_addPoint(Korl_Math_Aabb2f32*const aabb, f32* point2d);
-korl_internal void korl_math_aabb2f32_addPointV2(Korl_Math_Aabb2f32*const aabb, Korl_Math_V2f32 point);
+korl_internal bool               korl_math_aabb2f32_areIntersecting(Korl_Math_Aabb2f32 aabbA, Korl_Math_Aabb2f32 aabbB);
+korl_internal void               korl_math_aabb2f32_addPoint(Korl_Math_Aabb2f32*const aabb, f32* point2d);
+korl_internal void               korl_math_aabb2f32_addPointV2(Korl_Math_Aabb2f32*const aabb, Korl_Math_V2f32 point);
 /* Aabb3f32 *******************************************************************/
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_Aabb3f32 aabb, f32 expandX, f32 expandY, f32 expandZ);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_V3f32 v, f32 expandX, f32 expandY, f32 expandZ);
 // korl_internal void korl_math_aabb3f32_expand(Korl_Math_Aabb3f32*const aabb, f32 expandXYZ);
-korl_internal Korl_Math_V3f32 korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb);
-korl_internal bool korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z);
-korl_internal bool korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Korl_Math_V3f32 v);
+korl_internal Korl_Math_V3f32    korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb);
+korl_internal bool               korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z);
+korl_internal bool               korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Korl_Math_V3f32 v);
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB);
+korl_internal void               korl_math_aabb3f32_addPoint(Korl_Math_Aabb3f32*const aabb, f32* point3d);
+korl_internal void               korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f32*const aabb, Korl_Math_V3f32 point);
 /* C++ API ********************************************************************/
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);
@@ -315,6 +318,9 @@ korl_internal Korl_Math_V4f32& operator*=(Korl_Math_V4f32& vA, Korl_Math_V4f32 v
 korl_internal Korl_Math_V4f32& operator*=(Korl_Math_V4f32& v, f32 scalar);
 korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& vA, Korl_Math_V4f32 vB);
 korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& v, f32 scalar);
+korl_internal Korl_Math_M4f32 operator*(const Korl_Math_M4f32& mA, const Korl_Math_M4f32& mB);
 korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v);
 korl_internal Korl_Math_V3f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V3f32& v);
+korl_internal Korl_Math_Aabb2f32& operator+=(Korl_Math_Aabb2f32& aabb, Korl_Math_V2f32 v);
+korl_internal Korl_Math_Aabb3f32& operator+=(Korl_Math_Aabb3f32& aabb, Korl_Math_V3f32 v);
 #endif//__cplusplus

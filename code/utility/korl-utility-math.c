@@ -801,6 +801,15 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*con
             result.elements[mARow*4 + mBCol] = korl_math_v4f32_dot(&mA->rows[mARow], &mBTranspose.rows[mBCol]);
     return result;
 }
+korl_internal Korl_Math_V3f32 korl_math_m4f32_multiplyV3f32(const Korl_Math_M4f32*const m, Korl_Math_V3f32 v)
+{
+    const Korl_Math_V4f32 vHomogeneous = {v.x, v.y, v.z, 1.f};
+    Korl_Math_V4f32 result;
+    for(u$ r = 0; r < korl_arraySize(m->rows); r++)
+        result.elements[r] = korl_math_v4f32_dot(&m->rows[r], &vHomogeneous);
+    result.xyz = korl_math_v3f32_multiplyScalar(result.xyz, 1.f / result.w);// "normalize" the 3D component; transform back to homogeneous coordinates, where w == 1
+    return result.xyz;
+}
 korl_internal Korl_Math_V4f32 korl_math_m4f32_multiplyV4f32(const Korl_Math_M4f32*const m, const Korl_Math_V4f32*const v)
 {
     Korl_Math_V4f32 result;
@@ -1025,6 +1034,22 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aab
     result.max.z = KORL_MATH_MAX(aabbA.max.z, aabbB.max.z);
     return result;
 }
+korl_internal void korl_math_aabb3f32_addPoint(Korl_Math_Aabb3f32*const aabb, f32* point3d)
+{
+    for(u8 i = 0; i < korl_arraySize(aabb->min.elements); i++)
+    {
+        KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.elements[i], point3d[i]);
+        KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.elements[i], point3d[i]);
+    }
+}
+korl_internal void korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f32*const aabb, Korl_Math_V3f32 point)
+{
+    for(u8 i = 0; i < korl_arraySize(point.elements); i++)
+    {
+        KORL_MATH_ASSIGN_CLAMP_MAX(aabb->min.elements[i], point.elements[i]);
+        KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.elements[i], point.elements[i]);
+    }
+}
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar)
 {
@@ -1221,6 +1246,10 @@ korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& v, f32 scalar)
     korl_math_v4f32_assignDivideScalar(&v, scalar);
     return v;
 }
+korl_internal Korl_Math_M4f32 operator*(const Korl_Math_M4f32& mA, const Korl_Math_M4f32& mB)
+{
+    return korl_math_m4f32_multiply(&mA, &mB);
+}
 korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v)
 {
     Korl_Math_V4f32 v4 = {v.x, v.y, 0, 1};
@@ -1228,7 +1257,16 @@ korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Mat
 }
 korl_internal Korl_Math_V3f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V3f32& v)
 {
-    Korl_Math_V4f32 v4 = {v.x, v.y, v.z, 1};
-    return korl_math_m4f32_multiplyV4f32(&m, &v4).xyz;
+    return korl_math_m4f32_multiplyV3f32(&m, v);
+}
+korl_internal Korl_Math_Aabb2f32& operator+=(Korl_Math_Aabb2f32& aabb, Korl_Math_V2f32 v)
+{
+    korl_math_aabb2f32_addPointV2(&aabb, v);
+    return aabb;
+}
+korl_internal Korl_Math_Aabb3f32& operator+=(Korl_Math_Aabb3f32& aabb, Korl_Math_V3f32 v)
+{
+    korl_math_aabb3f32_addPointV3(&aabb, v);
+    return aabb;
 }
 #endif//__cplusplus

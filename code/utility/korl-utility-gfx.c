@@ -97,6 +97,86 @@ korl_internal void korl_gfx_camera_orthoSetOriginAnchor(Korl_Gfx_Camera*const co
         break;}
     }
 }
+korl_internal Korl_Math_M4f32 korl_gfx_camera_projection(const Korl_Gfx_Camera*const context, Korl_Math_V2u32 surfaceSize)
+{
+    switch(context->type)
+    {
+    case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
+        const f32 viewportWidthOverHeight = surfaceSize.y == 0 
+            ? 1.f 
+            :  KORL_C_CAST(f32, surfaceSize.x)
+             / KORL_C_CAST(f32, surfaceSize.y);
+        return korl_math_m4f32_projectionFov(context->subCamera.perspective.fovVerticalDegrees
+                                            ,viewportWidthOverHeight
+                                            ,context->subCamera.perspective.clipNear
+                                            ,context->subCamera.perspective.clipFar);}
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC:{
+        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, surfaceSize.x);
+        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, surfaceSize.y);
+        const f32 right  = KORL_C_CAST(f32, surfaceSize.x) - context->subCamera.orthographic.originAnchor.x*KORL_C_CAST(f32, surfaceSize.x);
+        const f32 top    = KORL_C_CAST(f32, surfaceSize.y) - context->subCamera.orthographic.originAnchor.y*KORL_C_CAST(f32, surfaceSize.y);
+        const f32 far    = -context->subCamera.orthographic.clipDepth;
+        const f32 near   = 0.0000001f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+        return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
+    case KORL_GFX_CAMERA_TYPE_ORTHOGRAPHIC_FIXED_HEIGHT:{
+        const f32 viewportWidthOverHeight = surfaceSize.y == 0 
+            ? 1.f 
+            :  KORL_C_CAST(f32, surfaceSize.x) 
+             / KORL_C_CAST(f32, surfaceSize.y);
+        /* w / fixedHeight == windowAspectRatio */
+        const f32 width  = context->subCamera.orthographic.fixedHeight * viewportWidthOverHeight;
+        const f32 left   = 0.f - context->subCamera.orthographic.originAnchor.x*width;
+        const f32 bottom = 0.f - context->subCamera.orthographic.originAnchor.y*context->subCamera.orthographic.fixedHeight;
+        const f32 right  = width       - context->subCamera.orthographic.originAnchor.x*width;
+        const f32 top    = context->subCamera.orthographic.fixedHeight - context->subCamera.orthographic.originAnchor.y*context->subCamera.orthographic.fixedHeight;
+        const f32 far    = -context->subCamera.orthographic.clipDepth;
+        const f32 near   = 1e-7f;//a non-zero value here allows us to render objects with a Z coordinate of 0.f
+        return korl_math_m4f32_projectionOrthographic(left, right, bottom, top, far, near);}
+    default:{
+        korl_log(ERROR, "invalid camera type: %i", context->type);
+        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Math_M4f32);}
+    }
+}
+korl_internal Korl_Math_M4f32 korl_gfx_camera_view(const Korl_Gfx_Camera*const context)
+{
+    const Korl_Math_V3f32 cameraTarget = korl_math_v3f32_add(context->position, context->normalForward);
+    return korl_math_m4f32_lookAt(&context->position, &cameraTarget, &context->normalUp);
+}
+korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const context, Korl_Math_V2u32 surfaceSize, Korl_Memory_AllocatorHandle allocator)
+{
+    Korl_Gfx_ResultRay3d cameraWorldCorners[4];
+    /* camera coordinates in window-space are CCW, starting from the lower-left:
+        {lower-left, lower-right, upper-right, upper-left} */
+    cameraWorldCorners[0] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){0, 0});
+    cameraWorldCorners[1] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){korl_checkCast_u$_to_i32(surfaceSize.x), 0});
+    cameraWorldCorners[2] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){korl_checkCast_u$_to_i32(surfaceSize.x)
+                                                                                                           ,korl_checkCast_u$_to_i32(surfaceSize.y)});
+    cameraWorldCorners[3] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){0, korl_checkCast_u$_to_i32(surfaceSize.y)});
+    Korl_Math_V3f32 cameraWorldCornersFar[4];
+    for(u8 i = 0; i < 4; i++)
+    {
+        /* sanity check the results */
+        if(korl_math_f32_isNan(cameraWorldCorners[i].position.x))
+            korl_log(ERROR, "window=>world translation failed for cameraAabbEyeRays[%hhu]", i);
+        /* compute the world-space positions of the far-plane eye ray intersections */
+        cameraWorldCornersFar[i] = korl_math_v3f32_add(cameraWorldCorners[i].position, korl_math_v3f32_multiplyScalar(cameraWorldCorners[i].direction, cameraWorldCorners[i].segmentDistance));
+    }
+    korl_shared_const u32 LINE_COUNT = 12/*box wireframe edge count*/;
+    Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, LINE_COUNT);
+    u8 lineIndex = 0;
+    for(u8 i = 0; i < korl_arraySize(cameraWorldCorners); i++)
+    {
+        const u$ iNext = (i + 1) % korl_arraySize(cameraWorldCorners);
+        /*line for the near-plane quad face*/
+        korl_gfx_batchSetLine(batch, lineIndex++, cameraWorldCorners[i].position.elements, cameraWorldCorners[iNext].position.elements, korl_arraySize(cameraWorldCorners[i].position.elements), KORL_COLOR4U8_WHITE);
+        /*line for the far-plane quad face*/
+        korl_gfx_batchSetLine(batch, lineIndex++, cameraWorldCornersFar[i].elements, cameraWorldCornersFar[iNext].elements, korl_arraySize(cameraWorldCornersFar[iNext].elements), KORL_COLOR4U8_WHITE);
+        /*line connecting the near-plane to the far-plane on the current corner*/
+        korl_gfx_batchSetLine(batch, lineIndex++, cameraWorldCorners[i].position.elements, cameraWorldCornersFar[i].elements, korl_arraySize(cameraWorldCorners[i].position.elements), KORL_COLOR4U8_WHITE);
+    }
+    korl_assert(lineIndex == LINE_COUNT);
+    korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+}
 korl_internal void korl_gfx_drawable_mesh_initialize(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName)
 {
     korl_memory_zero(context, sizeof(*context));
