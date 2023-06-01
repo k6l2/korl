@@ -107,8 +107,8 @@ korl_internal void korl_sfx_initialize(void)
 }
 korl_internal void korl_sfx_mix(void)
 {
-    const Korl_Math_V3f32         listenerLeft       = korl_math_v3f32_cross(&_korl_sfx_context.listener.worldNormalUp     , &_korl_sfx_context.listener.worldNormalForward);
-    const Korl_Math_V3f32         listenerRight      = korl_math_v3f32_cross(&_korl_sfx_context.listener.worldNormalForward, &_korl_sfx_context.listener.worldNormalUp);
+    const Korl_Math_V3f32         listenerLeft       = korl_math_v3f32_cross(_korl_sfx_context.listener.worldNormalUp     , _korl_sfx_context.listener.worldNormalForward);
+    const Korl_Math_V3f32         listenerRight      = korl_math_v3f32_cross(_korl_sfx_context.listener.worldNormalForward, _korl_sfx_context.listener.worldNormalUp);
     const Korl_Audio_Format       audioFormat        = korl_audio_format();
     const u32                     audioBytesPerFrame = audioFormat.channels * audioFormat.bytesPerSample;
     _fnSig_korl_sfx_mix*          mix                = NULL;

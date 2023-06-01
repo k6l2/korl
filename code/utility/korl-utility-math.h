@@ -32,7 +32,7 @@ const Korl_Math_V2f32 KORL_MATH_V2F32_ONE  = {1, 1};
 typedef union Korl_Math_V3f32
 {
     struct { f32 x, y, z; };
-    Korl_Math_V2f32 xy;
+    struct {Korl_Math_V2f32 xy; f32 _z;};
     f32 elements[3];
 } Korl_Math_V3f32;
 const Korl_Math_V3f32 KORL_MATH_V3F32_ONE     = { 1,  1,  1};
@@ -161,7 +161,7 @@ korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f32 v, f32 magnitude);
-korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB);
+korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_tripleProduct(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB, Korl_Math_V3f32 vC);// (vA x vB) x vC
 korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);

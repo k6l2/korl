@@ -304,18 +304,18 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f
     v.elements[2] /= magnitude;
     return v;
 }
-korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(const Korl_Math_V3f32*const vA, const Korl_Math_V3f32*const vB)
+korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
     Korl_Math_V3f32 result;
-    result.x = vA->y*vB->z - vA->z*vB->y;
-    result.y = vA->z*vB->x - vA->x*vB->z;
-    result.z = vA->x*vB->y - vA->y*vB->x;
+    result.x = vA.y*vB.z - vA.z*vB.y;
+    result.y = vA.z*vB.x - vA.x*vB.z;
+    result.z = vA.x*vB.y - vA.y*vB.x;
     return result;
 }
 korl_internal Korl_Math_V3f32 korl_math_v3f32_tripleProduct(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB, Korl_Math_V3f32 vC)
 {
-    const Korl_Math_V3f32 temp = korl_math_v3f32_cross(&vA, &vB);
-    return korl_math_v3f32_cross(&temp, &vC);
+    const Korl_Math_V3f32 temp = korl_math_v3f32_cross(vA, vB);
+    return korl_math_v3f32_cross(temp, vC);
 }
 korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
@@ -570,11 +570,11 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_fromVector(Korl_Math_V3f
     worldUp      = korl_math_v3f32_normalKnownMagnitude(worldUp, worldUpMagnitude);
     const Korl_Math_V3f32      forward_componentUp      = korl_math_v3f32_project(forward, worldUp, true);
     const Korl_Math_V3f32      forward_componentHorizon = korl_math_v3f32_subtract(forward, forward_componentUp);
-    const Korl_Math_V3f32      yawAxis                  = korl_math_v3f32_cross(&worldForward, &forward_componentHorizon);
+    const Korl_Math_V3f32      yawAxis                  = korl_math_v3f32_cross(worldForward, forward_componentHorizon);
     const f32                  yawRadians               = korl_math_v3f32_radiansBetween(worldForward, forward_componentHorizon);
     const Korl_Math_Quaternion quaternionYaw            = korl_math_quaternion_fromAxisRadians(yawAxis, yawRadians, false);
     const Korl_Math_V3f32      worldForwardYawed        = korl_math_quaternion_transformV3f32(quaternionYaw, worldForward, false);
-    const Korl_Math_V3f32      pitchAxis                = korl_math_v3f32_cross(&worldForwardYawed, &forward);
+    const Korl_Math_V3f32      pitchAxis                = korl_math_v3f32_cross(worldForwardYawed, forward);
     const f32                  pitchRadians             = korl_math_v3f32_radiansBetween(worldForwardYawed, forward);
     const Korl_Math_Quaternion quaternionPitch          = korl_math_quaternion_fromAxisRadians(pitchAxis, pitchRadians, false);
     return korl_math_quaternion_multiply(quaternionYaw, quaternionPitch);
@@ -884,8 +884,8 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_lookAt(const Korl_Math_V3f32*const
     /* our camera eye-space will be left-handed, with the camera looking down 
         the +Z axis, and +Y being UP */
     const Korl_Math_V3f32 cameraZ = korl_math_v3f32_normal(korl_math_v3f32_subtract(*positionTarget, *positionEye));
-    const Korl_Math_V3f32 cameraX = korl_math_v3f32_cross(&cameraZ, worldUpNormal);
-    const Korl_Math_V3f32 cameraY = korl_math_v3f32_cross(&cameraZ, &cameraX);
+    const Korl_Math_V3f32 cameraX = korl_math_v3f32_cross(cameraZ, *worldUpNormal);
+    const Korl_Math_V3f32 cameraY = korl_math_v3f32_cross(cameraZ, cameraX);
     /* the view matrix is simply the inverse of the camera transform, and since 
         the camera transform is orthonormal, we can simply transpose the 
         elements of the rotation matrix */
