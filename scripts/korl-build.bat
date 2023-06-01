@@ -68,9 +68,11 @@ goto :SET_PLATFORM_CODE_SKIP_FALSE
     goto :SKIP_SET_PLATFORM_CODE_SKIP
 :SKIP_SET_PLATFORM_CODE_SKIP
 rem ----- automatically call the shader build script -----
+set "buildingShaders=FALSE"
 if "%isNewRef%"=="FALSE" (
     goto :SKIP_BUILD_SHADERS
 )
+set "buildingShaders=TRUE"
 set "lockFileBuildShaders=lock-build-shaders"
 set "statusFileBuildShaders=status-build-shaders.txt"
 set "buildCommand=call korl-build-glsl.bat"
@@ -97,7 +99,7 @@ rem Generate a file-name-safe timestamp for the purpose of generating reasonably
 rem unique file names:
 set fileNameSafeDate=%date:~-4,4%%date:~-10,2%%date:~-7,2%
 set fileNameSafeTimestamp=%fileNameSafeDate%_%time:~0,2%%time:~3,2%%time:~6,2%
-rem remove any spaces from the generated timestamp:
+rem remove any spaces from the generated `timestamp:
 rem source: https://stackoverflow.com/a/10116045
 set fileNameSafeTimestamp=%fileNameSafeTimestamp: =%
 rem --------------------- async build the game object file ---------------------
@@ -300,10 +302,12 @@ if exist %lockFileGame%   goto :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 if exist %statusFileGame% goto :ON_FAILURE_EXE
 :SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 rem ------------------------ synchronize shaders build  ------------------------
-@REM echo Waiting for shaders to build...
-@REM :WAIT_FOR_BUILD_SHADERS
-@REM if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
-@REM if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
+if "%buildingShaders%"=="FALSE" goto :WAIT_FOR_BUILD_SHADERS_DONE
+echo Waiting for shaders to build...
+:WAIT_FOR_BUILD_SHADERS
+if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
+if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
+:WAIT_FOR_BUILD_SHADERS_DONE
 rem ----- save the current repository ref used to build to a file -----
 git show-ref HEAD -s > %fileNameRepositoryRef%
 rem ----- report how long the script took -----
