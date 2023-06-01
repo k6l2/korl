@@ -29,6 +29,24 @@ if not exist "build" (
     mkdir "build"
 )
 cd "build"
+rem ---- get the last built ref (if it exists) & the current ref ----
+set "lastBuiltRef=NULL"
+set "currentRef=NULL"
+for /F "tokens=* USEBACKQ" %%g in (`git show-ref HEAD -s`) do (
+    set "currentRef=%%g"
+)
+set "fileNameRepositoryRef=repository-ref.txt"
+if exist "%fileNameRepositoryRef%" (
+    set /p lastBuiltRef=<%fileNameRepositoryRef%
+)
+rem now we can use this to determine if this is a newly checked-out ref; this 
+rem     will allow us to determine whether or not we need to do expensive things 
+rem     like rebuild shaders, since I can't think of a lighter-weight way of 
+rem     doing things like this
+set "isNewRef=TRUE"
+if %lastBuiltRef% == %currentRef% (
+    set "isNewRef=FALSE"
+)
 rem If we're building a dynamic game application, and the platform application 
 rem     binary is locked, then we need to just skip the build & link phases of 
 rem     the platform code/executable.
@@ -50,18 +68,22 @@ goto :SET_PLATFORM_CODE_SKIP_FALSE
     goto :SKIP_SET_PLATFORM_CODE_SKIP
 :SKIP_SET_PLATFORM_CODE_SKIP
 rem ----- automatically call the shader build script -----
-@REM set "lockFileBuildShaders=lock-build-shaders"
-@REM set "statusFileBuildShaders=status-build-shaders.txt"
-@REM set "buildCommand=call korl-build-glsl.bat"
-@REM rem // create a lock file //
-@REM type NUL >> "%lockFileBuildShaders%"
-@REM rem // clear status file //
-@REM del %statusFileBuildShaders% > NUL 2> NUL
-@REM if "%buildOptionNoThreads%"=="TRUE" (
-@REM     call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
-@REM ) else (
-@REM     start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
-@REM )
+if "%isNewRef%"=="FALSE" (
+    goto :SKIP_BUILD_SHADERS
+)
+set "lockFileBuildShaders=lock-build-shaders"
+set "statusFileBuildShaders=status-build-shaders.txt"
+set "buildCommand=call korl-build-glsl.bat"
+rem // create a lock file //
+type NUL >> "%lockFileBuildShaders%"
+rem // clear status file //
+del %statusFileBuildShaders% > NUL 2> NUL
+if "%buildOptionNoThreads%"=="TRUE" (
+    call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
+) else (
+    start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
+)
+:SKIP_BUILD_SHADERS
 rem Print out INCLUDE & LIB variables just for diagnostic purposes:
 if not "%buildOptionVerbose%"=="TRUE" (
     goto :SKIP_ECHO_INCLUDE_AND_LIB_VARIABLES
@@ -282,6 +304,8 @@ rem ------------------------ synchronize shaders build  ------------------------
 @REM :WAIT_FOR_BUILD_SHADERS
 @REM if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
 @REM if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
+rem ----- save the current repository ref used to build to a file -----
+git show-ref HEAD -s > %fileNameRepositoryRef%
 rem ----- report how long the script took -----
 :TIME_REPORT
 set "_TIME_ELAPSED="
