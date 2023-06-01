@@ -50,18 +50,18 @@ goto :SET_PLATFORM_CODE_SKIP_FALSE
     goto :SKIP_SET_PLATFORM_CODE_SKIP
 :SKIP_SET_PLATFORM_CODE_SKIP
 rem ----- automatically call the shader build script -----
-set "lockFileBuildShaders=lock-build-shaders"
-set "statusFileBuildShaders=status-build-shaders.txt"
-set "buildCommand=call korl-build-glsl.bat"
-rem // create a lock file //
-type NUL >> "%lockFileBuildShaders%"
-rem // clear status file //
-del %statusFileBuildShaders% > NUL 2> NUL
-if "%buildOptionNoThreads%"=="TRUE" (
-    call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
-) else (
-    start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
-)
+@REM set "lockFileBuildShaders=lock-build-shaders"
+@REM set "statusFileBuildShaders=status-build-shaders.txt"
+@REM set "buildCommand=call korl-build-glsl.bat"
+@REM rem // create a lock file //
+@REM type NUL >> "%lockFileBuildShaders%"
+@REM rem // clear status file //
+@REM del %statusFileBuildShaders% > NUL 2> NUL
+@REM if "%buildOptionNoThreads%"=="TRUE" (
+@REM     call korl-run-threaded-command.bat "%buildCommand%" %lockFileBuildShaders% %statusFileBuildShaders%
+@REM ) else (
+@REM     start "Build Shaders Thread" /b "cmd /c korl-run-threaded-command.bat ^"%buildCommand%^" %lockFileBuildShaders% %statusFileBuildShaders%"
+@REM )
 rem Print out INCLUDE & LIB variables just for diagnostic purposes:
 if not "%buildOptionVerbose%"=="TRUE" (
     goto :SKIP_ECHO_INCLUDE_AND_LIB_VARIABLES
@@ -278,10 +278,10 @@ if exist %lockFileGame%   goto :WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 if exist %statusFileGame% goto :ON_FAILURE_EXE
 :SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 rem ------------------------ synchronize shaders build  ------------------------
-echo Waiting for shaders to build...
-:WAIT_FOR_BUILD_SHADERS
-if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
-if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
+@REM echo Waiting for shaders to build...
+@REM :WAIT_FOR_BUILD_SHADERS
+@REM if exist %lockFileBuildShaders%   goto :WAIT_FOR_BUILD_SHADERS
+@REM if exist %statusFileBuildShaders% goto :ON_FAILURE_EXE
 rem ----- report how long the script took -----
 :TIME_REPORT
 set "_TIME_ELAPSED="
