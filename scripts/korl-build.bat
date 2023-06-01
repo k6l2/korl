@@ -7,6 +7,7 @@ for /F "tokens=1-4 delims=:.," %%a in ("%time%") do (
 rem --- Iterate over build script arguments ------------------------------------
 set "buildOptionNoThreads=FALSE"
 set "buildOptionVerbose=FALSE"
+set "buildOptionGlsl=FALSE"
 if "%~1"=="" goto ARGUMENT_LOOP_END
 rem set argNumber=0
 :ARGUMENT_LOOP_START
@@ -18,6 +19,11 @@ if "%~1"=="nothreads" (
 )
 if "%~1"=="verbose" (
     set "buildOptionVerbose=TRUE"
+)
+if "%~1"=="glsl" (
+    set "buildOptionGlsl=TRUE"
+    echo "glsl" option selected; running glsl build script
+    echo:
 )
 shift
 rem set /A argNumber+=1
@@ -70,7 +76,9 @@ goto :SET_PLATFORM_CODE_SKIP_FALSE
 rem ----- automatically call the shader build script -----
 set "buildingShaders=FALSE"
 if "%isNewRef%"=="FALSE" (
-    goto :SKIP_BUILD_SHADERS
+    if "%buildOptionGlsl%"=="FALSE" (
+        goto :SKIP_BUILD_SHADERS
+    )
 )
 set "buildingShaders=TRUE"
 set "lockFileBuildShaders=lock-build-shaders"
