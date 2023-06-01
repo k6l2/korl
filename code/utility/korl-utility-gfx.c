@@ -189,3 +189,32 @@ korl_internal void korl_gfx_drawable_mesh_initialize(Korl_Gfx_Drawable*const con
     context->subType.mesh.rawUtf8Scene3dMeshName[utf8MeshName.size] = '\0';
     context->subType.mesh.rawUtf8Scene3dMeshNameSize = korl_checkCast_u$_to_u8(utf8MeshName.size);
 }
+korl_internal void korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Drawable meshCylinder, Korl_Math_V3f32 localStart, Korl_Math_V3f32 localEnd, f32 localRadius, const Korl_Math_M4f32*const baseTransform)
+{
+    /* transform start & end points from local=>base */
+    const Korl_Math_V3f32 baseStart = korl_math_m4f32_multiplyV3f32(baseTransform, localStart);
+    const Korl_Math_V3f32 baseEnd   = korl_math_m4f32_multiplyV3f32(baseTransform, localEnd);
+    /* compute the scaled base-space geometry of the arrow itself */
+    Korl_Math_V3f32 startToEnd = korl_math_v3f32_subtract(localEnd, localStart);
+    const f32 length = korl_math_v3f32_magnitude(&startToEnd);
+    startToEnd = korl_math_v3f32_normalKnownMagnitude(startToEnd, length);
+    korl_shared_const f32 PROPORTION_TIP_LENGTH = 0.2f;
+    const f32   lengthCylinder = length * (1.f - PROPORTION_TIP_LENGTH);
+    const f32   lengthCone     = length * PROPORTION_TIP_LENGTH;
+    korl_shared_const f32 PROPORTION_CYLINDER_RADIUS = 0.3f;
+    meshCylinder._model.position = korl_math_v3f32_add(baseStart, korl_math_v3f32_multiplyScalar(startToEnd, lengthCylinder / 2.f));
+    meshCylinder._model.scale.xy = korl_math_v2f32_multiplyScalar(KORL_MATH_V2F32_ONE, localRadius * PROPORTION_CYLINDER_RADIUS);
+    meshCylinder._model.scale.z  = lengthCylinder;
+    meshCone._model.position = korl_math_v3f32_add(baseStart, korl_math_v3f32_multiplyScalar(startToEnd, lengthCylinder + lengthCone / 2));
+    meshCone._model.scale.xy = korl_math_v2f32_multiplyScalar(KORL_MATH_V2F32_ONE, localRadius);
+    meshCone._model.scale.z  = lengthCone;
+    /* find axis & angle of rotation (quaternion) to rotate the arrow in the 
+        direction of `startToEnd` */
+    Korl_Math_Quaternion quatDesired = korl_math_quaternion_fromAxisRadians(korl_math_v3f32_cross(KORL_MATH_V3F32_Z, startToEnd)
+                                                           ,korl_math_v3f32_radiansBetween(KORL_MATH_V3F32_Z, startToEnd)
+                                                           ,false);
+    meshCylinder._model.rotation = quatDesired;
+    meshCone._model.rotation     = quatDesired;
+    korl_gfx_draw(&meshCylinder);
+    korl_gfx_draw(&meshCone);
+}
