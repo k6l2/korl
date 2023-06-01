@@ -195,7 +195,7 @@ korl_internal void korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Dra
     const Korl_Math_V3f32 baseStart = korl_math_m4f32_multiplyV3f32(baseTransform, localStart);
     const Korl_Math_V3f32 baseEnd   = korl_math_m4f32_multiplyV3f32(baseTransform, localEnd);
     /* compute the scaled base-space geometry of the arrow itself */
-    Korl_Math_V3f32 startToEnd = korl_math_v3f32_subtract(localEnd, localStart);
+    Korl_Math_V3f32 startToEnd = korl_math_v3f32_subtract(baseEnd, baseStart);
     const f32 length = korl_math_v3f32_magnitude(&startToEnd);
     startToEnd = korl_math_v3f32_normalKnownMagnitude(startToEnd, length);
     korl_shared_const f32 PROPORTION_TIP_LENGTH = 0.2f;
