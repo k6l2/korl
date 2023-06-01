@@ -2022,7 +2022,11 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     else
         material = korl_resource_scene3d_getMaterial(context->subType.mesh.resourceHandleScene3d);
     // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
+    features.enableBlend     = false;
+    features.enableDepthTest = true;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    drawState.features = &features;
     drawState.model    = &model;
     drawState.material = &material;
     if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
