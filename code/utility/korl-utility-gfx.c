@@ -218,3 +218,13 @@ korl_internal void korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Dra
     korl_gfx_draw(&meshCylinder);
     korl_gfx_draw(&meshCone);
 }
+korl_internal void korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Korl_Vulkan_Color4u8 colors[2], Korl_Memory_AllocatorHandle allocator)
+{
+    Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, 1);
+    Korl_Math_V3f32*const linePositions = KORL_C_CAST(Korl_Math_V3f32*, batch->_vertexPositions);
+    linePositions[0] = points[0];
+    linePositions[1] = points[1];
+    batch->_vertexColors[0] = colors[0];
+    batch->_vertexColors[1] = colors[1];
+    korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+}
