@@ -211,8 +211,8 @@ korl_internal void korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Dra
     /* find axis & angle of rotation (quaternion) to rotate the arrow in the 
         direction of `startToEnd` */
     Korl_Math_Quaternion quatDesired = korl_math_quaternion_fromAxisRadians(korl_math_v3f32_cross(KORL_MATH_V3F32_Z, startToEnd)
-                                                           ,korl_math_v3f32_radiansBetween(KORL_MATH_V3F32_Z, startToEnd)
-                                                           ,false);
+                                                                           ,korl_math_v3f32_radiansBetween(KORL_MATH_V3F32_Z, startToEnd)
+                                                                           ,false);
     meshCylinder._model.rotation = quatDesired;
     meshCone._model.rotation     = quatDesired;
     korl_gfx_draw(&meshCylinder);

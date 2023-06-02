@@ -52,7 +52,13 @@ typedef union Korl_Math_V4f32
 } Korl_Math_V4f32;
 const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};
 const Korl_Math_V4f32 KORL_MATH_V4F32_ZERO = {0, 0, 0, 0};
-typedef Korl_Math_V4f32 Korl_Math_Quaternion;
+typedef union Korl_Math_Quaternion
+{
+    struct { f32 x, y, z, w; };
+    struct { Korl_Math_V3f32 xyz; f32 _w; };
+    Korl_Math_V4f32 v4;// we do this instead of just `typedef V4f32 Quaternion` because in C++ we _must_ differentiate `quaternion operator*` with `v4f32 operator*`
+    f32 elements[4];
+} Korl_Math_Quaternion;
 const Korl_Math_Quaternion KORL_MATH_QUATERNION_IDENTITY = {0, 0, 0, 1};
 typedef union Korl_Math_M4f32
 {
@@ -209,6 +215,8 @@ korl_internal Korl_Math_V4f32* korl_math_v4f32_assignDivideScalar(Korl_Math_V4f3
 // korl_internal Korl_Math_V4f32 korl_math_v4f32_min(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
 // korl_internal Korl_Math_V4f32 korl_math_v4f32_max(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
 /* Quaternion *****************************************************************/
+/** \return the magnitude of \c q */
+korl_internal f32                  korl_math_quaternion_normalize(Korl_Math_Quaternion* q);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromVector(Korl_Math_V3f32 forward, Korl_Math_V3f32 worldForward, Korl_Math_V3f32 worldUp);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
@@ -263,9 +271,6 @@ korl_internal void               korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f3
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);
 korl_internal Korl_Math_V2u32 operator/(Korl_Math_V2u32 vNumerator, Korl_Math_V2u32 vDenominator);
 korl_internal Korl_Math_V2u32& operator/=(Korl_Math_V2u32& vA, Korl_Math_V2u32 vB);
-korl_internal Korl_Math_V2f32 operator*(Korl_Math_Quaternion q, Korl_Math_V2f32 v);
-korl_internal Korl_Math_V3f32 operator*(Korl_Math_Quaternion q, Korl_Math_V3f32 v);
-korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& v, Korl_Math_Quaternion q);
 korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32& operator-=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
@@ -318,6 +323,11 @@ korl_internal Korl_Math_V4f32& operator*=(Korl_Math_V4f32& vA, Korl_Math_V4f32 v
 korl_internal Korl_Math_V4f32& operator*=(Korl_Math_V4f32& v, f32 scalar);
 korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& vA, Korl_Math_V4f32 vB);
 korl_internal Korl_Math_V4f32& operator/=(Korl_Math_V4f32& v, f32 scalar);
+korl_internal Korl_Math_Quaternion& operator+=(Korl_Math_Quaternion& qA, Korl_Math_Quaternion qB);
+korl_internal Korl_Math_V2f32 operator*(Korl_Math_Quaternion q, Korl_Math_V2f32 v);
+korl_internal Korl_Math_V3f32 operator*(Korl_Math_Quaternion q, Korl_Math_V3f32 v);
+korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& v, Korl_Math_Quaternion q);
+korl_internal Korl_Math_Quaternion operator*(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
 korl_internal Korl_Math_M4f32 operator*(const Korl_Math_M4f32& mA, const Korl_Math_M4f32& mB);
 korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v);
 korl_internal Korl_Math_V3f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V3f32& v);
