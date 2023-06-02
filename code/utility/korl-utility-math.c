@@ -1084,21 +1084,6 @@ korl_internal Korl_Math_V2u32& operator/=(Korl_Math_V2u32& vA, Korl_Math_V2u32 v
     vA = korl_math_v2u32_divide(vA, vB);
     return vA;
 }
-korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
-{
-    vA = korl_math_v3f32_multiply(vA, vB);
-    return vA;
-}
-korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
-{
-    vA = korl_math_v3f32_add(vA, vB);
-    return vA;
-}
-korl_internal Korl_Math_V3f32& operator-=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
-{
-    vA = korl_math_v3f32_subtract(vA, vB);
-    return vA;
-}
 korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB)
 {
     return korl_math_v2f32_add(vA, vB);
@@ -1153,6 +1138,10 @@ korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
     return korl_math_v3f32_add(vA, vB);
 }
+korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 v)
+{
+    return korl_math_v3f32_multiplyScalar(v, -1);
+}
 korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
     return korl_math_v3f32_subtract(vA, vB);
@@ -1172,6 +1161,26 @@ korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 v, f32 scalar)
 {
     return korl_math_v3f32_divideScalar(v, scalar);
+}
+korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
+{
+    vA = korl_math_v3f32_multiply(vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V2f32 vB)
+{
+    vA = korl_math_v3f32_add(vA, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = vB});
+    return vA;
+}
+korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
+{
+    vA = korl_math_v3f32_add(vA, vB);
+    return vA;
+}
+korl_internal Korl_Math_V3f32& operator-=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
+{
+    vA = korl_math_v3f32_subtract(vA, vB);
+    return vA;
 }
 korl_internal Korl_Math_V4f32  operator+(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB)
 {

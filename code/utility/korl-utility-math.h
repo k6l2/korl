@@ -271,9 +271,6 @@ korl_internal void               korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f3
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);
 korl_internal Korl_Math_V2u32 operator/(Korl_Math_V2u32 vNumerator, Korl_Math_V2u32 vDenominator);
 korl_internal Korl_Math_V2u32& operator/=(Korl_Math_V2u32& vA, Korl_Math_V2u32 vB);
-korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
-korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
-korl_internal Korl_Math_V3f32& operator-=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 vA, Korl_Math_V2f32 vB);
 // korl_internal Korl_Math_V2f32 operator+(Korl_Math_V2f32 v, f32 scalar);
 // korl_internal Korl_Math_V2f32 operator+(f32 scalar, Korl_Math_V2f32 v);
@@ -294,6 +291,7 @@ korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 v
 korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 v, f32 scalar);
 // korl_internal Korl_Math_V3f32 operator+(f32 scalar, Korl_Math_V3f32 v);
+korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 v);
 korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 operator-(Korl_Math_V3f32 v, f32 scalar);
 // korl_internal Korl_Math_V3f32 operator-(f32 scalar, Korl_Math_V3f32 v);
@@ -303,6 +301,10 @@ korl_internal Korl_Math_V3f32 operator*(f32 scalar, Korl_Math_V3f32 v);
 korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 v, f32 scalar);
 // korl_internal Korl_Math_V3f32 operator/(f32 scalar, Korl_Math_V3f32 v);
+korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
+korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V2f32 vB);
+korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
+korl_internal Korl_Math_V3f32& operator-=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V4f32  operator+(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
 korl_internal Korl_Math_V4f32  operator+(Korl_Math_V4f32 v, f32 scalar);
 korl_internal Korl_Math_V4f32  operator+(f32 scalar, Korl_Math_V4f32 v);
