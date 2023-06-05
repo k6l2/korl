@@ -88,10 +88,10 @@ vec3 _korl_glsl_fragment_computeLightColor(Korl_Light light, const in vec2 uvEmi
         break;}
     }
     /* ambient */
-    const vec3  lightAmbient = light.color.ambient * texture(baseTexture, fragmentUv).rgb;
+    const vec3  lightAmbient = light.color.ambient * texture(baseTexture, fragmentUv).rgb * material.colorFactorBase.rgb;
     /* diffuse */
     const float diffuseStrength = max(dot(fragmentViewNormal_normal, viewPosition_fragment_to_light_normal), 0.0);
-    const vec3  lightDiffuse    = diffuseStrength * light.color.diffuse * texture(baseTexture, fragmentUv).rgb;
+    const vec3  lightDiffuse    = diffuseStrength * light.color.diffuse * texture(baseTexture, fragmentUv).rgb * material.colorFactorBase.rgb;
     /* specular */
     const vec3  view_fragment_to_camera_normal = normalize(-fragmentViewPosition);
     const vec3  reflect_direction              = reflect(-viewPosition_fragment_to_light_normal, fragmentViewNormal_normal);
