@@ -1026,12 +1026,18 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y,
     result.max.z = KORL_MATH_MAX(p0z, p1z);
     return result;
 }
+korl_internal void korl_math_aabb3f32_expand(Korl_Math_Aabb3f32*const aabb, f32 expandXYZ)
+{
+    korl_math_v3f32_assignSubtractScalar(&aabb->min, expandXYZ);
+    korl_math_v3f32_assignAddScalar     (&aabb->max, expandXYZ);
+}
 korl_internal Korl_Math_V3f32 korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb)
 {
-    KORL_MATH_ASSERT(aabb.max.x >= aabb.min.x);
-    KORL_MATH_ASSERT(aabb.max.y >= aabb.min.y);
-    KORL_MATH_ASSERT(aabb.max.z >= aabb.min.z);
-    return korl_math_v3f32_subtract(aabb.max, aabb.min);
+    Korl_Math_V3f32 result = korl_math_v3f32_subtract(aabb.max, aabb.min);
+    KORL_MATH_ASSIGN_CLAMP_MIN(result.x, 0);// if aabb is invalid in this dimension, the size is 0
+    KORL_MATH_ASSIGN_CLAMP_MIN(result.y, 0);// if aabb is invalid in this dimension, the size is 0
+    KORL_MATH_ASSIGN_CLAMP_MIN(result.z, 0);// if aabb is invalid in this dimension, the size is 0
+    return result;
 }
 korl_internal bool korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z)
 {
@@ -1053,6 +1059,12 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aab
     result.max.y = KORL_MATH_MAX(aabbA.max.y, aabbB.max.y);
     result.max.z = KORL_MATH_MAX(aabbA.max.z, aabbB.max.z);
     return result;
+}
+korl_internal bool korl_math_aabb3f32_areIntersecting(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB)
+{
+    return KORL_MATH_MAX(aabbA.min.x, aabbB.min.x) <= KORL_MATH_MIN(aabbA.max.x, aabbB.max.x)
+        && KORL_MATH_MAX(aabbA.min.y, aabbB.min.y) <= KORL_MATH_MIN(aabbA.max.y, aabbB.max.y)
+        && KORL_MATH_MAX(aabbA.min.z, aabbB.min.z) <= KORL_MATH_MIN(aabbA.max.z, aabbB.max.z);
 }
 korl_internal void korl_math_aabb3f32_addPoint(Korl_Math_Aabb3f32*const aabb, f32* point3d)
 {

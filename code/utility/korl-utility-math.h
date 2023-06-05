@@ -259,11 +259,12 @@ korl_internal void               korl_math_aabb2f32_addPointV2(Korl_Math_Aabb2f3
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_Aabb3f32 aabb, f32 expandX, f32 expandY, f32 expandZ);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_V3f32 v, f32 expandX, f32 expandY, f32 expandZ);
-// korl_internal void korl_math_aabb3f32_expand(Korl_Math_Aabb3f32*const aabb, f32 expandXYZ);
+korl_internal void               korl_math_aabb3f32_expand(Korl_Math_Aabb3f32*const aabb, f32 expandXYZ);
 korl_internal Korl_Math_V3f32    korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb);
 korl_internal bool               korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z);
 korl_internal bool               korl_math_aabb3f32_containsV3f32(Korl_Math_Aabb3f32 aabb, Korl_Math_V3f32 v);
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB);
+korl_internal bool               korl_math_aabb3f32_areIntersecting(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB);
 korl_internal void               korl_math_aabb3f32_addPoint(Korl_Math_Aabb3f32*const aabb, f32* point3d);
 korl_internal void               korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f32*const aabb, Korl_Math_V3f32 point);
 /* C++ API ********************************************************************/
