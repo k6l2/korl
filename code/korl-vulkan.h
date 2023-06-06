@@ -46,7 +46,10 @@ typedef enum Korl_Vulkan_DrawVertexData_VertexBufferType
 } Korl_Vulkan_DrawVertexData_VertexBufferType;
 typedef struct Korl_Vulkan_DrawVertexData
 {
+    // @TODO: I'm torn on this; do we keep placing these types of properties inside DrawVertexData, or do we move them into DrawState ? 🤔🤔🤔🤔🤔
     Korl_Vulkan_PrimitiveType      primitiveType;
+    Korl_Gfx_PolygonMode           polygonMode;
+    Korl_Gfx_CullMode              cullMode;
     struct
     {
         Korl_Vulkan_DrawVertexData_VertexBufferType type;

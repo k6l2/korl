@@ -102,6 +102,8 @@ typedef struct _Korl_Vulkan_Pipeline
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself: */
     VkPrimitiveTopology            primitiveTopology;
+    VkPolygonMode                  polygonMode;
+    VkCullModeFlags                cullModeFlags;
     u8                             positionDimensions;        // only acceptable values: {2, 3}
     u8                             normalDimensions;          // only acceptable values: {2, 3}
     u8                             instancePositionDimensions;// only acceptable values: {2, 3}

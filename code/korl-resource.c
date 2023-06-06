@@ -431,6 +431,8 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                         default:
                             korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
                         }
+                        meshPrimitiveDrawVertexData->polygonMode = KORL_GFX_POLYGON_MODE_FILL;
+                        meshPrimitiveDrawVertexData->cullMode    = KORL_GFX_CULL_MODE_BACK;
                         korl_assert(meshPrimitive->attributes.position >= 0);
                         const Korl_Codec_Gltf_Accessor*const accessorPosition = accessors + meshPrimitive->attributes.position;
                         const Korl_Codec_Gltf_Accessor*const accessorIndices  = meshPrimitive->indices >= 0 ? accessors + meshPrimitive->indices : NULL;

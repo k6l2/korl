@@ -23,6 +23,14 @@ typedef enum Korl_Vulkan_PrimitiveType
     KORL_VULKAN_PRIMITIVETYPE_TRIANGLES,
     KORL_VULKAN_PRIMITIVETYPE_LINES
 } Korl_Vulkan_PrimitiveType;
+typedef enum Korl_Gfx_PolygonMode
+    { KORL_GFX_POLYGON_MODE_FILL
+    , KORL_GFX_POLYGON_MODE_LINE
+} Korl_Gfx_PolygonMode;
+typedef enum Korl_Gfx_CullMode
+    { KORL_GFX_CULL_MODE_NONE
+    , KORL_GFX_CULL_MODE_BACK
+} Korl_Gfx_CullMode;
 typedef enum Korl_Vulkan_BlendOperation
 {
     KORL_BLEND_OP_ADD,
@@ -109,6 +117,13 @@ typedef struct Korl_Gfx_Camera
         } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
+typedef struct Korl_Gfx_Material_DrawState
+{
+    Korl_Gfx_PolygonMode polygonMode;
+    Korl_Gfx_CullMode    cullMode;
+    // @TODO: alphaMode, blendMode
+} Korl_Gfx_Material_DrawState;
+/** \note: this struct is padded for GLSL compatibility */
 typedef struct Korl_Gfx_Material_Properties
 {
     Korl_Math_V4f32 factorColorBase;
@@ -131,6 +146,7 @@ typedef struct Korl_Gfx_Material_Shaders
 } Korl_Gfx_Material_Shaders;
 typedef struct Korl_Gfx_Material
 {
+    Korl_Gfx_Material_DrawState  drawState;
     Korl_Gfx_Material_Properties properties;
     Korl_Gfx_Material_Maps       maps;
     Korl_Gfx_Material_Shaders    shaders;

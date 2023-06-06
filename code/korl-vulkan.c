@@ -83,15 +83,14 @@ typedef struct _Korl_Vulkan_DeviceSurfaceMetaData
 /** 
  * \return true if \c deviceNew is a "better" device than \c deviceOld
  */
-korl_internal bool _korl_vulkan_isBetterDevice(
-    const VkPhysicalDevice deviceOld, 
-    const VkPhysicalDevice deviceNew, 
-    const _Korl_Vulkan_QueueFamilyMetaData*const queueFamilyMetaData, 
-    const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData, 
-    const VkPhysicalDeviceProperties*const propertiesOld, 
-    const VkPhysicalDeviceProperties*const propertiesNew, 
-    const VkPhysicalDeviceFeatures*const featuresOld, 
-    const VkPhysicalDeviceFeatures*const featuresNew)
+korl_internal bool _korl_vulkan_isBetterDevice(const VkPhysicalDevice deviceOld
+                                              ,const VkPhysicalDevice deviceNew
+                                              ,const _Korl_Vulkan_QueueFamilyMetaData*const queueFamilyMetaData
+                                              ,const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData
+                                              ,const VkPhysicalDeviceProperties*const propertiesOld
+                                              ,const VkPhysicalDeviceProperties*const propertiesNew
+                                              ,const VkPhysicalDeviceFeatures*const featuresOld
+                                              ,const VkPhysicalDeviceFeatures*const featuresNew)
 {
     korl_assert(deviceNew != VK_NULL_HANDLE);
     /* don't even consider devices that don't support all the extensions we need */
@@ -672,9 +671,9 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     //createInfoViewport.pScissors     = &scissor;
     KORL_ZERO_STACK(VkPipelineRasterizationStateCreateInfo, createInfoRasterizer);
     createInfoRasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    createInfoRasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     createInfoRasterizer.lineWidth   = 1.f;
-    createInfoRasterizer.cullMode    = VK_CULL_MODE_BACK_BIT;//default: VK_CULL_MODE_NONE
+    createInfoRasterizer.cullMode    = pipeline->cullModeFlags;
+    createInfoRasterizer.polygonMode = pipeline->polygonMode;
     //createInfoRasterizer.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;//right-handed triangles! (default)
     KORL_ZERO_STACK(VkPipelineMultisampleStateCreateInfo, createInfoMultisample);
     createInfoMultisample.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -1389,16 +1388,16 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         vkGetPhysicalDeviceFeatures(physicalDevices[d], &deviceFeatures);
         _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
             _korl_vulkan_deviceSurfaceMetaData(physicalDevices[d], surfaceContext->surface);
-        if(_korl_vulkan_isBetterDevice(context->physicalDevice, physicalDevices[d], 
-                                       &queueFamilyMetaData, &deviceSurfaceMetaData, 
-                                       &devicePropertiesBest, &deviceProperties, 
-                                       &deviceFeaturesBest, &deviceFeatures))
+        if(_korl_vulkan_isBetterDevice(context->physicalDevice, physicalDevices[d]
+                                      ,&queueFamilyMetaData, &deviceSurfaceMetaData
+                                      ,&devicePropertiesBest, &deviceProperties
+                                      ,&deviceFeaturesBest, &deviceFeatures))
         {
-            context->physicalDevice = physicalDevices[d];
-            devicePropertiesBest = deviceProperties;
-            deviceFeaturesBest = deviceFeatures;
+            context->physicalDevice      = physicalDevices[d];
+            devicePropertiesBest         = deviceProperties;
+            deviceFeaturesBest           = deviceFeatures;
             context->queueFamilyMetaData = queueFamilyMetaData;
-            deviceSurfaceMetaDataBest = deviceSurfaceMetaData;
+            deviceSurfaceMetaDataBest    = deviceSurfaceMetaData;
         }
     }
     korl_assert(context->physicalDevice != VK_NULL_HANDLE);
@@ -1431,20 +1430,20 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     }
     #endif
     korl_log(INFO, "chosen physical device: \"%hs\"", devicePropertiesBest.deviceName);
-    korl_log(INFO, "vendorID=0x%X|%u, apiVersion=0x%X|%u|%u.%u.%u.%u, driverVersion=0x%X|%u|%u.%u.%u.%u, deviceID=0x%X|%u, deviceType=%ws", 
-             devicePropertiesBest.vendorID, devicePropertiesBest.vendorID, 
-             devicePropertiesBest.apiVersion, devicePropertiesBest.apiVersion, 
-             VK_API_VERSION_VARIANT(devicePropertiesBest.apiVersion), 
-             VK_API_VERSION_MAJOR(devicePropertiesBest.apiVersion), 
-             VK_API_VERSION_MINOR(devicePropertiesBest.apiVersion), 
-             VK_API_VERSION_PATCH(devicePropertiesBest.apiVersion), 
-             devicePropertiesBest.driverVersion, devicePropertiesBest.driverVersion, 
-             deviceDriverVersionVariant, 
-             deviceDriverVersionMajor, 
-             deviceDriverVersionMinor, 
-             deviceDriverVersionPatch, 
-             devicePropertiesBest.deviceID, devicePropertiesBest.deviceID, 
-             stringDeviceType);
+    korl_log(INFO, "vendorID=0x%X|%u, apiVersion=0x%X|%u|%u.%u.%u.%u, driverVersion=0x%X|%u|%u.%u.%u.%u, deviceID=0x%X|%u, deviceType=%ws"
+            ,devicePropertiesBest.vendorID, devicePropertiesBest.vendorID
+            ,devicePropertiesBest.apiVersion, devicePropertiesBest.apiVersion
+            ,VK_API_VERSION_VARIANT(devicePropertiesBest.apiVersion)
+            ,VK_API_VERSION_MAJOR(devicePropertiesBest.apiVersion)
+            ,VK_API_VERSION_MINOR(devicePropertiesBest.apiVersion)
+            ,VK_API_VERSION_PATCH(devicePropertiesBest.apiVersion)
+            ,devicePropertiesBest.driverVersion, devicePropertiesBest.driverVersion
+            ,deviceDriverVersionVariant
+            ,deviceDriverVersionMajor
+            ,deviceDriverVersionMinor
+            ,deviceDriverVersionPatch
+            ,devicePropertiesBest.deviceID, devicePropertiesBest.deviceID
+            ,stringDeviceType);
     /* log the list of extensions provided by the chosen device */
     {
         VkExtensionProperties extensionProperties[256];
@@ -1468,14 +1467,13 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     //  size is just going to be size == 1 for now
     korl_shared_const f32 QUEUE_PRIORITIES[] = {1.f};
     for(u32 f = 0; 
-    f < korl_arraySize(context->queueFamilyMetaData.indexQueueUnion.indices); 
-    f++)
+        f < korl_arraySize(context->queueFamilyMetaData.indexQueueUnion.indices); 
+        f++)
     {
         KORL_ZERO_STACK(bool, queueFamilyCreateInfoFound);
         for(u32 c = 0; c < createInfoDeviceQueueFamiliesSize; c++)
         {
-            if(createInfoDeviceQueueFamilies[c].queueFamilyIndex == 
-                context->queueFamilyMetaData.indexQueueUnion.indices[f])
+            if(createInfoDeviceQueueFamilies[c].queueFamilyIndex == context->queueFamilyMetaData.indexQueueUnion.indices[f])
             {
                 queueFamilyCreateInfoFound = true;
                 break;
@@ -1497,6 +1495,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     /* create logical device */
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, physicalDeviceFeatures);
     physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
+    physicalDeviceFeatures.fillModeNonSolid  = VK_TRUE;// allows VkPolygonMode values other than FILL, easier wireframe drawing
     KORL_ZERO_STACK(VkPhysicalDeviceVulkan13Features, physicalDeviceFeatures13);
     physicalDeviceFeatures13.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     physicalDeviceFeatures13.synchronization2 = VK_TRUE;
@@ -1513,15 +1512,15 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     createInfoDevice.ppEnabledLayerNames     = G_KORL_VULKAN_ENABLED_LAYERS;
     #endif// KORL_DEBUG
     _KORL_VULKAN_CHECK(
-        vkCreateDevice(context->physicalDevice, &createInfoDevice, 
-                       context->allocator, &context->device));
+        vkCreateDevice(context->physicalDevice, &createInfoDevice
+                      ,context->allocator, &context->device));
     /* obtain opaque handles to the queues that we need */
-    vkGetDeviceQueue(context->device, 
-                     context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics, 
-                     0/*queueIndex*/, &context->queueGraphics);
-    vkGetDeviceQueue(context->device, 
-                     context->queueFamilyMetaData.indexQueueUnion.indexQueues.present, 
-                     0/*queueIndex*/, &context->queuePresent);
+    vkGetDeviceQueue(context->device
+                    ,context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics
+                    ,0/*queueIndex*/, &context->queueGraphics);
+    vkGetDeviceQueue(context->device
+                    ,context->queueFamilyMetaData.indexQueueUnion.indexQueues.present
+                    ,0/*queueIndex*/, &context->queuePresent);
     /* create the device memory allocator we will require to store certain swap 
         chain dependent resources, such as the depth buffer, stencil buffer, etc. */
     surfaceContext->deviceMemoryRenderResources = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
@@ -1943,10 +1942,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
         actual vulkan pipeline will be created & bound when we call draw */
     _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
     if(state->features)
-    {
-        pipelineCache->features.enableBlend     = 0 != state->features->enableBlend;
-        pipelineCache->features.enableDepthTest = 0 != state->features->enableDepthTest;
-    }
+        pipelineCache->features = *state->features;
     if(state->blend)
         pipelineCache->blend = *state->blend;
     if(state->sceneProperties)
@@ -2062,8 +2058,18 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
     korl_time_probeStart(draw_config_pipeline);
     switch(vertexData->primitiveType)
     {
-    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES:{pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;}
-    case KORL_VULKAN_PRIMITIVETYPE_LINES:    {pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;}
+    case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES: pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;
+    case KORL_VULKAN_PRIMITIVETYPE_LINES    : pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;
+    }
+    switch(vertexData->polygonMode)
+    {
+    case KORL_GFX_POLYGON_MODE_FILL: pipelineCache->polygonMode = VK_POLYGON_MODE_FILL; break;
+    case KORL_GFX_POLYGON_MODE_LINE: pipelineCache->polygonMode = VK_POLYGON_MODE_LINE; break;
+    }
+    switch(vertexData->cullMode)
+    {
+    case KORL_GFX_CULL_MODE_NONE: pipelineCache->cullModeFlags = VK_CULL_MODE_NONE;     break;
+    case KORL_GFX_CULL_MODE_BACK: pipelineCache->cullModeFlags = VK_CULL_MODE_BACK_BIT; break;
     }
     pipelineCache->positionDimensions         = vertexData->positionDimensions;
     pipelineCache->positionsStride            = vertexData->positionsStride;

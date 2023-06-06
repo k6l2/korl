@@ -987,6 +987,8 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
         , 1, 2, 3 };
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
     vertexData.primitiveType           = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    vertexData.polygonMode             = KORL_GFX_POLYGON_MODE_FILL;
+    vertexData.cullMode                = KORL_GFX_CULL_MODE_BACK;
     vertexData.indexCount              = korl_arraySize(triQuadIndices);
     vertexData.indices                 = triQuadIndices;
     vertexData.instancePositionsStride = 2*sizeof(f32);
@@ -996,7 +998,8 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
-    features.enableBlend = true;
+    features.enableDepthTest = false;
+    features.enableBlend     = true;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
     blend.opColor           = KORL_GFX_BLEND_ALPHA.color.operation;
     blend.factorColorSource = KORL_GFX_BLEND_ALPHA.color.factorSource;
@@ -1329,6 +1332,8 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     }
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
     vertexData.primitiveType              = batch->primitiveType;
+    vertexData.polygonMode                = KORL_GFX_POLYGON_MODE_FILL;
+    vertexData.cullMode                   = KORL_GFX_CULL_MODE_BACK;
     vertexData.indexCount                 = korl_vulkan_safeCast_u$_to_vertexIndex(batch->_vertexIndexCount);
     vertexData.indices                    = batch->_vertexIndices;
     vertexData.vertexCount                = batch->_vertexCount;
@@ -2041,11 +2046,17 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     u32 meshPrimitiveCount = 0;
     const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
                                     ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
-    const Korl_Vulkan_DrawVertexData* drawVertexData = korl_resource_scene3d_getDrawVertexData(context->subType.mesh.resourceHandleScene3d, utf8MeshName, &meshPrimitiveCount);
-    if(!drawVertexData)
+    const Korl_Vulkan_DrawVertexData*const meshVertexDataArray = korl_resource_scene3d_getDrawVertexData(context->subType.mesh.resourceHandleScene3d, utf8MeshName, &meshPrimitiveCount);
+    if(!meshVertexDataArray)
         return;/* we can't draw the scene3d if it has not yet loaded*/
     for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
-        korl_vulkan_draw(drawVertexData + mp);
+    {
+        // @TODO: each mesh primitive is actually associated with a respective material, so we need to obtain & use materials in this loop!
+        Korl_Vulkan_DrawVertexData drawVertexData = meshVertexDataArray[mp];
+        drawVertexData.polygonMode = material.drawState.polygonMode;
+        drawVertexData.cullMode    = material.drawState.cullMode;
+        korl_vulkan_draw(&drawVertexData);
+    }
 }
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
 {
