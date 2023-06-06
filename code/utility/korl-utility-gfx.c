@@ -228,3 +228,60 @@ korl_internal void korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Ko
     batch->_vertexColors[1] = colors[1];
     korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
 }
+korl_internal void korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Vulkan_Color4u8 color, Korl_Memory_AllocatorHandle allocator)
+{
+    Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, 12);
+    u32 currentLine = 0;
+    /* bottom face */
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->min.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->min.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->min.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->min.z}.elements
+                         ,3, color);
+    /* top face */
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->max.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->max.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->max.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->max.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
+                         ,3, color);
+    /* connections between the top/bottom faces */
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batchSetLine(batch, currentLine++
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->min.z}.elements
+                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
+                         ,3, color);
+    korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+}
