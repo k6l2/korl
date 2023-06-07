@@ -29,6 +29,7 @@
 #include <devioctl.h>/* needed in order to use the CTL_CODE macro */
 #include <ws2bth.h>/* for bluetooth module; specifically the SOCKADDR_BTH struct */
 #include <Audioclient.h>/* for WASAPI; this needs to be here since it _requires_ the near/far macros*/
+#include <hidusage.h>/* for RawInput stuff */
 #ifdef near// defined from somewhere inside Windows.h
     #undef near // fuck you too, Microsoft!
 #endif

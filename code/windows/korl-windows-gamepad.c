@@ -1,6 +1,7 @@
 /** Most of this code is derived from the following sources: 
  * - https://gist.github.com/mmozeiko/b8ccc54037a5eaf35432396feabbe435
  * - https://copyprogramming.com/howto/i-need-some-help-to-understand-usb-game-controllers-hid-devices
+ * - https://github.com/MysteriousJ/Joystick-Input-Examples
  */
 #include "korl-windows-gamepad.h"
 #include "korl-log.h"
@@ -67,8 +68,8 @@ typedef struct _Korl_Windows_Gamepad_Device
 } _Korl_Windows_Gamepad_Device;
 typedef struct _Korl_Windows_Gamepad_Context
 {
-    Korl_Memory_AllocatorHandle allocatorHandle;
-    Korl_StringPool stringPool;
+    Korl_Memory_AllocatorHandle   allocatorHandle;
+    Korl_StringPool               stringPool;
     _Korl_Windows_Gamepad_Device* stbDaDevices;
 } _Korl_Windows_Gamepad_Context;
 korl_global_variable _Korl_Windows_Gamepad_Context _korl_windows_gamepad_context;
@@ -139,6 +140,15 @@ korl_internal void korl_windows_gamepad_initialize(void)
 }
 korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_Memory_AllocatorHandle allocatorHandleLocal)
 {
+    /* register RawInput devices */
+	RAWINPUTDEVICE deviceList[2];
+	deviceList[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
+	deviceList[0].usUsage     = HID_USAGE_GENERIC_GAMEPAD;
+	deviceList[0].dwFlags     = RIDEV_INPUTSINK | RIDEV_DEVNOTIFY;
+	deviceList[0].hwndTarget  = windowHandle;
+	deviceList[1] = deviceList[0];
+	deviceList[1].usUsage = HID_USAGE_GENERIC_JOYSTICK;
+	RegisterRawInputDevices(deviceList, korl_arraySize(deviceList), sizeof(*deviceList));
     /* register XBOX gamepad devices to send messages to the provided window */
     KORL_ZERO_STACK(DEV_BROADCAST_DEVICEINTERFACE_W, deviceNotificationFilter);
     deviceNotificationFilter.dbcc_size       = sizeof(deviceNotificationFilter);
@@ -162,10 +172,10 @@ korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_M
         {
             DWORD deviceInterfaceDetailBytes;
             // query for the size of the device interface detail data:
-            korl_assert(!SetupDiGetDeviceInterfaceDetail(deviceInfos, &deviceInterfaceData, 
-                                                         NULL/*deviceInterfaceDetailData; NULL=>query for size*/, 
-                                                         0/*detailDataBytes; 0=>query for this*/, 
-                                                         &deviceInterfaceDetailBytes, NULL/*deviceInfoData*/));// yes, this should always return false when querying for the detail bytes
+            korl_assert(!SetupDiGetDeviceInterfaceDetail(deviceInfos, &deviceInterfaceData
+                                                        ,NULL/*deviceInterfaceDetailData; NULL=>query for size*/
+                                                        ,0/*detailDataBytes; 0=>query for this*/
+                                                        ,&deviceInterfaceDetailBytes, NULL/*deviceInfoData*/));// yes, this should always return false when querying for the detail bytes
             if(GetLastError() != ERROR_INSUFFICIENT_BUFFER)// when called as above, SetupDiGetDeviceInterfaceDetail should always set the last error code to ERROR_INSUFFICIENT_BUFFER
                 korl_logLastError("SetupDiGetDeviceInterfaceDetail failed");
             PSP_DEVICE_INTERFACE_DETAIL_DATA pDeviceInterfaceDetailData = korl_allocate(allocatorHandleLocal, deviceInterfaceDetailBytes);
@@ -186,6 +196,10 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
     korl_assert(out_result);
     switch(message)
     {
+    case WM_INPUT:{
+        break;}
+    case WM_INPUT_DEVICE_CHANGE:{
+        break;}
     case WM_DEVICECHANGE:{
         switch(wParam)
         {
@@ -214,7 +228,8 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
             break;}
         }
         if(out_result)
-            *out_result = 0;}
+            *out_result = 0;
+        break;}
     default:{
         out_result = NULL;}
     }
@@ -231,9 +246,9 @@ korl_internal void _korl_windows_gamepad_xInputFilterStickDeadzone(SHORT* inOut_
         *inOut_stickY = 0;
         return;
     }
-#if KORL_DEBUG
-    korl_assert(deadzoneMagnitude > 0);
-#endif
+    #if KORL_DEBUG
+        korl_assert(deadzoneMagnitude > 0);
+    #endif
     fX /= magnitude;
     fY /= magnitude;
     if(magnitude > KORL_I16_MAX)
@@ -249,9 +264,9 @@ korl_internal void _korl_windows_gamepad_xInputFilterTriggerDeadzone(BYTE* inOut
         *inOut_trigger = 0;
         return;
     }
-#if KORL_DEBUG
-    korl_assert(deadzoneMagnitude > 0);
-#endif
+    #if KORL_DEBUG
+        korl_assert(deadzoneMagnitude > 0);
+    #endif
     const f32 fX = KORL_C_CAST(f32, (*inOut_trigger - deadzoneMagnitude)) / (KORL_U8_MAX - deadzoneMagnitude);
     *inOut_trigger = KORL_C_CAST(BYTE, fX*KORL_U8_MAX);
 }
