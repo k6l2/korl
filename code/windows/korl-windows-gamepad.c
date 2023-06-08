@@ -30,13 +30,16 @@ DEFINE_GUID(_KORL_WINDOWS_GAMEPAD_XBOX_GUID, 0xEC87F1E3, 0xC13B, 0x4100, 0xB5, 0
 #define IOCTL_XUSB_WAIT_FOR_INPUT               /*0x8000E3AC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 235, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 #define IOCTL_XUSB_GET_INFORMATION_EX           /*0x8000E3FC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 255, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 typedef enum _Korl_Windows_Gamepad_DeviceType
-    { _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
+    { _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID
+    , _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
+    , _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DS4
 } _Korl_Windows_Gamepad_DeviceType;
 typedef struct _Korl_Windows_Gamepad_Device
 {
-    _Korl_Windows_Gamepad_DeviceType type;
-    Korl_StringPool_String path;
-    HANDLE handle;
+    _Korl_Windows_Gamepad_DeviceType type;// should _never_ == _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID
+    Korl_StringPool_String           path;// used to create handleFileIo, & uniquely identify the local device
+    HANDLE                           handleRawInputDevice;// managed by Windows; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
+    HANDLE                           handleFileIo;// managed by korl-windows-gamepad; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
     union
     {
         struct
@@ -70,46 +73,61 @@ typedef struct _Korl_Windows_Gamepad_Context
 {
     Korl_Memory_AllocatorHandle   allocatorHandle;
     Korl_StringPool               stringPool;
-    _Korl_Windows_Gamepad_Device* stbDaDevices;
+    _Korl_Windows_Gamepad_Device* stbDaDevices;// devices are uniquely identified by a String, and thus we will _never_ remove them from the database for the entire duration of program execution; this will allow KORL clients to easily perform logic based on which gamepad using its unique id; the device's unique id will simply be its index into this array
 } _Korl_Windows_Gamepad_Context;
 korl_global_variable _Korl_Windows_Gamepad_Context _korl_windows_gamepad_context;
+korl_internal void _korl_windows_gamepad_device_disconnect(_Korl_Windows_Gamepad_Device* device)
+{
+    if(   device->handleFileIo         == INVALID_HANDLE_VALUE 
+       && device->handleRawInputDevice == INVALID_HANDLE_VALUE)
+        return;// device was already disconnected
+    KORL_WINDOWS_CHECK(CloseHandle(device->handleFileIo));
+    device->handleFileIo         = INVALID_HANDLE_VALUE;
+    device->handleRawInputDevice = INVALID_HANDLE_VALUE;
+    korl_log(INFO, "device disconnected: \"%ws\"", string_getRawUtf16(&device->path));
+}
 korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     Korl_StringPool_String stringDevicePath = string_newUtf16(devicePath);
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
     /* check if the device is already registered in our database */
-    for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
+    _Korl_Windows_Gamepad_Device* newDevice = NULL;
+    const _Korl_Windows_Gamepad_Device*const devicesEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+    for(_Korl_Windows_Gamepad_Device* device = context->stbDaDevices
+       ;device < devicesEnd && !newDevice
+       ;device++)
+        if(   device->type == _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
+           && string_equals(&stringDevicePath, &device->path))
+        {
+            newDevice = device;
+            string_free(&stringDevicePath);
+        }
+    /* if this device is not registered, add a new entry */
+    if(!newDevice)
     {
-        if(context->stbDaDevices[d].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
-            continue;
-        if(string_equals(&stringDevicePath, &context->stbDaDevices[d].path))
-            return;
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaDevices, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Gamepad_Device));
+        newDevice = &arrlast(context->stbDaDevices);
+        newDevice->type                 = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX;
+        newDevice->path                 = stringDevicePath;
+        newDevice->handleRawInputDevice = INVALID_HANDLE_VALUE;
+        newDevice->handleFileIo         = INVALID_HANDLE_VALUE;
     }
-    /* this device is not registered yet; open a handle to the device */
-    HANDLE deviceHandle = CreateFileW(devicePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if(deviceHandle == INVALID_HANDLE_VALUE)
-    {
+    /* open a new file handle to the device */
+    newDevice->handleFileIo = CreateFileW(devicePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(newDevice->handleFileIo == INVALID_HANDLE_VALUE)
         korl_log(WARNING, "failed to open device handle; reconnection required: \"%ws\"", devicePath);
-        return;
-    }
-    /* add the new device to the database */
-    const _Korl_Windows_Gamepad_Device newDevice = 
-        { .type   = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
-        , .handle = deviceHandle
-        , .path   = stringDevicePath };
-    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), 
-              context->stbDaDevices, 
-              newDevice);
-    korl_log(INFO, "xbox gamepad connected: \"%ws\"", string_getRawUtf16(&stringDevicePath));
+    /**/
+    korl_log(INFO, "xbox gamepad [%lli] connected: \"%ws\"", newDevice - context->stbDaDevices, string_getRawUtf16(&newDevice->path));
 }
+#if 0
 korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     korl_assert(devicesIndex < arrlenu(context->stbDaDevices));
     korl_log(INFO, "disconnecting gamepad \"%ws\"", string_getRawUtf16(&context->stbDaDevices[devicesIndex].path));
     string_free(&context->stbDaDevices[devicesIndex].path);
-    if(!CloseHandle(context->stbDaDevices[devicesIndex].handle))
+    if(!CloseHandle(context->stbDaDevices[devicesIndex].handleFileIo))
         korl_logLastError("CloseHandle failed");
     arrdelswap(context->stbDaDevices, devicesIndex);
 }
@@ -118,17 +136,23 @@ korl_internal void _korl_windows_gamepad_disconnectPath(LPTSTR devicePath)
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     Korl_StringPool_String stringDevicePath = string_newUtf16(devicePath);
     string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
-    for(u$ d = 0; d < arrlenu(context->stbDaDevices); d++)
+    const _Korl_Windows_Gamepad_Device*const devicesEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+    for(_Korl_Windows_Gamepad_Device* device = context->stbDaDevices
+       ;device < devicesEnd
+       ;device++)
         /* if a device in our database matches the devicePath, we need to clean it up and remove it */
-        if(string_equals(&stringDevicePath, &context->stbDaDevices[d].path))
+        if(string_equals(&stringDevicePath, &device->path))
         {
-            _korl_windows_gamepad_disconnectIndex(d);
+            KORL_WINDOWS_CHECK(CloseHandle(device->handleFileIo));
+            device->handleFileIo = INVALID_HANDLE_VALUE;
+            korl_log(INFO, "device disconnected: \"%ws\"", string_getRawUtf16(&stringDevicePath));
             goto cleanUp;
         }
-    korl_log(INFO, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(&stringDevicePath));
+    korl_log(WARNING, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(&stringDevicePath));
     cleanUp:
-    string_free(&stringDevicePath);
+        string_free(&stringDevicePath);
 }
+#endif
 korl_internal void korl_windows_gamepad_initialize(void)
 {
     korl_memory_zero(&_korl_windows_gamepad_context, sizeof(_korl_windows_gamepad_context));
@@ -141,14 +165,16 @@ korl_internal void korl_windows_gamepad_initialize(void)
 korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_Memory_AllocatorHandle allocatorHandleLocal)
 {
     /* register RawInput devices */
-	RAWINPUTDEVICE deviceList[2];
-	deviceList[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
-	deviceList[0].usUsage     = HID_USAGE_GENERIC_GAMEPAD;
-	deviceList[0].dwFlags     = RIDEV_INPUTSINK | RIDEV_DEVNOTIFY;
-	deviceList[0].hwndTarget  = windowHandle;
-	deviceList[1] = deviceList[0];
-	deviceList[1].usUsage = HID_USAGE_GENERIC_JOYSTICK;
-	RegisterRawInputDevices(deviceList, korl_arraySize(deviceList), sizeof(*deviceList));
+    RAWINPUTDEVICE deviceList[2];
+    deviceList[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
+    deviceList[0].usUsage     = HID_USAGE_GENERIC_GAMEPAD;
+    deviceList[0].dwFlags     = RIDEV_INPUTSINK/*receive messages even if window is not in foreground*/
+                              | RIDEV_DEVNOTIFY/*receive arrival/removal messages via WM_INPUT_DEVICE_CHANGE*/;
+    deviceList[0].hwndTarget  = windowHandle;
+    deviceList[1] = deviceList[0];
+    deviceList[1].usUsage = HID_USAGE_GENERIC_JOYSTICK;
+    KORL_WINDOWS_CHECK(RegisterRawInputDevices(deviceList, korl_arraySize(deviceList), sizeof(*deviceList)));
+    /* enumerate over RawInput devices, in case we started the application with them already connected */
     /* register XBOX gamepad devices to send messages to the provided window */
     KORL_ZERO_STACK(DEV_BROADCAST_DEVICEINTERFACE_W, deviceNotificationFilter);
     deviceNotificationFilter.dbcc_size       = sizeof(deviceNotificationFilter);
@@ -164,9 +190,9 @@ korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_M
     {
         KORL_ZERO_STACK(SP_DEVICE_INTERFACE_DATA, deviceInterfaceData);
         deviceInterfaceData.cbSize = sizeof(deviceInterfaceData);
-        for(DWORD deviceIndex = 0; 
-            SetupDiEnumDeviceInterfaces(deviceInfos, NULL/*deviceInfoData*/, &_KORL_WINDOWS_GAMEPAD_XBOX_GUID, deviceIndex, &deviceInterfaceData);
-            korl_memory_zero(&deviceInterfaceData, sizeof(deviceInterfaceData))
+        for(DWORD deviceIndex = 0
+           ;SetupDiEnumDeviceInterfaces(deviceInfos, NULL/*deviceInfoData*/, &_KORL_WINDOWS_GAMEPAD_XBOX_GUID, deviceIndex, &deviceInterfaceData)
+           ;korl_memory_zero(&deviceInterfaceData, sizeof(deviceInterfaceData))
             , deviceInterfaceData.cbSize = sizeof(deviceInterfaceData)
             , deviceIndex++)
         {
@@ -189,16 +215,118 @@ korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_M
             _korl_windows_gamepad_connectXbox(pDeviceInterfaceDetailData->DevicePath);
             korl_free(allocatorHandleLocal, pDeviceInterfaceDetailData);
         }
+        KORL_WINDOWS_CHECK(SetupDiDestroyDeviceInfoList(deviceInfos));
     }
 }
 korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LRESULT* out_result)
 {
+    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     korl_assert(out_result);
     switch(message)
     {
     case WM_INPUT:{
         break;}
     case WM_INPUT_DEVICE_CHANGE:{
+        const HANDLE handleDevice = KORL_C_CAST(HANDLE, lParam);
+        switch(wParam)
+        {
+        case GIDC_ARRIVAL:{
+            _Korl_Windows_Gamepad_Device* device = NULL;
+            Korl_StringPool_String stringDeviceName = KORL_STRUCT_INITIALIZE_ZERO(Korl_StringPool_String);
+            /* determine how many characters the DEVICENAME contains */
+            UINT deviceInfoSize = 0;
+            UINT resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICENAME, NULL, &deviceInfoSize);
+            if(resultRawInput != 0)// calls to RawInput can fail at any time, as the device can suddenly become disconnected
+            {
+                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: invalid handle");
+                goto inputDeviceChange_arrival_cleanUp;
+            }
+            const u32 deviceNameSize = deviceInfoSize;// _including_ NULL-terminator
+            /* obtain the DEVICENAME */
+            stringDeviceName = string_newEmptyUtf16(deviceNameSize - 1);
+            resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICENAME, string_getRawWriteableUtf16(&stringDeviceName), &deviceInfoSize);
+            if(resultRawInput != deviceNameSize)// calls to RawInput can fail at any time, as the device can suddenly become disconnected
+            {
+                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: invalid handle");
+                goto inputDeviceChange_arrival_cleanUp;
+            }
+            /* ensure that the DEVICENAME does not exist in our device database */
+            {
+                const _Korl_Windows_Gamepad_Device*const gamepadDeviceEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+                for(_Korl_Windows_Gamepad_Device* gamepadDevice = context->stbDaDevices
+                   ;gamepadDevice < gamepadDeviceEnd && !device
+                   ;gamepadDevice++)
+                    if(string_equals(&gamepadDevice->path, &stringDeviceName))
+                        device = gamepadDevice;
+            }
+            /* obtain DEVICEINFO */
+            KORL_ZERO_STACK(RID_DEVICE_INFO, deviceInfo);
+            deviceInfo.cbSize = sizeof(RID_DEVICE_INFO);// MSDN for GetRawInputDeviceInfo tells us to do this
+            deviceInfoSize = sizeof(deviceInfo);
+            resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICEINFO, &deviceInfo, &deviceInfoSize);
+            if(resultRawInput <= 0)
+            {
+                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: invalid handle");
+                goto inputDeviceChange_arrival_cleanUp;
+            }
+            /* determine what kind of device it is */
+            _Korl_Windows_Gamepad_DeviceType deviceType = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID;
+            korl_shared_const DWORD ID_VENDOR_SONY = 0x054C;
+            korl_shared_const DWORD ID_PRODUCT_DS4_GEN1 = 0x05C4;
+            korl_shared_const DWORD ID_PRODUCT_DS4_GEN2 = 0x09CC;
+            if(deviceInfo.dwType == RIM_TYPEHID)
+            {
+                // if XBOX; derived from MSDN recommended algorithm: https://learn.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput
+                if(string_findUtf16(&stringDeviceName, L"IG_", 0) < deviceNameSize - 1/*StringPool returns length of String _excluding_ NULL-terminator on failure*/)
+                    /* process XBOX devices using a different technique, since we can't get the data we need using RawInput */
+                    deviceType = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID;
+                // if DS4
+                else if(deviceInfo.hid.dwVendorId == ID_VENDOR_SONY
+                        && (   deviceInfo.hid.dwProductId == ID_PRODUCT_DS4_GEN1
+                            || deviceInfo.hid.dwProductId == ID_PRODUCT_DS4_GEN2))
+                    deviceType = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DS4;
+            }
+            if(deviceType != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID)
+            {
+                /* add a new gamepad to our database if necessary */
+                korl_log(INFO, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: deviceName==\"%ws\" handle==%p", string_getRawUtf16(&stringDeviceName), handleDevice);
+                if(!device)
+                {
+                    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaDevices, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Gamepad_Device));
+                    device = &arrlast(context->stbDaDevices);
+                }
+                korl_assert(!device->path.handle);
+                device->type                 = deviceType;
+                device->path                 = stringDeviceName; korl_memory_zero(&stringDeviceName, sizeof(stringDeviceName));// take ownership of the String so it doesn't get cleaned up at the end
+                device->handleRawInputDevice = handleDevice;
+                device->handleFileIo         = CreateFileW(string_getRawUtf16(&device->path), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                if(device->handleFileIo == INVALID_HANDLE_VALUE)
+                {
+                    korl_log(WARNING, "failed to open device handle; reconnection required: \"%ws\"", string_getRawUtf16(&device->path));
+                    break;
+                }
+            }
+            inputDeviceChange_arrival_cleanUp:
+                string_free(&stringDeviceName);
+            break;}
+        case GIDC_REMOVAL:{
+            /* for the REMOVAL event, handleDevice has already been invalidated, so we can't call RawInput APIs on it; 
+                we can only check to see if it matches any previously registered device handles & act appropriately */
+            _Korl_Windows_Gamepad_Device* device = NULL;
+            const _Korl_Windows_Gamepad_Device*const gamepadDeviceEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+            for(_Korl_Windows_Gamepad_Device* gamepadDevice = context->stbDaDevices
+               ;gamepadDevice < gamepadDeviceEnd && !device
+               ;gamepadDevice++)
+                if(gamepadDevice->handleRawInputDevice == handleDevice)
+                    device = gamepadDevice;
+            if(!device)
+                break;
+            korl_log(INFO, "WM_INPUT_DEVICE_CHANGE: GIDC_REMOVAL: handle==%p", handleDevice);
+            _korl_windows_gamepad_device_disconnect(device);
+            break;}
+        default: korl_log(ERROR, "WM_INPUT_DEVICE_CHANGE: unexpected wParam: %llu", wParam);
+        }
+        *out_result = 0;
         break;}
     case WM_DEVICECHANGE:{
         switch(wParam)
@@ -221,7 +349,21 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
             if(broadcastHeader->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
             {
                 DEV_BROADCAST_DEVICEINTERFACE_W*const deviceInterface = KORL_C_CAST(void*, broadcastHeader);
-                _korl_windows_gamepad_disconnectPath(deviceInterface->dbcc_name);
+                Korl_StringPool_String stringDevicePath = string_newUtf16(deviceInterface->dbcc_name);
+                string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
+                const _Korl_Windows_Gamepad_Device*const devicesEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+                for(_Korl_Windows_Gamepad_Device* device = context->stbDaDevices
+                   ;device < devicesEnd
+                   ;device++)
+                    /* if a device in our database matches the devicePath, we need to clean it up and remove it */
+                    if(string_equals(&stringDevicePath, &device->path))
+                    {
+                        _korl_windows_gamepad_device_disconnect(device);
+                        goto deviceChange_removeComplete_cleanUp;
+                    }
+                korl_log(WARNING, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(&stringDevicePath));
+                deviceChange_removeComplete_cleanUp:
+                    string_free(&stringDevicePath);
             }
             else
                 out_result = NULL;
@@ -273,18 +415,26 @@ korl_internal void _korl_windows_gamepad_xInputFilterTriggerDeadzone(BYTE* inOut
 korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onGamepadEvent)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
-    for(u$ i = arrlenu(context->stbDaDevices) - 1; i < arrlenu(context->stbDaDevices); i--)
+    const _Korl_Windows_Gamepad_Device*const gamepadDeviceEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+    for(_Korl_Windows_Gamepad_Device* device = context->stbDaDevices
+       ;device < gamepadDeviceEnd
+       ;device++)
     {
-        if(context->stbDaDevices[i].type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
+        if(device->type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
             continue;// only support XBOX gamepads (for now)
+        if(device->handleFileIo == INVALID_HANDLE_VALUE)
+            continue;// the device is disconnected
         BYTE in[3] = { 0x01, 0x01, 0x00 };//KORL-ISSUE-000-000-083: gamepad: XBOX wireless devices only support a single gamepad instead of 4
         BYTE out[29];
         DWORD size;
-        if(   !DeviceIoControl(context->stbDaDevices[i].handle, IOCTL_XUSB_GET_STATE, in, sizeof(in), out, sizeof(out), &size, NULL) 
+        if(   !DeviceIoControl(device->handleFileIo, IOCTL_XUSB_GET_STATE, in, sizeof(in), out, sizeof(out), &size, NULL) 
            || size != sizeof(out))
         {
             switch(GetLastError())
             {
+            case ERROR_BAD_COMMAND:{// device is disconnected; no documentation on this (classic M$), and this nomenclature makes no sense, but it happens empirically
+                _korl_windows_gamepad_device_disconnect(device);
+                continue;}
             case ERROR_DEVICE_NOT_CONNECTED:{
                 /* We can't just disconnect the XBOX controller device here, since 
                     it is entirely possible that this is a wireless controller receiver, 
@@ -297,16 +447,16 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
                 continue;}
             }
         }
-        const _Korl_Windows_Gamepad_Device deviceStatePrevious = context->stbDaDevices[i];
+        const _Korl_Windows_Gamepad_Device deviceStatePrevious = *device;
         korl_assert(korl_memory_isLittleEndian());// the raw xbox state data is stored in the buffer in little-endian byte order; so we can only C-cast into multi-byte registers if our platform is also little-endian
-        context->stbDaDevices[i].lastState.xbox.inputFrame           = *KORL_C_CAST(DWORD*, out +  5);
-        context->stbDaDevices[i].lastState.xbox.buttons              = *KORL_C_CAST(WORD* , out + 11);
-        context->stbDaDevices[i].lastState.xbox.sticks.named.leftX   = *KORL_C_CAST(SHORT*, out + 15);
-        context->stbDaDevices[i].lastState.xbox.sticks.named.leftY   = *KORL_C_CAST(SHORT*, out + 17);
-        context->stbDaDevices[i].lastState.xbox.sticks.named.rightX  = *KORL_C_CAST(SHORT*, out + 19);
-        context->stbDaDevices[i].lastState.xbox.sticks.named.rightY  = *KORL_C_CAST(SHORT*, out + 21);
-        context->stbDaDevices[i].lastState.xbox.triggers.named.left  = out[13];
-        context->stbDaDevices[i].lastState.xbox.triggers.named.right = out[14];
+        device->lastState.xbox.inputFrame           = *KORL_C_CAST(DWORD*, out +  5);
+        device->lastState.xbox.buttons              = *KORL_C_CAST(WORD* , out + 11);
+        device->lastState.xbox.sticks.named.leftX   = *KORL_C_CAST(SHORT*, out + 15);
+        device->lastState.xbox.sticks.named.leftY   = *KORL_C_CAST(SHORT*, out + 17);
+        device->lastState.xbox.sticks.named.rightX  = *KORL_C_CAST(SHORT*, out + 19);
+        device->lastState.xbox.sticks.named.rightY  = *KORL_C_CAST(SHORT*, out + 21);
+        device->lastState.xbox.triggers.named.left  = out[13];
+        device->lastState.xbox.triggers.named.right = out[14];
         /** deadzone filter */
         //KORL-FEATURE-000-000-036: gamepad: (low priority); expose gamepad deadzone values as configurable through the KORL platform interface
         /* these deadzone values are derived from: 
@@ -314,16 +464,16 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
         #define _KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
         #define _KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
         #define _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
-        _korl_windows_gamepad_xInputFilterStickDeadzone(&context->stbDaDevices[i].lastState.xbox.sticks.named.leftX, 
-                                                        &context->stbDaDevices[i].lastState.xbox.sticks.named.leftY, 
-                                                        _KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-        _korl_windows_gamepad_xInputFilterStickDeadzone(&context->stbDaDevices[i].lastState.xbox.sticks.named.rightX, 
-                                                        &context->stbDaDevices[i].lastState.xbox.sticks.named.rightY, 
-                                                        _KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&context->stbDaDevices[i].lastState.xbox.triggers.named.left, 
-                                                          _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
-        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&context->stbDaDevices[i].lastState.xbox.triggers.named.right, 
-                                                          _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
+        _korl_windows_gamepad_xInputFilterStickDeadzone(&device->lastState.xbox.sticks.named.leftX
+                                                       ,&device->lastState.xbox.sticks.named.leftY
+                                                       ,_KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        _korl_windows_gamepad_xInputFilterStickDeadzone(&device->lastState.xbox.sticks.named.rightX
+                                                       ,&device->lastState.xbox.sticks.named.rightY
+                                                       ,_KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&device->lastState.xbox.triggers.named.left
+                                                         ,_KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
+        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&device->lastState.xbox.triggers.named.right
+                                                         ,_KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
         /** these flags are presented in the exact order that the corresponding 
          * KORL button value in the Korl_GamepadButton enumeration; it is 
          * essentially a mapping from the xbox_button_bitfield => KORL_button_index */
@@ -333,30 +483,30 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
         //KORL-ISSUE-000-000-084: gamepad: (low priority) XBOX controller guide button is not being captured
         for(u$ b = 0; b < korl_arraySize(XBOX_BUTTON_FLAGS); b++)
         {
-            if(   (context->stbDaDevices[i].lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b])
-               == (     deviceStatePrevious.lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]))
+            if(   (            device->lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b])
+               == (deviceStatePrevious.lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]))
                 continue;
             if(!onGamepadEvent)
                 continue;
             onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_BUTTON
                                               ,.subType = {.button = {.button  = KORL_C_CAST(Korl_GamepadButton, b)
-                                                                     ,.pressed = context->stbDaDevices[i].lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]}}});
+                                                                     ,.pressed = device->lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]}}});
         }
         for(u$ a = 0; a < korl_arraySize(deviceStatePrevious.lastState.xbox.sticks.array); a++)
         {
-            if(context->stbDaDevices[i].lastState.xbox.sticks.array[a] != deviceStatePrevious.lastState.xbox.sticks.array[a])
+            if(device->lastState.xbox.sticks.array[a] != deviceStatePrevious.lastState.xbox.sticks.array[a])
                 if(onGamepadEvent)
                     onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
                                                       ,.subType = {.axis = {.axis  = KORL_C_CAST(Korl_GamepadAxis, a)
-                                                                           ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.sticks.array[a]) / KORL_I16_MAX}}});
+                                                                           ,.value = KORL_C_CAST(f32, device->lastState.xbox.sticks.array[a]) / KORL_I16_MAX}}});
         }
         for(u$ t = 0; t < korl_arraySize(deviceStatePrevious.lastState.xbox.triggers.array); t++)
         {
-            if(context->stbDaDevices[i].lastState.xbox.triggers.array[t] != deviceStatePrevious.lastState.xbox.triggers.array[t])
+            if(device->lastState.xbox.triggers.array[t] != deviceStatePrevious.lastState.xbox.triggers.array[t])
                 if(onGamepadEvent)
                     onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
                                                       ,.subType = {.axis = {.axis  = KORL_C_CAST(Korl_GamepadAxis, t + KORL_GAMEPAD_AXIS_TRIGGER_LEFT)
-                                                                           ,.value = KORL_C_CAST(f32, context->stbDaDevices[i].lastState.xbox.triggers.array[t]) / KORL_U8_MAX}}});
+                                                                           ,.value = KORL_C_CAST(f32, device->lastState.xbox.triggers.array[t]) / KORL_U8_MAX}}});
         }
     }
 }
