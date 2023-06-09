@@ -146,10 +146,10 @@ korl_internal void korl_heap_crt_destroy(_Korl_Heap_Crt* allocator)
 korl_internal void korl_heap_crt_empty(_Korl_Heap_Crt* allocator)
 {
     for(u$ i = 0; i < allocator->allocationsSize; i++)
-        free(allocator->allocations[i].address);
+        _aligned_free(allocator->allocations[i].address);
     allocator->allocationsSize = 0;
 }
-korl_internal void* korl_heap_crt_allocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+korl_internal void* korl_heap_crt_allocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty, u$ byteAlignment)
 {
     if(allocator->allocationsSize >= allocator->allocationsCapacity)
     {
@@ -157,28 +157,28 @@ korl_internal void* korl_heap_crt_allocate(_Korl_Heap_Crt* allocator, const wcha
         allocator->allocations = realloc(allocator->allocations, allocator->allocationsCapacity * sizeof(*allocator->allocations));
     }
     _Korl_Heap_Crt_Allocation*const heapCrtAllocation = allocator->allocations + allocator->allocationsSize++;
-    heapCrtAllocation->address    = malloc(bytes);
-    heapCrtAllocation->meta.bytes = bytes;
-    heapCrtAllocation->meta.file  = file;
-    heapCrtAllocation->meta.line  = line;
+    heapCrtAllocation->address    = _aligned_malloc(korl_math_roundUpPowerOf2(bytes, byteAlignment), byteAlignment);
+    heapCrtAllocation->meta.bytes         = bytes;
+    heapCrtAllocation->meta.byteAlignment = korl_checkCast_u$_to_u32(byteAlignment);
+    heapCrtAllocation->meta.file          = file;
+    heapCrtAllocation->meta.line          = line;
     return heapCrtAllocation->address;
 }
 korl_internal void* korl_heap_crt_reallocate(_Korl_Heap_Crt* allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 {
+    korl_shared_const u$ byteAlignment = 1;// delete if we ever add a byteAlignment param
     if(!allocation)
-        return korl_heap_crt_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty);
+        return korl_heap_crt_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty, byteAlignment);
     _Korl_Heap_Crt_Allocation* heapCrtAllocation = NULL;
-    for(u$ i = 0; i < allocator->allocationsSize; i++)
+    for(u$ i = 0; i < allocator->allocationsSize && !heapCrtAllocation; i++)
         if(allocator->allocations[i].address == allocation)
-        {
             heapCrtAllocation = allocator->allocations + i;
-            break;
-        }
     korl_assert(heapCrtAllocation);
-    heapCrtAllocation->address    = realloc(heapCrtAllocation->address, bytes);
-    heapCrtAllocation->meta.bytes = bytes;
-    heapCrtAllocation->meta.file  = file;
-    heapCrtAllocation->meta.line  = line;
+    heapCrtAllocation->address    = _aligned_realloc(heapCrtAllocation->address, bytes, heapCrtAllocation->meta.byteAlignment);
+    heapCrtAllocation->meta.bytes         = bytes;
+    heapCrtAllocation->meta.byteAlignment = korl_checkCast_u$_to_u32(byteAlignment);
+    heapCrtAllocation->meta.file          = file;
+    heapCrtAllocation->meta.line          = line;
     return heapCrtAllocation->address;
 }
 korl_internal void korl_heap_crt_free(_Korl_Heap_Crt* allocator, void* allocation, const wchar_t* file, int line, bool fastAndDirty)
@@ -186,14 +186,11 @@ korl_internal void korl_heap_crt_free(_Korl_Heap_Crt* allocator, void* allocatio
     if(!allocation)
         return;
     _Korl_Heap_Crt_Allocation* heapCrtAllocation = NULL;
-    for(u$ i = 0; i < allocator->allocationsSize; i++)
+    for(u$ i = 0; i < allocator->allocationsSize && !heapCrtAllocation; i++)
         if(allocator->allocations[i].address == allocation)
-        {
             heapCrtAllocation = allocator->allocations + i;
-            break;
-        }
     korl_assert(heapCrtAllocation);
-    free(heapCrtAllocation->address);
+    _aligned_free(heapCrtAllocation->address);
     allocator->allocations[heapCrtAllocation - allocator->allocations] = allocator->allocations[(allocator->allocationsSize--) - 1];
 }
 korl_internal KORL_HEAP_ENUMERATE(korl_heap_crt_enumerate)
@@ -704,8 +701,10 @@ korl_internal void korl_heap_general_empty(_Korl_Heap_General* allocator)
     /**/
     _korl_heap_general_allocatorPagesGuard(allocator);
 }
-korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty, u$ byteAlignment)
 {
+    if(byteAlignment != 1)
+        korl_assert(!"not implemented");//KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
     if(fastAndDirty)
         korl_assert(!"not implemented");//KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 #if _KORL_HEAP_GENERAL_DEBUG
@@ -737,7 +736,7 @@ korl_internal void* korl_heap_general_allocate(_Korl_Heap_General* allocator, co
             const u$ nextHeapPages = KORL_MATH_MAX(2*allocator->allocationPages, 1/*include preceding guard page*/+allocationPages);
             allocator->next = _korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
         }
-        result = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, fastAndDirty);
+        result = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, fastAndDirty, byteAlignment);
         if(!result)
             korl_log(ERROR, "system out of memory");
         goto guardAllocator_returnResult;
@@ -912,7 +911,7 @@ korl_internal void* korl_heap_general_reallocate(_Korl_Heap_General* allocator, 
             const u$ nextHeapPages = KORL_MATH_MAX(2*allocator->allocationPages, 1/*include preceding guard page*/+newAllocationPages);
             allocator->next = _korl_heap_general_create((allocatorPages + nextHeapPages)*pageBytes, NULL);
         }
-        void*const newAllocation = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, fastAndDirty);
+        void*const newAllocation = korl_heap_general_allocate(allocator->next, allocatorName, bytes, file, line, fastAndDirty, 1);
         if(!newAllocation)
             korl_log(ERROR, "system out of memory");
         // copy data to newAllocation //
@@ -1233,25 +1232,31 @@ korl_internal void korl_heap_linear_empty(_Korl_Heap_Linear*const allocator)
     korl_memory_set(heapVirtualBase + heapBytes, _KORL_HEAP_BYTE_PATTERN_FREE, allocator->allocatedBytes);
     allocator->allocatedBytes = 0;
 }
-korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty, u$ byteAlignment)
 {
     korl_assert(bytes);
-    const u$ heapBytes                 = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
-    const u$ allocatableBytesTotal     = (allocator->virtualPages * korl_memory_pageBytes()) - heapBytes;
-    const u$ allocatableBytesRemaining = allocatableBytesTotal - allocator->allocatedBytes;
-    const u$ grossBytes                = sizeof(_Korl_Heap_Linear_AllocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
-    if(grossBytes > allocatableBytesRemaining)
+    const u$       heapBytes          = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
+    const u$       heapVirtualBytes   = allocator->virtualPages * korl_memory_pageBytes();
+    u8*const       heapVirtualBase    = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    const u8*const heapVirtualEnd     = heapVirtualBase + heapVirtualBytes;
+    const u8*const newAllocationStart = heapVirtualBase + heapBytes + allocator->allocatedBytes;
+    void*const     result             = KORL_C_CAST(void*, korl_math_roundUpPowerOf2(KORL_C_CAST(u$, newAllocationStart 
+                                                                                                     + sizeof(_Korl_Heap_Linear_AllocationMeta) 
+                                                                                                     + _KORL_HEAP_SENTINEL_PADDING_BYTES)
+                                                                                    ,byteAlignment));
+    const u8*const newResultEnd       = KORL_C_CAST(u8*, result) + bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
+    const u$       grossBytes         = newResultEnd - newAllocationStart;
+    if(newResultEnd > heapVirtualEnd)
     {
         if(!allocator->next)
         {
             korl_log(WARNING, "linear heap \"%ws\" out of memory", allocatorName);
             allocator->next = _korl_heap_linear_create(KORL_MATH_MAX(2 * allocator->virtualPages * korl_memory_pageBytes(), grossBytes + heapBytes), NULL);
         }
-        return korl_heap_linear_allocate(allocator->next, allocatorName, bytes, file, line, fastAndDirty);
+        return korl_heap_linear_allocate(allocator->next, allocatorName, bytes, file, line, fastAndDirty, byteAlignment);
     }
     const u$ newHeapGrossBytes     = heapBytes + allocator->allocatedBytes + grossBytes;
     const u$ newHeapCommittedPages = korl_math_nextHighestDivision(newHeapGrossBytes, korl_memory_pageBytes());
-    u8*const heapVirtualBase = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
     if(newHeapCommittedPages > allocator->committedPages)
     {
         const u$ newCommittedPages = KORL_MATH_MIN(KORL_MATH_MAX(newHeapCommittedPages, 2 * allocator->committedPages), allocator->virtualPages);
@@ -1261,22 +1266,36 @@ korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator,
             korl_logLastError("memory commit failed");
         allocator->committedPages = newCommittedPages;
     }
-    _Korl_Heap_Linear_AllocationMeta*const resultMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, heapVirtualBase + heapBytes + allocator->allocatedBytes);
-    u8*const                               result     = heapVirtualBase + heapBytes + allocator->allocatedBytes + sizeof(*resultMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES;
-    resultMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line};
+    _Korl_Heap_Linear_AllocationMeta*const resultMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, newAllocationStart);
+    resultMeta->allocationMeta = KORL_STRUCT_INITIALIZE(Korl_Memory_AllocationMeta){.bytes = bytes, .file = file, .line = line, .byteAlignment = korl_checkCast_u$_to_u32(byteAlignment)};
     resultMeta->grossBytes     = grossBytes;
-    korl_memory_set(resultMeta + 1, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
+    if(KORL_C_CAST(u8*, result) > KORL_C_CAST(u8*, resultMeta + 1) + _KORL_HEAP_SENTINEL_PADDING_BYTES)// special case: byteAlignment has caused the offset between `result` & `resultMeta` to differ from _KORL_HEAP_SENTINEL_PADDING_BYTES
+    {
+        /* in this case, we will set the byte just before `result` to be == 0, 
+            and in the 4 bytes before this, we will write the actual # of bytes 
+            between the AllocationMeta & `result` */
+        const u32 alignedPaddingBytes     = korl_checkCast_i$_to_u32(KORL_C_CAST(u8*, result) - KORL_C_CAST(u8*, resultMeta));
+        const u32 alignedPaddingMetaBytes = sizeof(alignedPaddingBytes) + 1;// how many bytes we will use to encode the `alignedPaddingBytes` behind `result`
+        korl_assert(_KORL_HEAP_SENTINEL_PADDING_BYTES >= alignedPaddingMetaBytes);
+        korl_memory_set(resultMeta + 1, _KORL_HEAP_BYTE_PATTERN_SENTINEL, alignedPaddingBytes - alignedPaddingMetaBytes);
+        u32*const alignedPaddingMeta = KORL_C_CAST(u32*, KORL_C_CAST(u8*, result) - alignedPaddingMetaBytes);
+        *alignedPaddingMeta = alignedPaddingBytes;
+        *KORL_C_CAST(u8*, alignedPaddingMeta + 1) = 0;
+    }
+    else
+        korl_memory_set(resultMeta + 1, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
     if(!fastAndDirty)
         korl_memory_zero(result, bytes);
-    korl_memory_set(result + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
+    korl_memory_set(KORL_C_CAST(u8*, result) + bytes, _KORL_HEAP_BYTE_PATTERN_SENTINEL, _KORL_HEAP_SENTINEL_PADDING_BYTES);
     allocator->allocatedBytes += grossBytes;
     return result;
 }
 korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 {
+    korl_shared_const u$ byteAlignment = 1;//delete if we add byteAlignment as a param
     korl_assert(bytes);
     if(!allocation)
-        return korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty);
+        return korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty, byteAlignment);
     const u$         heapBytes         = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
     u8*const         heapVirtualBase   = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
     const void*const heapVirtualEnd    = heapVirtualBase + (allocator->virtualPages * korl_memory_pageBytes());
@@ -1345,7 +1364,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
     }
     /* we couldn't in-place shrink/expand; we must allocate => copy => free */
     korl_assert(bytes > allocationMeta->allocationMeta.bytes);
-    void*const result = korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty);
+    void*const result = korl_heap_linear_allocate(allocator, allocatorName, bytes, file, line, fastAndDirty, byteAlignment);
     korl_memory_copy(result, allocation, allocationMeta->allocationMeta.bytes);
     korl_heap_linear_free(allocator, allocation, file, line, fastAndDirty);
     return result;
@@ -1374,6 +1393,7 @@ korl_internal KORL_ALGORITHM_COMPARE_CONTEXT(_korl_heap_linear_compareDefragment
 }
 korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, _Korl_Heap_Linear* stackAllocator, const wchar_t* stackAllocatorName, Korl_Memory_AllocatorHandle handleStackAllocator)
 {
+    //KORL-ISSUE-000-000-165: heap: defragmentation does not respect each allocation's alignment requirements; we probably want to store byte alignment of each allocation as meta data, because I don't think there's a good way of just "knowing" what the allocation alignment should be
     korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
     allocator->isFragmented = false;// assume we will, in fact, fully de-fragment the allocator; if we can't, we'll just raise this flag once more
     /* UH OH - we have another major issue; assume the heap looks like so:
@@ -1404,7 +1424,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         although honestly, going forward I am going to enforce a policy of _no_ allocation-local pointers stored in structs, in favor 
         of byte offsets which can be used to derive the pointers at run-time, at least for my own code */
     /* create a copy of defragmentPointers that we can shuffle, allowing the `parent` pointers to remain valid - size(n) - O(n) memory_copy*/
-    _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, false/*clear all these*/);
+    _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, false/*clear all these*/, 1);
     for(u$ i = 0; i < defragmentPointersSize; i++)
         sortedDefragmentPointers[i].pDefragmentPointer = &defragmentPointers[i];
     /* create a hash map which we can use to lookup void*(parentAllocation)=>Korl_Heap_DefragmentPointer*(parent) */
@@ -1429,7 +1449,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         totalChildren++;
     }
     /* create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(<=n), as each DefragmentPointer can only have one parent */
-    Korl_Heap_DefragmentPointer** childPool            = totalChildren ? korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, true/*no need to clear these, as they are all going to be fully re-written*/) : NULL;
+    Korl_Heap_DefragmentPointer** childPool            = totalChildren ? korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, true/*no need to clear these, as they are all going to be fully re-written*/, 1) : NULL;
     u$                            childPoolAllocations = 0;
     /* iterate over each DefragmentPointer, & add the defrag pointer to its parent's child list, assigning the parent's `childPool` offset if it doesn't already have one - O(n) */
     for(u$ i = 0; i < defragmentPointersSize; i++)
@@ -1627,7 +1647,7 @@ korl_internal KORL_HEAP_ENUMERATE_ALLOCATIONS(korl_heap_linear_enumerateAllocati
         const void*const heapAllocateEnd   = heapVirtualBase + heapBytes + allocator->allocatedBytes;
         for(_Korl_Heap_Linear_AllocationMeta* allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, heapAllocateBegin)
            ;KORL_C_CAST(void*, allocationMeta) < heapAllocateEnd
-           ;allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes))
+           ;allocationMeta = KORL_C_CAST(void*, KORL_C_CAST(u8*, allocationMeta) + allocationMeta->grossBytes))
         {
             const u$ netBytes = sizeof(*allocationMeta) + _KORL_HEAP_SENTINEL_PADDING_BYTES + allocationMeta->allocationMeta.bytes + _KORL_HEAP_SENTINEL_PADDING_BYTES;
             if(!callback(callbackUserData
@@ -1698,8 +1718,8 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
     _Korl_Heap_Linear* heap      = korl_heap_linear_create(&heapCreateInfo);
     Korl_Memory_AllocatorHandle allocatorHandleStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"DEBUG-linear-unit-test-stack2", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
     korl_log(VERBOSE, "::::: create allocations :::::");
-        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false);
-        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false);
+        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false, 1);
+        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false, 1);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
     korl_log(VERBOSE, "::::: create partial internal fragmentation :::::");
         allocations[0] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[0], 16, __FILEW__, __LINE__, false);
@@ -1727,16 +1747,16 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
     korl_log(VERBOSE, "::::: attempt to create partial trailing fragmentation (this should not cause fragmentation) :::::");
-        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false);
+        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false, 1);
         allocations[1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[1], 16, __FILEW__, __LINE__, false);
-        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false);
+        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false, 1);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
     korl_log(VERBOSE, "::::: attempt to create full trailing fragmentation (this should not cause fragmentation) :::::");
         korl_heap_linear_free(heap, KORL_MEMORY_POOL_POP(allocations), __FILEW__, __LINE__, false);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
     korl_log(VERBOSE, "::::: create partial mid fragmentation :::::");
         allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, KORL_MEMORY_POOL_LAST(allocations), 32, __FILEW__, __LINE__, false);
-        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false);
+        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false, 1);
         allocations[1] = korl_heap_linear_reallocate(heap, DEBUG_HEAP_NAME, allocations[1], 16, __FILEW__, __LINE__, false);
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
     korl_log(VERBOSE, "::::: defragment :::::");
@@ -1762,7 +1782,7 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
         for(u$ i = 0; i < KORL_MEMORY_POOL_SIZE(allocations); i++)
             korl_log(INFO, "allocations[%llu]: &=0x%p", i, allocations[i]);
     korl_log(VERBOSE, "::::: create pseudo-stb_ds-array :::::");
-        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false);
+        *KORL_MEMORY_POOL_ADD(allocations) = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, 32, __FILEW__, __LINE__, false, 1);
         *allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1] = 3;// dynamic array size = 3
         allocations[KORL_MEMORY_POOL_SIZE(allocations) - 1] += 1;// header is 1 byte; advance the allocation to the array payload
         for(u8 i = 0; i < 3; i++)
@@ -1797,10 +1817,10 @@ korl_internal void korl_heap_linear_debugUnitTests(void)
             struct _LinkedList* next;
         } _LinkedList;
         _LinkedList* nodes[2];
-        nodes[0] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, false);
-        nodes[1] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, false);
+        nodes[0] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, false, 1);
+        nodes[1] = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, false, 1);
         nodes[1]->data = 0x69420;
-        nodes[1]->next = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, false);
+        nodes[1]->next = korl_heap_linear_allocate(heap, DEBUG_HEAP_NAME, sizeof(_LinkedList), __FILEW__, __LINE__, false, 1);
         nodes[1]->next->data = 0xDEADFEE7;
         korl_heap_linear_log(heap, DEBUG_HEAP_NAME);
         for(u$ i = 0; i < korl_arraySize(nodes); i++)

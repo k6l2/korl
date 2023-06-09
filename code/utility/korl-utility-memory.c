@@ -138,7 +138,7 @@ korl_internal Korl_Memory_ByteBuffer* korl_memory_byteBuffer_create(Korl_Memory_
 {
     korl_assert(capacity);
     Korl_Memory_ByteBuffer* result = fastAndDirty 
-                                     ? KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_dirtyAllocate(allocator, sizeof(*result) - sizeof(result->data) + capacity))
+                                     ? KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_allocateDirty(allocator, sizeof(*result) - sizeof(result->data) + capacity))
                                      : KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_allocate     (allocator, sizeof(*result) - sizeof(result->data) + capacity));
     *result = KORL_STRUCT_INITIALIZE(Korl_Memory_ByteBuffer){.allocator = allocator, .capacity = capacity, .fastAndDirty = fastAndDirty};
     return result;
@@ -147,7 +147,7 @@ korl_internal void korl_memory_byteBuffer_destroy(Korl_Memory_ByteBuffer** pCont
 {
     if(*pContext)// we can't obtain the ByteBuffer's allocator without a ByteBuffer lol
         if((*pContext)->fastAndDirty)
-            korl_dirtyFree((*pContext)->allocator, *pContext);
+            korl_freeDirty((*pContext)->allocator, *pContext);
         else
             korl_free((*pContext)->allocator, *pContext);
     *pContext = NULL;
@@ -158,7 +158,7 @@ korl_internal void korl_memory_byteBuffer_append(Korl_Memory_ByteBuffer** pConte
     {
         (*pContext)->capacity = KORL_MATH_MAX(2 * (*pContext)->capacity, (*pContext)->size + data.size);
         if((*pContext)->fastAndDirty)
-            *pContext = KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_dirtyReallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity));
+            *pContext = KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_reallocateDirty((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity));
         else
             *pContext = KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_reallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity));
     }
@@ -171,7 +171,7 @@ korl_internal void korl_memory_byteBuffer_trim(Korl_Memory_ByteBuffer** pContext
         return;
     (*pContext)->capacity = (*pContext)->size;
     if((*pContext)->fastAndDirty)
-        *pContext = KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_dirtyReallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity));
+        *pContext = KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_reallocateDirty((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity));
     else
         *pContext = KORL_C_CAST(Korl_Memory_ByteBuffer*, korl_reallocate((*pContext)->allocator, *pContext, sizeof(**pContext) - sizeof((*pContext)->data) + (*pContext)->capacity));
 }

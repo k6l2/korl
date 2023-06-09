@@ -697,7 +697,7 @@ korl_internal Korl_Codec_Gltf* _korl_codec_glb_decodeChunkJson(_Korl_Codec_Glb_C
         return NULL;
     }
     const u32  jsonTokensSize = korl_checkCast_i$_to_u32(resultJsmnParse);
-    jsmntok_t* jsonTokens     = korl_dirtyAllocate(resultAllocator, jsonTokensSize * sizeof(*jsonTokens));
+    jsmntok_t* jsonTokens     = korl_allocateDirty(resultAllocator, jsonTokensSize * sizeof(*jsonTokens));
     jsmn_init(&jasmine);
     resultJsmnParse = jsmn_parse(&jasmine, KORL_C_CAST(const char*, chunk->data), chunk->bytes, jsonTokens, jsonTokensSize);
     korl_assert(korl_checkCast_i$_to_u32(resultJsmnParse) == jsonTokensSize);
@@ -745,7 +745,7 @@ korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glb
     glbChunk.data  = glbDataU8;                     glbDataU8 += glbChunk.bytes;
     korl_assert(glbChunk.type == 0x004E4942/*ascii string "\0BIN"*/);
     /* realloc the result struct, and append the binary buffer after the GLTF data */
-    result = korl_dirtyReallocate(resultAllocator, result, result->bytes + glbChunk.bytes);
+    result = korl_reallocateDirty(resultAllocator, result, result->bytes + glbChunk.bytes);
     korl_memory_copy(KORL_C_CAST(u8*, result) + result->bytes, glbChunk.data, glbChunk.bytes);
     return result;
 }

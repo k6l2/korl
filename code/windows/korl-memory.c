@@ -375,17 +375,18 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_allocate(korl_memory_allocator
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_CRT:{
-        return korl_heap_crt_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty);}
+        return korl_heap_crt_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty, byteAlignment);}
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        return korl_heap_linear_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty);}
+        return korl_heap_linear_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty, byteAlignment);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
-        return korl_heap_general_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty);}
+        return korl_heap_general_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty, byteAlignment);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return NULL;
 }
 korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocator_reallocate)
 {
+    korl_shared_const u$ byteAlignment = 1;
     korl_assert(bytes > 0);// CRT realloc documentations says calling it with 0 bytes is "undefined", so let's just never let this case happen
     _Korl_Memory_Context*const context = &_korl_memory_context;
     _Korl_Memory_Allocator*const allocator = _korl_memory_allocator_matchHandle(handle);
@@ -400,15 +401,15 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_reallocate(korl_memory_allocat
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_CRT:{
         if(allocation == NULL)
-            return korl_heap_crt_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty);
+            return korl_heap_crt_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty, byteAlignment);
         return korl_heap_crt_reallocate(allocator->userData, allocator->name, allocation, bytes, persistentFileString, line, fastAndDirty);}
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
         if(allocation == NULL)
-            return korl_heap_linear_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty);
+            return korl_heap_linear_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty, byteAlignment);
         return korl_heap_linear_reallocate(allocator->userData, allocator->name, allocation, bytes, persistentFileString, line, fastAndDirty);}
     case KORL_MEMORY_ALLOCATOR_TYPE_GENERAL:{
         if(allocation == NULL)
-            return korl_heap_general_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty);
+            return korl_heap_general_allocate(allocator->userData, allocator->name, bytes, persistentFileString, line, fastAndDirty, byteAlignment);
         return korl_heap_general_reallocate(allocator->userData, allocator->name, allocation, bytes, persistentFileString, line, fastAndDirty);}
     }
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);

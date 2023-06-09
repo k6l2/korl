@@ -172,12 +172,14 @@ typedef struct acu16
 #endif
 /* convenience macros specifically for korl-memory module, which automatically 
     inject file/line information */
-#define korl_allocate(handle, bytes)               korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, false)
-#define korl_reallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__, false)
-#define korl_free(handle, allocation)              korl_memory_allocator_free      (handle, allocation,        __FILEW__, __LINE__, false)
-#define korl_dirtyAllocate(handle, bytes)               korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, true)
-#define korl_dirtyReallocate(handle, allocation, bytes) korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__, true)
-#define korl_dirtyFree(handle, allocation)              korl_memory_allocator_free      (handle, allocation,        __FILEW__, __LINE__, true)
+#define korl_allocate(handle, bytes)                            korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, false, 1)
+#define korl_allocateDirty(handle, bytes)                       korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, true , 1)
+#define korl_allocateAligned(handle, bytes, byteAlignment)      korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, false, byteAlignment)
+#define korl_allocateAlignedDirty(handle, bytes, byteAlignment) korl_memory_allocator_allocate  (handle,             bytes, __FILEW__, __LINE__, true , byteAlignment)
+#define korl_reallocate(handle, allocation, bytes)              korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__, false)
+#define korl_reallocateDirty(handle, allocation, bytes)         korl_memory_allocator_reallocate(handle, allocation, bytes, __FILEW__, __LINE__, true)
+#define korl_free(handle, allocation)                           korl_memory_allocator_free      (handle, allocation,        __FILEW__, __LINE__, false)
+#define korl_freeDirty(handle, allocation)                      korl_memory_allocator_free      (handle, allocation,        __FILEW__, __LINE__, true)
 /* macro for automatically initializing stack variables to 0 */
 #define KORL_ZERO_STACK(variableType, variableIdentifier) \
     variableType variableIdentifier;\

@@ -41,6 +41,11 @@
 #define KORL_EXIT_FAIL_ASSERT 1
 #define KORL_EXIT_FAIL_EXCEPTION 0xDEADC0DE
 /* Convenience macros for Windows API */
+#define korl_logLastError(cStringMessage, ...) \
+    _korl_log_variadic(\
+        1 + KORL_GET_ARG_COUNT(__VA_ARGS__), KORL_LOG_LEVEL_ERROR, \
+        __FILEW__, __FUNCTIONW__, __LINE__, \
+        cStringMessage L"  GetLastError=0x%x", ##__VA_ARGS__, GetLastError())
 /** \return \c true if operation \c x succeeds */
 #define KORL_WINDOWS_CHECK(x) (!(x) ? (korl_logLastError(#x" failed"), false) : true)
 #define KORL_WINDOWS_CHECK_HRESULT(x) \

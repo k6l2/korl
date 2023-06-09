@@ -47,6 +47,7 @@ typedef struct Korl_Memory_AllocationMeta
      * - any additional padding required by the allocator (likely to round 
      *   everything up to the nearest page size) */
     u$                                         bytes;
+    u32                                        byteAlignment;
     Korl_Memory_AllocationMeta_DefragmentState defragmentState;
 } Korl_Memory_AllocationMeta;
 // once memoryState_load supports restoration of allocation meta->file, we should make the `meta` parameter const again// KORL-ISSUE-000-000-136: memoryState: after loading a memory state, "serialized" allocator allocations have invalid meta->file pointers
@@ -105,7 +106,7 @@ typedef struct Korl_Heap_DefragmentPointer
  * specified address is valid (within allocator address range, not overlapping 
  * other allocations).  If this value is \c NULL , the allocator will choose the 
  * address of the allocation automatically (as you would typically expect). */
-#define KORL_FUNCTION_korl_memory_allocator_allocate(name)             void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
+#define KORL_FUNCTION_korl_memory_allocator_allocate(name)             void*                       name(Korl_Memory_AllocatorHandle handle, u$ bytes, const wchar_t* file, int line, bool fastAndDirty, u$ byteAlignment)
 #define KORL_FUNCTION_korl_memory_allocator_reallocate(name)           void*                       name(Korl_Memory_AllocatorHandle handle, void* allocation, u$ bytes, const wchar_t* file, int line, bool fastAndDirty)
 #define KORL_FUNCTION_korl_memory_allocator_free(name)                 void                        name(Korl_Memory_AllocatorHandle handle, void* allocation, const wchar_t* file, int line, bool fastAndDirty)
 #define KORL_FUNCTION_korl_memory_allocator_empty(name)                void                        name(Korl_Memory_AllocatorHandle handle)
