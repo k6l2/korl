@@ -620,6 +620,22 @@ korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation, const
     }
     return -1;
 }
+korl_internal _Korl_Heap_Linear_AllocationMeta* _korl_heap_linear_getAllocationMeta(const void*const allocation)
+{
+    /* NOTE: _very_ simple error checking; we're assuming that allocation is, 
+             in fact, a valid heap-linear allocation! */
+    const u8*const allocationLeadingByte = KORL_C_CAST(u8*, allocation) - 1;
+    if(*allocationLeadingByte == _KORL_HEAP_BYTE_PATTERN_SENTINEL)
+        return KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
+    else if(*allocationLeadingByte == 0)
+    {
+        const u32*const metaOffsetBytes = KORL_C_CAST(u32*, allocationLeadingByte) - 1;
+        return KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - *metaOffsetBytes);
+    }
+    /* the leading byte _must_ not be any other value! */
+    korl_log(ERROR, "invalid korl-heap-linear allocation leading byte: %hhu", *allocationLeadingByte);
+    return NULL;
+}
 #if _KORL_HEAP_GENERAL_USE_OLD
 korl_internal _Korl_Heap_General* korl_heap_general_create(const Korl_Heap_CreateInfo* createInfo)
 {
@@ -1307,7 +1323,7 @@ korl_internal void* korl_heap_linear_reallocate(_Korl_Heap_Linear*const allocato
             korl_log(ERROR, "allocation 0x%X not found in allocator \"%ws\"", allocation, allocatorName);
         return korl_heap_linear_reallocate(allocator->next, allocatorName, allocation, bytes, file, line, fastAndDirty);
     }
-    _Korl_Heap_Linear_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
+    _Korl_Heap_Linear_AllocationMeta*const allocationMeta = _korl_heap_linear_getAllocationMeta(allocation);
     if(/*we're in-place shrinking the allocation*/bytes <= allocationMeta->allocationMeta.bytes)
     {
         if(bytes < allocationMeta->allocationMeta.bytes)
@@ -1608,7 +1624,7 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
         korl_heap_linear_free(allocator->next, allocation, file, line, fastAndDirty);
         return;
     }
-    _Korl_Heap_Linear_AllocationMeta*const allocationMeta = KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
+    _Korl_Heap_Linear_AllocationMeta*const allocationMeta = _korl_heap_linear_getAllocationMeta(allocation);
     if(!fastAndDirty)
         korl_memory_set(allocation, _KORL_HEAP_BYTE_PATTERN_FREE, allocationMeta->allocationMeta.bytes);
     #if 0// do we actually want to know where the allocation was freed?...
