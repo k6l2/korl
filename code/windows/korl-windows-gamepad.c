@@ -72,6 +72,7 @@ typedef struct _Korl_Windows_Gamepad_Device
 typedef struct _Korl_Windows_Gamepad_Context
 {
     Korl_Memory_AllocatorHandle   allocatorHandle;
+    Korl_Memory_AllocatorHandle   allocatorHandleStack;
     Korl_StringPool               stringPool;
     _Korl_Windows_Gamepad_Device* stbDaDevices;// devices are uniquely identified by a String, and thus we will _never_ remove them from the database for the entire duration of program execution; this will allow KORL clients to easily perform logic based on which gamepad using its unique id; the device's unique id will simply be its index into this array
 } _Korl_Windows_Gamepad_Context;
@@ -158,8 +159,9 @@ korl_internal void korl_windows_gamepad_initialize(void)
     korl_memory_zero(&_korl_windows_gamepad_context, sizeof(_korl_windows_gamepad_context));
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_kilobytes(128);
-    _korl_windows_gamepad_context.allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-gamepad", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
-    _korl_windows_gamepad_context.stringPool      = korl_stringPool_create(_korl_windows_gamepad_context.allocatorHandle);
+    _korl_windows_gamepad_context.allocatorHandle      = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT   , L"korl-gamepad"      , KORL_MEMORY_ALLOCATOR_FLAGS_NONE            , &heapCreateInfo);
+    _korl_windows_gamepad_context.allocatorHandleStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-gamepad-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    _korl_windows_gamepad_context.stringPool           = korl_stringPool_create(_korl_windows_gamepad_context.allocatorHandle);
     mcarrsetcap(KORL_STB_DS_MC_CAST(_korl_windows_gamepad_context.allocatorHandle), _korl_windows_gamepad_context.stbDaDevices, 8);
 }
 korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_Memory_AllocatorHandle allocatorHandleLocal)
@@ -218,13 +220,50 @@ korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_M
         KORL_WINDOWS_CHECK(SetupDiDestroyDeviceInfoList(deviceInfos));
     }
 }
-korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LRESULT* out_result)
+korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LRESULT* out_result, fnSig_korl_game_onGamepadEvent* onGamepadEvent)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     korl_assert(out_result);
     switch(message)
     {
     case WM_INPUT:{
+        const HRAWINPUT handleRawInput = KORL_C_CAST(HRAWINPUT, lParam);
+        switch(GET_RAWINPUT_CODE_WPARAM(wParam))
+        {
+        case RIM_INPUT:{// window is in foreground; DefWindowProc _must_ be called for system clean up
+            /* obtain the HANDLE of the device generating this RawInput data */
+            UINT rawInputBytes = 0;
+            UINT resultRawInput = GetRawInputData(handleRawInput, RID_INPUT, NULL, &rawInputBytes, sizeof(RAWINPUTHEADER));
+            if(resultRawInput != 0)
+            {
+                korl_log(WARNING, "GetRawInputData (size check) failed; GetLastError=0x%x", GetLastError());
+                break;
+            }
+            RAWINPUT* rawInput = korl_allocateAlignedDirty(context->allocatorHandleStack, rawInputBytes, 8/* I can't find this on MSDN, but apparently this _must_ be aligned to 8 bytes on x64 builds!  See: https://stackoverflow.com/a/24499844/4526664 */);
+            resultRawInput = GetRawInputData(handleRawInput, RID_INPUT, rawInput, &rawInputBytes, sizeof(RAWINPUTHEADER));
+            if(resultRawInput == KORL_C_CAST(UINT, -1))
+            {
+                korl_log(WARNING, "GetRawInputData failed; GetLastError=0x%x", GetLastError());
+                break;
+            }
+            /* find the device with a matching RawInput handle in our database (if it exists) */
+            _Korl_Windows_Gamepad_Device* device = NULL;
+            const _Korl_Windows_Gamepad_Device*const gamepadDevicesEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
+            for(_Korl_Windows_Gamepad_Device* currentDevice = context->stbDaDevices
+               ;currentDevice < gamepadDevicesEnd && !device
+               ;currentDevice++)
+                if(currentDevice->handleRawInputDevice == rawInput->header.hDevice)
+                    device = currentDevice;
+            if(!device)
+                break;
+            /* get RawInput input reports from the device */
+            korl_log(VERBOSE, "RawInput report: rawInput=0x%p bytes=%u", rawInput, rawInputBytes);
+            /* process the input reports based on the device type */
+            /* currently, we are assuming that DefWindowProc will be called for this message by our caller (korl-windows-window) */
+            break;}
+        case RIM_INPUTSINK:{// window is _not_ in foreground
+            break;}
+        }
         break;}
     case WM_INPUT_DEVICE_CHANGE:{
         const HANDLE handleDevice = KORL_C_CAST(HANDLE, lParam);
@@ -294,10 +333,11 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                 {
                     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaDevices, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Gamepad_Device));
                     device = &arrlast(context->stbDaDevices);
+                    device->path = stringDeviceName;
+                    // take ownership of the path String so it doesn't get cleaned up at the end
+                    korl_memory_zero(&stringDeviceName, sizeof(stringDeviceName));
                 }
-                korl_assert(!device->path.handle);
                 device->type                 = deviceType;
-                device->path                 = stringDeviceName; korl_memory_zero(&stringDeviceName, sizeof(stringDeviceName));// take ownership of the String so it doesn't get cleaned up at the end
                 device->handleRawInputDevice = handleDevice;
                 device->handleFileIo         = CreateFileW(string_getRawUtf16(&device->path), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
                 if(device->handleFileIo == INVALID_HANDLE_VALUE)
