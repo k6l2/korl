@@ -99,7 +99,15 @@ korl_internal void _korl_audio_output_open(IMMDevice* mmDevice)
         goto cleanUp;
     korl_log(INFO, "AudioClient wave format: channels=%hu hz=%u bitsPerSample=%hu", context->output.waveFormat->nChannels, context->output.waveFormat->nSamplesPerSec, context->output.waveFormat->wBitsPerSample);
     context->output.sampleFormat = KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN;
-    if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
+    if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_PCM)
+    {
+        korl_assert(   context->output.waveFormat->nChannels == 1
+                    || context->output.waveFormat->nChannels == 2);// MSDN: if WAVE_FORMAT_PCM, this _must_ be 1 or 2 channels; https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/ns-mmeapi-waveformatex
+        context->output.sampleFormat = KORL_AUDIO_SAMPLE_FORMAT_PCM_SIGNED;
+    }
+    else if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT)
+        context->output.sampleFormat = KORL_AUDIO_SAMPLE_FORMAT_FLOAT;
+    else if(context->output.waveFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
     {
         const WAVEFORMATEXTENSIBLE*const waveFormatExtensible = KORL_C_CAST(WAVEFORMATEXTENSIBLE*, context->output.waveFormat);
         if     (IsEqualGUID(&waveFormatExtensible->SubFormat, &KSDATAFORMAT_SUBTYPE_PCM))
@@ -115,6 +123,7 @@ korl_internal void _korl_audio_output_open(IMMDevice* mmDevice)
         }
         korl_log(INFO, "\textensible wave format: subFormat=%hs validBits/sample=%hu channelMask=0x%X", sampleFormatCString, waveFormatExtensible->Samples.wValidBitsPerSample, waveFormatExtensible->dwChannelMask);
     }
+    //@TODO: we should hanle the case where our sampleFormat == KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN at this point, since it's entirely possible we might encounter this in the wild; test this later
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, Initialize, AUDCLNT_SHAREMODE_SHARED, 0/*streamFlags*/, _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS, 0/*devicePeriod; _must_ == 0 in SHARED mode*/, context->output.waveFormat, NULL/*AudioSessionGuid; NULL=>create new session*/))
         goto cleanUp;
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetBufferSize, &context->output.bufferFramesSize))

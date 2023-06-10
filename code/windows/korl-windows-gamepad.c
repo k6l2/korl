@@ -31,15 +31,35 @@ DEFINE_GUID(_KORL_WINDOWS_GAMEPAD_XBOX_GUID, 0xEC87F1E3, 0xC13B, 0x4100, 0xB5, 0
 #define IOCTL_XUSB_GET_INFORMATION_EX           /*0x8000E3FC*/ CTL_CODE(FILE_DEVICE_XUSB, IOCTL_INDEX_XUSB + 255, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 typedef enum _Korl_Windows_Gamepad_DeviceType
     { _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID
-    , _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
-    , _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DS4
+    , _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XINPUT
+    , _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DUALSHOCK4
 } _Korl_Windows_Gamepad_DeviceType;
+typedef enum _Korl_Windows_Gamepad_ConnectionType
+    { _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_UNKNOWN// for some devices, such as DS4, we cannot determine what type of connection the device has from RawInput/HID data alone; for example, we cannot determine the connection type of DS4 until we see the byte size of the first input report
+    , _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_USB
+    , _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_BLUETOOTH// bluetooth devices on Windows, once paired, appear to _always_ be "connected", at least if we're only looking at RawInput's WM_INPUT_DEVICE_CHANGE events; in this case, we will need to use some other approach to determine whether or not a device is connected, such as the duration since the last RawInput report for example
+} _Korl_Windows_Gamepad_ConnectionType;
+/**
+ * \note: when I mention "(dis)connection" for Gamepad_Device here, that does 
+ *     _not_ necessarily mean physical device connection to the machine
+ * @TODO: maybe I should just refactor all the mentions of "(dis)connection" in 
+ *     this module with a more fitting term, such as "(un)registration"; actual 
+ *     device connection technique will likely vary depending on the device; for 
+ *     example, XINPUT devices will need to be polled to determine what 
+ *     controllers are connected to it, and BLUETOOTH devices such as DS4 will 
+ *     likely need some kind of metric to determine if the device is still 
+ *     connected: for example, we could periodically attempt communication with 
+ *     the device by sending an output report and base the connection off the 
+ *     result of that command; TLDR: connection & registration seem to be two 
+ *     distinct states that need to be tracked _seperately_!
+ */
 typedef struct _Korl_Windows_Gamepad_Device
 {
-    _Korl_Windows_Gamepad_DeviceType type;// should _never_ == _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID
-    Korl_StringPool_String           path;// used to create handleFileIo, & uniquely identify the local device
-    HANDLE                           handleRawInputDevice;// managed by Windows; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
-    HANDLE                           handleFileIo;// managed by korl-windows-gamepad; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
+    _Korl_Windows_Gamepad_DeviceType     type;// should _never_ == _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID
+    _Korl_Windows_Gamepad_ConnectionType connectionType;
+    Korl_StringPool_String               path;// used to create handleFileIo, & uniquely identify the local device
+    HANDLE                               handleRawInputDevice;// managed by Windows; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
+    HANDLE                               handleFileIo;// managed by korl-windows-gamepad; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
     union
     {
         struct
@@ -67,6 +87,9 @@ typedef struct _Korl_Windows_Gamepad_Device
                 BYTE array[2];
             } triggers;
         } xbox;
+        // struct
+        // {
+        // } ds4;
     } lastState;
 } _Korl_Windows_Gamepad_Device;
 typedef struct _Korl_Windows_Gamepad_Context
@@ -98,7 +121,7 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
     for(_Korl_Windows_Gamepad_Device* device = context->stbDaDevices
        ;device < devicesEnd && !newDevice
        ;device++)
-        if(   device->type == _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX
+        if(   device->type == _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XINPUT
            && string_equals(&stringDevicePath, &device->path))
         {
             newDevice = device;
@@ -109,7 +132,7 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
     {
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaDevices, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Windows_Gamepad_Device));
         newDevice = &arrlast(context->stbDaDevices);
-        newDevice->type                 = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX;
+        newDevice->type                 = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XINPUT;
         newDevice->path                 = stringDevicePath;
         newDevice->handleRawInputDevice = INVALID_HANDLE_VALUE;
         newDevice->handleFileIo         = INVALID_HANDLE_VALUE;
@@ -222,6 +245,7 @@ korl_internal void korl_windows_gamepad_registerWindow(HWND windowHandle, Korl_M
 }
 korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LRESULT* out_result, fnSig_korl_game_onGamepadEvent* onGamepadEvent)
 {
+    korl_shared_const u32 RAW_INPUT_BUFFER_BYTE_ALIGNMENT = 8;// I can't find this on MSDN, but empirically (from what I can tell so far) _all_ data buffers RawInput writes to _must_ be aligned to 8 bytes on x64 builds!  Failing to allocate write buffers using proper alignment will cause RawInput calls to fail & set GetLastError() to ERROR_NOACCESS(0x000003E6); See: https://stackoverflow.com/a/24499844/4526664
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
     korl_assert(out_result);
     switch(message)
@@ -239,7 +263,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                 korl_log(WARNING, "GetRawInputData (size check) failed; GetLastError=0x%x", GetLastError());
                 break;
             }
-            RAWINPUT* rawInput = korl_allocateAlignedDirty(context->allocatorHandleStack, rawInputBytes, 8/* I can't find this on MSDN, but apparently this _must_ be aligned to 8 bytes on x64 builds!  See: https://stackoverflow.com/a/24499844/4526664 */);
+            RAWINPUT* rawInput = korl_allocateAlignedDirty(context->allocatorHandleStack, rawInputBytes, RAW_INPUT_BUFFER_BYTE_ALIGNMENT);
             resultRawInput = GetRawInputData(handleRawInput, RID_INPUT, rawInput, &rawInputBytes, sizeof(RAWINPUTHEADER));
             if(resultRawInput == KORL_C_CAST(UINT, -1))
             {
@@ -257,7 +281,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
             if(!device)
                 break;
             /* get RawInput input reports from the device */
-            korl_log(VERBOSE, "RawInput report: rawInput=0x%p bytes=%u", rawInput, rawInputBytes);
+            // korl_log(VERBOSE, "RawInput report: rawInput=0x%p bytes=%u", rawInput, rawInputBytes);
             /* process the input reports based on the device type */
             /* currently, we are assuming that DefWindowProc will be called for this message by our caller (korl-windows-window) */
             break;}
@@ -270,25 +294,27 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
         switch(wParam)
         {
         case GIDC_ARRIVAL:{
-            _Korl_Windows_Gamepad_Device* device = NULL;
-            Korl_StringPool_String stringDeviceName = KORL_STRUCT_INITIALIZE_ZERO(Korl_StringPool_String);
+            _Korl_Windows_Gamepad_Device* device                  = NULL;
+            WCHAR*                        deviceNameAlignedBuffer = NULL;// allocated from temporary stack storage
+            Korl_StringPool_String        stringDeviceName        = KORL_STRINGPOOL_STRING_NULL;// persistent; need to clean this up after allocation!
             /* determine how many characters the DEVICENAME contains */
             UINT deviceInfoSize = 0;
             UINT resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICENAME, NULL, &deviceInfoSize);
             if(resultRawInput != 0)// calls to RawInput can fail at any time, as the device can suddenly become disconnected
             {
-                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: invalid handle");
+                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: get DEVICENAME size: GetRawInputDeviceInfo failed; GetLastError=0x%x", GetLastError());
                 goto inputDeviceChange_arrival_cleanUp;
             }
             const u32 deviceNameSize = deviceInfoSize;// _including_ NULL-terminator
             /* obtain the DEVICENAME */
-            stringDeviceName = string_newEmptyUtf16(deviceNameSize - 1);
-            resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICENAME, string_getRawWriteableUtf16(&stringDeviceName), &deviceInfoSize);
+            deviceNameAlignedBuffer = korl_allocateAlignedDirty(context->allocatorHandleStack, deviceNameSize * sizeof(*deviceNameAlignedBuffer), RAW_INPUT_BUFFER_BYTE_ALIGNMENT);
+            resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICENAME, deviceNameAlignedBuffer, &deviceInfoSize);
             if(resultRawInput != deviceNameSize)// calls to RawInput can fail at any time, as the device can suddenly become disconnected
             {
-                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: invalid handle");
+                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: get DEVICENAME: GetRawInputDeviceInfo failed; GetLastError=0x%x", GetLastError());
                 goto inputDeviceChange_arrival_cleanUp;
             }
+            stringDeviceName = string_newUtf16(deviceNameAlignedBuffer);
             /* ensure that the DEVICENAME does not exist in our device database */
             {
                 const _Korl_Windows_Gamepad_Device*const gamepadDeviceEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
@@ -305,7 +331,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
             resultRawInput = GetRawInputDeviceInfo(handleDevice, RIDI_DEVICEINFO, &deviceInfo, &deviceInfoSize);
             if(resultRawInput <= 0)
             {
-                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: invalid handle");
+                korl_log(WARNING, "WM_INPUT_DEVICE_CHANGE: GIDC_ARRIVAL: get DEVICEINFO: GetRawInputDeviceInfo failed; GetLastError=0x%x", GetLastError());
                 goto inputDeviceChange_arrival_cleanUp;
             }
             /* determine what kind of device it is */
@@ -323,7 +349,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                 else if(deviceInfo.hid.dwVendorId == ID_VENDOR_SONY
                         && (   deviceInfo.hid.dwProductId == ID_PRODUCT_DS4_GEN1
                             || deviceInfo.hid.dwProductId == ID_PRODUCT_DS4_GEN2))
-                    deviceType = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DS4;
+                    deviceType = _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DUALSHOCK4;
             }
             if(deviceType != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_INVALID)
             {
@@ -350,6 +376,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                 string_free(&stringDeviceName);
             break;}
         case GIDC_REMOVAL:{
+            //@TODO: we seem to get into a crash scenario in the korl-sfx code when unplugging a DS4 which is still configured as default audio output device in Windows when pausing here in the debugger for a bit, then continuing... need to test this scenario!
             /* for the REMOVAL event, handleDevice has already been invalidated, so we can't call RawInput APIs on it; 
                 we can only check to see if it matches any previously registered device handles & act appropriately */
             _Korl_Windows_Gamepad_Device* device = NULL;
@@ -460,7 +487,7 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
        ;device < gamepadDeviceEnd
        ;device++)
     {
-        if(device->type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XBOX)
+        if(device->type != _KORL_WINDOWS_GAMEPAD_DEVICETYPE_XINPUT)
             continue;// only support XBOX gamepads (for now)
         if(device->handleFileIo == INVALID_HANDLE_VALUE)
             continue;// the device is disconnected
