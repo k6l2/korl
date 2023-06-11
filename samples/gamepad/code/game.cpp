@@ -30,7 +30,6 @@ KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
     memory->continueRunning = true;
     memory->stringPool      = korl_stringPool_create(allocatorHeap);
     memory->logConsole      = korl_logConsole_create(&memory->stringPool);
-    memory->logConsole.enable = true;
     korl_gui_setFontAsset(L"data/source-sans/SourceSans3-Semibold.otf");// KORL-ISSUE-000-000-086: gfx: default font path doesn't work, since this subdirectly is unlikely in the game project
     return memory;
 }
