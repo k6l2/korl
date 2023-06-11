@@ -13,34 +13,9 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-memory.h"
+/** \note: as the API currently stands, this data type should _not_ be used directly; use \c Korl_StringPool_String instead */
 typedef u32 Korl_StringPool_StringHandle;// NULL => invalid handle, as usual
-/** The user of this module probably shouldn't be touching any of this data 
- * directly; use the provided stringPool API instead. */
-typedef struct Korl_StringPool
-{
-    Korl_Memory_AllocatorHandle allocatorHandle;
-    Korl_StringPool_StringHandle nextStringHandle;
-    /* String entries are an opaque type because the user should really be using 
-        the provided API to operate on strings. */
-    struct _Korl_StringPool_String* stbDaStrings;
-    /** Having allocation meta data separate from `strings` necessarily means 
-     * that we will have data duplication (specifically of the byte offsets of 
-     * the actual string data within the pool), but I feel like it's probably a 
-     * good idea to have this overhead for the sake of safety, in case raw 
-     * string data gets overwritten out of bounds or something crazy like that.  
-     * Also, allocation data should obviously be opaque since this will be 
-     * internally managed.  */
-    struct _Korl_StringPool_Allocation* stbDaAllocations;
-    u$ characterPoolBytes;
-    /** Internally we can just treat the character pool as a linked list of 
-     * allocations.  This is similar to a general purpose allocator. */
-    u8* characterPool;
-} Korl_StringPool;
-typedef enum Korl_StringPool_CompareResult
-    { KORL_STRINGPOOL_COMPARE_RESULT_EQUAL   =  0
-    , KORL_STRINGPOOL_COMPARE_RESULT_LESS    = -1// lexicographically if string length equal, otherwise by string length
-    , KORL_STRINGPOOL_COMPARE_RESULT_GREATER =  1// lexicographically if string length equal, otherwise by string length
-} Korl_StringPool_CompareResult;
+/** \note: do _not_ read/write to any of the members of this struct; instead, operate on \c Korl_StringPool_String via the macro/function APIs defined below */
 typedef struct Korl_StringPool_String
 {
     /** FOR DEBUGGING ONLY!; please for the love of jebus don't actually write 
@@ -51,9 +26,9 @@ typedef struct Korl_StringPool_String
         const char*    lastRawUtf8;
         const wchar_t* lastRawUtf16;
     } _DEBUGGER_ONLY_DO_NOT_USE;
-    Korl_StringPool*             pool;
+    struct Korl_StringPool*      pool;
     Korl_StringPool_StringHandle handle;
-#if defined(__cplusplus)
+    #if defined(__cplusplus)
     bool operator==(const Korl_StringPool_String& other) const
     {
         return (handle == other.handle) && (pool == other.pool);
@@ -62,22 +37,50 @@ typedef struct Korl_StringPool_String
     {
         return (handle != 0);
     }
-#endif
+    #endif
 } Korl_StringPool_String;
-const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
-#if defined(__cplusplus)
-/* if we're using C++, we can have convenience macros for function overloads, 
-    which are defined later in this header file */
-#define string_new(...)                                korl_stringPool_new(_LOCAL_STRING_POOL_POINTER, ##__VA_ARGS__, __FILEW__, __LINE__)
-#define korl_string_new(stringPoolPointer, ...)        korl_stringPool_new(stringPoolPointer, ##__VA_ARGS__, __FILEW__, __LINE__)
-//      string_append(stringHandle, ...)               Should already work with `const char*`, `const wchar_t*`, and StringHandle as second parameter!
-#define string_appendFormat(stringHandle, format, ...) korl_stringPool_appendFormat(stringHandle, __FILEW__, __LINE__, format, ##__VA_ARGS__)
-#endif// defined(__cplusplus)
+korl_global_const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
+/** The user of this module probably shouldn't be touching any of this data 
+ * directly; use the provided stringPool API instead. */
+typedef struct Korl_StringPool
+{
+    Korl_Memory_AllocatorHandle         allocatorHandle;
+    Korl_StringPool_StringHandle        nextStringHandle;
+    /* String entries are an opaque type because the user should really be using 
+        the provided API to operate on strings. */
+    struct _Korl_StringPool_String*     stbDaStrings;
+    /** Having allocation meta data separate from `strings` necessarily means 
+     * that we will have data duplication (specifically of the byte offsets of 
+     * the actual string data within the pool), but I feel like it's probably a 
+     * good idea to have this overhead for the sake of safety, in case raw 
+     * string data gets overwritten out of bounds or something crazy like that.  
+     * Also, allocation data should obviously be opaque since this will be 
+     * internally managed.  */
+    struct _Korl_StringPool_Allocation* stbDaAllocations;
+    u$                                  characterPoolBytes;
+    /** Internally we can just treat the character pool as a linked list of 
+     * allocations.  This is similar to a general purpose allocator. */
+    u8*                                 characterPool;
+} Korl_StringPool;
+typedef enum Korl_StringPool_CompareResult
+    { KORL_STRINGPOOL_COMPARE_RESULT_EQUAL   =  0
+    , KORL_STRINGPOOL_COMPARE_RESULT_LESS    = -1// lexicographically if string length equal, otherwise by string length
+    , KORL_STRINGPOOL_COMPARE_RESULT_GREATER =  1// lexicographically if string length equal, otherwise by string length
+} Korl_StringPool_CompareResult;
 /* Convenience macros specifically designed for minimum typing.  The idea here 
     is that for any given source file, we're almost always going to be using a 
     single string pool context.  So for each source file that the user wants to 
     use these macros in, they would simply redefine _LOCAL_STRING_POOL_POINTER 
     to be whatever string pool context they want. */
+// @TODO: API rectification: we should provide a macro mechanism to allow the user to define their own "namespace" to these APIs; if none is provided, the default should just be `korl_string_*`
+#if defined(__cplusplus)
+    /* if we're using C++, we can have convenience macros for function overloads, 
+        which are defined later in this header file */
+    #define string_new(...)                                korl_stringPool_new(_LOCAL_STRING_POOL_POINTER, ##__VA_ARGS__, __FILEW__, __LINE__)
+    #define korl_string_new(stringPoolPointer, ...)        korl_stringPool_new(stringPoolPointer, ##__VA_ARGS__, __FILEW__, __LINE__)
+    //      string_append(stringHandle, ...)               Should already work with `const char*`, `const wchar_t*`, and StringHandle as second parameter!
+    #define string_appendFormat(stringHandle, format, ...) korl_stringPool_appendFormat(stringHandle, __FILEW__, __LINE__, format, ##__VA_ARGS__)
+#endif// defined(__cplusplus)
 #define string_newUtf8(cStringUtf8)                                            korl_stringPool_newFromUtf8(_LOCAL_STRING_POOL_POINTER, cStringUtf8, __FILEW__, __LINE__)
 #define string_newUtf16(cStringUtf16)                                          korl_stringPool_newFromUtf16(_LOCAL_STRING_POOL_POINTER, cStringUtf16, __FILEW__, __LINE__)
 #define string_newAci8(arrayConsti8)                                           korl_stringPool_newFromAci8(_LOCAL_STRING_POOL_POINTER, arrayConsti8, __FILEW__, __LINE__)
@@ -124,6 +127,7 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
 #endif
 /* convenience macros specifically for korl-stringPool module, which 
     automatically inject file/line information */
+//@TODO: API rectification; just make these macros `korl_stringPool_*` as with the normal APIs below; they will just call their `_full` API counterparts
 #define korl_stringNewUtf8(stringPoolPointer, cString)                                                korl_stringPool_newFromUtf8(stringPoolPointer, cString, __FILEW__, __LINE__)
 #define korl_stringNewUtf16(stringPoolPointer, cString)                                               korl_stringPool_newFromUtf16(stringPoolPointer, cString, __FILEW__, __LINE__)
 #define korl_stringNewAci8(stringPoolPointer, constArrayCi8)                                          korl_stringPool_newFromAci8(stringPoolPointer, constArrayCi8, __FILEW__, __LINE__)
@@ -158,6 +162,7 @@ const Korl_StringPool_String KORL_STRINGPOOL_STRING_NULL = {{0}};
  * The user of this code module is advised to be careful about how they manage 
  * the Korl_StringPool returned by this function given the behavior described 
  * above! @korl-string-pool-no-data-segment-storage */
+//@TODO: API rectification; the APIs that require file/line information are full-form APIs that probably shouldn't be getting called in the first place, so we should just make them longer by adding `_full` to their identifiers or something
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
 korl_internal void                          korl_stringPool_empty(Korl_StringPool* context);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
@@ -256,7 +261,6 @@ typedef struct Korl_StringPool_String
     Korl_StringPool_String& operator+=(const wchar_t* cStringUtf16);
 } Korl_StringPool_String;
 #endif
-
 /// operator+(string, string)         => append(string, string)
 /// operator+(string, const char*)    => appendUtf8
 /// operator+(string, const wchar_t*) => appendUtf16
