@@ -281,6 +281,37 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
             if(!device)
                 break;
             /* get RawInput input reports from the device */
+            switch(device->type)
+            {
+            case _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DUALSHOCK4:{
+                const _Korl_Windows_Gamepad_ConnectionType connectionTypePrevious = device->connectionType;
+                if(rawInput->data.hid.dwSizeHid == 547)
+                    device->connectionType = _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_BLUETOOTH;
+                else if(rawInput->data.hid.dwSizeHid == 64)
+                    device->connectionType = _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_USB;
+                else
+                {
+                    device->connectionType = _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_UNKNOWN;
+                    korl_log(ERROR, "invalid DS4 input report size: %u", rawInput->data.hid.dwSizeHid);
+                    break;
+                }
+                korl_log(VERBOSE, "DS4 input reports: %u", rawInput->data.hid.dwCount);
+                switch (device->connectionType)
+                {
+                case _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_BLUETOOTH:{
+                    if(connectionTypePrevious == _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_UNKNOWN)
+                        korl_log(INFO, "DS4 is now BLUETOOTH");
+                    break;}
+                case _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_USB:{
+                    if(connectionTypePrevious == _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_UNKNOWN)
+                        korl_log(INFO, "DS4 is now USB");
+                    break;}
+                default: break;
+                }
+                break;}
+            default:
+                korl_log(ERROR, "unsupported RawInput device type: %u", device->type);
+            }
             // korl_log(VERBOSE, "RawInput report: rawInput=0x%p bytes=%u", rawInput, rawInputBytes);
             /* process the input reports based on the device type */
             /* currently, we are assuming that DefWindowProc will be called for this message by our caller (korl-windows-window) */
@@ -376,7 +407,6 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                 string_free(&stringDeviceName);
             break;}
         case GIDC_REMOVAL:{
-            //@TODO: we seem to get into a crash scenario in the korl-sfx code when unplugging a DS4 which is still configured as default audio output device in Windows when pausing here in the debugger for a bit, then continuing... need to test this scenario!
             /* for the REMOVAL event, handleDevice has already been invalidated, so we can't call RawInput APIs on it; 
                 we can only check to see if it matches any previously registered device handles & act appropriately */
             _Korl_Windows_Gamepad_Device* device = NULL;
