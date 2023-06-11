@@ -3,13 +3,19 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-stringPool.h"
 #include "utility/korl-logConsole.h"
+#include "utility/korl-utility-gfx.h"
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
     Korl_Memory_AllocatorHandle allocatorStack;
-    bool continueRunning;
-    Korl_StringPool stringPool;
-    Korl_LogConsole logConsole;
+    bool                        continueRunning;
+    Korl_StringPool             stringPool;
+    Korl_LogConsole             logConsole;
+    struct
+    {
+        bool buttons[KORL_GAMEPAD_BUTTON_ENUM_COUNT];
+        f32  axes[KORL_GAMEPAD_AXIS_ENUM_COUNT];
+    } gamepadState;
 } Memory;
 korl_global_variable Memory* memory;
 KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
@@ -43,9 +49,92 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
         default: break;
         }
 }
+KORL_EXPORT KORL_GAME_ON_GAMEPAD_EVENT(korl_game_onGamepadEvent)
+{
+    switch(gamepadEvent.type)
+    {
+    case KORL_GAMEPAD_EVENT_TYPE_BUTTON:{
+        memory->gamepadState.buttons[gamepadEvent.subType.button.index] = gamepadEvent.subType.button.pressed;
+        break;}
+    case KORL_GAMEPAD_EVENT_TYPE_AXIS:{
+        memory->gamepadState.axes[gamepadEvent.subType.axis.index] = gamepadEvent.subType.axis.value;
+        break;}
+    }
+}
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
+    /* draw the gamepad state */
+    korl_gfx_useCamera(korl_gfx_camera_createOrthoFixedHeight(600, 1));
+    korl_shared_const f32 CIRCLE_RADIUS = 32;
+    Korl_Gfx_Batch*const circle = korl_gfx_createBatchCircle(memory->allocatorStack, CIRCLE_RADIUS, 32, KORL_COLOR4U8_BLACK);
+    korl_shared_const Korl_Math_V2f32 POSITION_BUTTON_CLUSTER_LEFT    = {-200,  25};
+    korl_shared_const Korl_Math_V2f32 POSITION_BUTTON_CLUSTER_RIGHT   = { 200,  25};
+    korl_shared_const Korl_Math_V2f32 POSITION_BUTTON_CLUSTER_TOP     = {   0, 125};
+    korl_shared_const Korl_Math_V2f32 POSITION_BUTTON_CLUSTER_CENTER  = {   0,   0};
+    korl_shared_const Korl_Math_V2f32 POSITION_STICK_LEFT             = {-100,-100};
+    korl_shared_const Korl_Math_V2f32 POSITION_STICK_RIGHT            = { 100,-100};
+    korl_shared_const Korl_Math_V2f32 BUTTON_CLUSTER_OFFSET_TOP       = {100, 50};
+    korl_shared_const f32             BUTTON_CLUSTER_RADIUS           = 50;
+    korl_shared_const f32             RADIANS_BUTTON_CLUSTER_LEFT[]   = {KORL_PI32/2, -KORL_PI32/2, KORL_PI32, 0};
+    korl_shared_const f32             RADIANS_BUTTON_CLUSTER_RIGHT[]  = {-KORL_PI32/2, 0, KORL_PI32, KORL_PI32/2};
+    korl_shared_const f32             RADIANS_BUTTON_CLUSTER_CENTER[] = {0, KORL_PI32};
+    korl_shared_const Korl_Math_V2f32 OFFSETS_BUTTON_CLUSTER_TOP[]    = {{-BUTTON_CLUSTER_OFFSET_TOP.x, 0}, {BUTTON_CLUSTER_OFFSET_TOP.x, 0}
+                                                                        ,{-BUTTON_CLUSTER_OFFSET_TOP.x, BUTTON_CLUSTER_OFFSET_TOP.y}, {BUTTON_CLUSTER_OFFSET_TOP.x, BUTTON_CLUSTER_OFFSET_TOP.y}};
+    for(u32 i = 0; i < 4; i++)
+    {
+        korl_gfx_batchSetPosition2dV2f32(circle, POSITION_BUTTON_CLUSTER_LEFT + korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, RADIANS_BUTTON_CLUSTER_LEFT[i], true) * Korl_Math_V2f32{BUTTON_CLUSTER_RADIUS, 0});
+        korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_UP + i] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+        korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    }
+    for(u32 i = 0; i < 4; i++)
+    {
+        korl_gfx_batchSetPosition2dV2f32(circle, POSITION_BUTTON_CLUSTER_RIGHT + korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, RADIANS_BUTTON_CLUSTER_RIGHT[i], true) * Korl_Math_V2f32{BUTTON_CLUSTER_RADIUS, 0});
+        korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_DOWN + i] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+        korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    }
+    for(u32 i = 0; i < 2; i++)
+    {
+        korl_gfx_batchSetPosition2dV2f32(circle, POSITION_BUTTON_CLUSTER_TOP + OFFSETS_BUTTON_CLUSTER_TOP[i]);
+        korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_TOP_LEFT + i] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+        korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    }
+    korl_gfx_batchSetPosition2dV2f32(circle, POSITION_BUTTON_CLUSTER_CENTER);
+    korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_MIDDLE] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+    korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    for(u32 i = 0; i < 2; i++)
+    {
+        korl_gfx_batchSetPosition2dV2f32(circle, POSITION_BUTTON_CLUSTER_CENTER + korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, RADIANS_BUTTON_CLUSTER_CENTER[i], true) * Korl_Math_V2f32{BUTTON_CLUSTER_RADIUS, 0});
+        korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_RIGHT + i] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+        korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    }
+    {/* draw stick range backgrounds */
+        korl_gfx_batchSetScale(circle, KORL_MATH_V3F32_ONE * 2);
+        korl_gfx_batchCircleSetColor(circle, {10,10,10,255});
+        korl_gfx_batchSetPosition2dV2f32(circle, POSITION_STICK_LEFT);
+        korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        korl_gfx_batchSetPosition2dV2f32(circle, POSITION_STICK_RIGHT);
+        korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        korl_gfx_batchSetScale(circle, KORL_MATH_V3F32_ONE);
+    }
+    korl_gfx_batchSetPosition2dV2f32(circle, POSITION_STICK_LEFT + Korl_Math_V2f32{memory->gamepadState.axes[KORL_GAMEPAD_AXIS_STICK_LEFT_X], memory->gamepadState.axes[KORL_GAMEPAD_AXIS_STICK_LEFT_Y]} * CIRCLE_RADIUS);
+    korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_STICK_LEFT] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+    korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    korl_gfx_batchSetPosition2dV2f32(circle, POSITION_STICK_RIGHT + Korl_Math_V2f32{memory->gamepadState.axes[KORL_GAMEPAD_AXIS_STICK_RIGHT_X], memory->gamepadState.axes[KORL_GAMEPAD_AXIS_STICK_RIGHT_Y]} * CIRCLE_RADIUS);
+    korl_gfx_batchCircleSetColor(circle, memory->gamepadState.buttons[KORL_GAMEPAD_BUTTON_STICK_RIGHT] ? KORL_COLOR4U8_WHITE : KORL_COLOR4U8_BLACK);
+    korl_gfx_batch(circle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    Korl_Gfx_Batch*const rectangle = korl_gfx_createBatchRectangleColored(memory->allocatorStack, 2*CIRCLE_RADIUS*KORL_MATH_V2F32_ONE, {0.5f, 0}, KORL_COLOR4U8_WHITE);
+    for(u32 i = 0; i < 2; i++)
+    {
+        korl_gfx_batchSetPosition2dV2f32(rectangle, POSITION_BUTTON_CLUSTER_TOP + OFFSETS_BUTTON_CLUSTER_TOP[2 + i]);
+        korl_gfx_batchRectangleSetColor(rectangle, KORL_COLOR4U8_BLACK);
+        korl_gfx_batchSetScale(rectangle, KORL_MATH_V3F32_ONE);
+        korl_gfx_batch(rectangle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        korl_gfx_batchRectangleSetColor(rectangle, KORL_COLOR4U8_WHITE);
+        korl_gfx_batchSetScale(rectangle, {1, memory->gamepadState.axes[KORL_GAMEPAD_AXIS_TRIGGER_LEFT + i], 1});
+        korl_gfx_batch(rectangle, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+    }
+    /**/
     return memory->continueRunning;
 }
 #include "utility/korl-utility-stb-ds.c"
@@ -55,3 +144,4 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 #include "utility/korl-utility-math.c"
 #include "utility/korl-utility-string.c"
 #include "utility/korl-utility-memory.c"
+#include "utility/korl-utility-gfx.c"

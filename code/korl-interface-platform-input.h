@@ -146,6 +146,7 @@ typedef enum Korl_GamepadButton
     , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_RIGHT
     , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_LEFT
     , KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_UP
+    , KORL_GAMEPAD_BUTTON_ENUM_COUNT// NOTE: keep last!
     /// NOTE: the order of this enumeration _does_ matter for some logic
 } Korl_GamepadButton;
 typedef enum Korl_GamepadAxis
@@ -155,6 +156,7 @@ typedef enum Korl_GamepadAxis
     , KORL_GAMEPAD_AXIS_STICK_RIGHT_Y
     , KORL_GAMEPAD_AXIS_TRIGGER_LEFT
     , KORL_GAMEPAD_AXIS_TRIGGER_RIGHT
+    , KORL_GAMEPAD_AXIS_ENUM_COUNT// NOTE: keep last!
 } Korl_GamepadAxis;
 typedef struct Korl_GamepadEvent
 {
@@ -163,13 +165,13 @@ typedef struct Korl_GamepadEvent
     {
         struct
         {
-            Korl_GamepadButton button;
-            bool pressed;
+            Korl_GamepadButton index;
+            bool               pressed;
         } button;
         struct
         {
-            Korl_GamepadAxis axis;
-            f32 value;
+            Korl_GamepadAxis index;
+            f32              value;
         } axis;
     } subType;
 } Korl_GamepadEvent;

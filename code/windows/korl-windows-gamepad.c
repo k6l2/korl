@@ -87,10 +87,8 @@ typedef struct _Korl_Windows_Gamepad_Device
                 BYTE array[2];
             } triggers;
         } xbox;
-        // struct
-        // {
-        // } ds4;
     } lastState;
+    //@TODO: unify "lastState" struct to just store an array of KORL_BUTTON & KORL_AXIS value, defined in `korl-interface-platform-input.h`
 } _Korl_Windows_Gamepad_Device;
 typedef struct _Korl_Windows_Gamepad_Context
 {
@@ -586,7 +584,7 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
             if(!onGamepadEvent)
                 continue;
             onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_BUTTON
-                                              ,.subType = {.button = {.button  = KORL_C_CAST(Korl_GamepadButton, b)
+                                              ,.subType = {.button = {.index   = KORL_C_CAST(Korl_GamepadButton, b)
                                                                      ,.pressed = device->lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]}}});
         }
         for(u$ a = 0; a < korl_arraySize(deviceStatePrevious.lastState.xbox.sticks.array); a++)
@@ -594,7 +592,7 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
             if(device->lastState.xbox.sticks.array[a] != deviceStatePrevious.lastState.xbox.sticks.array[a])
                 if(onGamepadEvent)
                     onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
-                                                      ,.subType = {.axis = {.axis  = KORL_C_CAST(Korl_GamepadAxis, a)
+                                                      ,.subType = {.axis = {.index = KORL_C_CAST(Korl_GamepadAxis, a)
                                                                            ,.value = KORL_C_CAST(f32, device->lastState.xbox.sticks.array[a]) / KORL_I16_MAX}}});
         }
         for(u$ t = 0; t < korl_arraySize(deviceStatePrevious.lastState.xbox.triggers.array); t++)
@@ -602,7 +600,7 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
             if(device->lastState.xbox.triggers.array[t] != deviceStatePrevious.lastState.xbox.triggers.array[t])
                 if(onGamepadEvent)
                     onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
-                                                      ,.subType = {.axis = {.axis  = KORL_C_CAST(Korl_GamepadAxis, t + KORL_GAMEPAD_AXIS_TRIGGER_LEFT)
+                                                      ,.subType = {.axis = {.index = KORL_C_CAST(Korl_GamepadAxis, t + KORL_GAMEPAD_AXIS_TRIGGER_LEFT)
                                                                            ,.value = KORL_C_CAST(f32, device->lastState.xbox.triggers.array[t]) / KORL_U8_MAX}}});
         }
     }
