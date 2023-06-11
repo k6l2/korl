@@ -150,7 +150,15 @@ korl_internal void korl_sfx_mix(void)
     default: break;
     }
     if(!mix)
-        korl_log(ERROR, "sample format %u bytesPerSample %hhu invalid", audioFormat.sampleFormat, audioFormat.bytesPerSample);
+    {
+        korl_log(WARNING, "invalid audio format; sampleFormat=%u bytesPerSample=%hhu", audioFormat.sampleFormat, audioFormat.bytesPerSample);
+        /* it's possible for the audio format to be invalid in normal execution; 
+            example, user plugs in a default audio device, then disconnects is 
+            during korl-audio configuration of the device; this should resolve 
+            eventually, but in the meantime we can just defer any audio mixing 
+            by ending the execution of this function for this frame */
+        return;
+    }
     korl_resource_setAudioFormat(&audioFormat);// we need to make sure all our audio resources are resampled to a format that is compatible with our renderer
     Korl_Audio_WriteBuffer audioBuffer = korl_audio_writeBufferGet();
     u32 framesWritten = 0;
