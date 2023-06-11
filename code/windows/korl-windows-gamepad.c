@@ -60,35 +60,11 @@ typedef struct _Korl_Windows_Gamepad_Device
     Korl_StringPool_String               path;// used to create handleFileIo, & uniquely identify the local device
     HANDLE                               handleRawInputDevice;// managed by Windows; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
     HANDLE                               handleFileIo;// managed by korl-windows-gamepad; set to INVALID_HANDLE_VALUE upon gamepad device disconnection
-    union
+    struct
     {
-        struct
-        {
-            DWORD inputFrame;
-            WORD buttons;
-            union
-            {
-                struct
-                {
-                    SHORT leftX;
-                    SHORT leftY;
-                    SHORT rightX;
-                    SHORT rightY;
-                } named;
-                SHORT array[4];
-            } sticks;
-            union
-            {
-                struct
-                {
-                    BYTE left;
-                    BYTE right;
-                } named;
-                BYTE array[2];
-            } triggers;
-        } xbox;
+        bool buttons[KORL_GAMEPAD_BUTTON_ENUM_COUNT];
+        f32  axes[KORL_GAMEPAD_AXIS_ENUM_COUNT];
     } lastState;
-    //@TODO: unify "lastState" struct to just store an array of KORL_BUTTON & KORL_AXIS value, defined in `korl-interface-platform-input.h`
 } _Korl_Windows_Gamepad_Device;
 typedef struct _Korl_Windows_Gamepad_Context
 {
@@ -142,7 +118,7 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
     /**/
     korl_log(INFO, "xbox gamepad [%lli] connected: \"%ws\"", newDevice - context->stbDaDevices, string_getRawUtf16(&newDevice->path));
 }
-#if 0
+#if 0//@TODO: delete this stuff?
 korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
 {
     _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
@@ -544,14 +520,30 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
         }
         const _Korl_Windows_Gamepad_Device deviceStatePrevious = *device;
         korl_assert(korl_memory_isLittleEndian());// the raw xbox state data is stored in the buffer in little-endian byte order; so we can only C-cast into multi-byte registers if our platform is also little-endian
-        device->lastState.xbox.inputFrame           = *KORL_C_CAST(DWORD*, out +  5);
-        device->lastState.xbox.buttons              = *KORL_C_CAST(WORD* , out + 11);
-        device->lastState.xbox.sticks.named.leftX   = *KORL_C_CAST(SHORT*, out + 15);
-        device->lastState.xbox.sticks.named.leftY   = *KORL_C_CAST(SHORT*, out + 17);
-        device->lastState.xbox.sticks.named.rightX  = *KORL_C_CAST(SHORT*, out + 19);
-        device->lastState.xbox.sticks.named.rightY  = *KORL_C_CAST(SHORT*, out + 21);
-        device->lastState.xbox.triggers.named.left  = out[13];
-        device->lastState.xbox.triggers.named.right = out[14];
+        // device->lastState.xbox.inputFrame           = *KORL_C_CAST(DWORD*, out +  5);
+        const WORD buttons = *KORL_C_CAST(WORD* , out + 11);
+        /** these flags are presented in the exact order that the corresponding 
+         * KORL button value in the Korl_GamepadButton enumeration; it is 
+         * essentially a mapping from the xbox_button_bitfield => KORL_button_index */
+        korl_shared_const WORD XBOX_BUTTON_FLAGS[] = 
+            { 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080
+            , 0x0100, 0x0200, 0x0400,         0x1000, 0x2000, 0x4000, 0x8000 };
+        for(u8 i = 0; i < korl_arraySize(XBOX_BUTTON_FLAGS); i++)
+        {
+            device->lastState.buttons[i] = buttons & XBOX_BUTTON_FLAGS[i];
+            if(device->lastState.buttons[i] == deviceStatePrevious.lastState.buttons[i])
+                continue;
+            if(!onGamepadEvent)
+                continue;
+            onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_BUTTON
+                                              ,.subType = {.button = {.index   = KORL_C_CAST(Korl_GamepadButton, i)
+                                                                     ,.pressed = device->lastState.buttons[i]}}});
+        }
+        struct { SHORT x, y; } stickLeft, stickRight;
+        stickLeft.x  = *KORL_C_CAST(SHORT*, out + 15);
+        stickLeft.y  = *KORL_C_CAST(SHORT*, out + 17);
+        stickRight.x = *KORL_C_CAST(SHORT*, out + 19);
+        stickRight.y = *KORL_C_CAST(SHORT*, out + 21);
         /** deadzone filter */
         //KORL-FEATURE-000-000-036: gamepad: (low priority); expose gamepad deadzone values as configurable through the KORL platform interface
         /* these deadzone values are derived from: 
@@ -559,49 +551,28 @@ korl_internal void korl_windows_gamepad_poll(fnSig_korl_game_onGamepadEvent* onG
         #define _KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
         #define _KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
         #define _KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD    30
-        _korl_windows_gamepad_xInputFilterStickDeadzone(&device->lastState.xbox.sticks.named.leftX
-                                                       ,&device->lastState.xbox.sticks.named.leftY
+        _korl_windows_gamepad_xInputFilterStickDeadzone(&stickLeft.x, &stickLeft.y
                                                        ,_KORL_XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-        _korl_windows_gamepad_xInputFilterStickDeadzone(&device->lastState.xbox.sticks.named.rightX
-                                                       ,&device->lastState.xbox.sticks.named.rightY
+        _korl_windows_gamepad_xInputFilterStickDeadzone(&stickRight.x, &stickRight.y
                                                        ,_KORL_XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&device->lastState.xbox.triggers.named.left
-                                                         ,_KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
-        _korl_windows_gamepad_xInputFilterTriggerDeadzone(&device->lastState.xbox.triggers.named.right
-                                                         ,_KORL_XINPUT_GAMEPAD_TRIGGER_THRESHOLD);
-        /** these flags are presented in the exact order that the corresponding 
-         * KORL button value in the Korl_GamepadButton enumeration; it is 
-         * essentially a mapping from the xbox_button_bitfield => KORL_button_index */
-        korl_shared_const WORD XBOX_BUTTON_FLAGS[] = 
-            { 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080
-            , 0x0100, 0x0200, 0x0400,         0x1000, 0x2000, 0x4000, 0x8000 };
-        //KORL-ISSUE-000-000-084: gamepad: (low priority) XBOX controller guide button is not being captured
-        for(u$ b = 0; b < korl_arraySize(XBOX_BUTTON_FLAGS); b++)
+        device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_LEFT_X]  = KORL_C_CAST(f32, stickLeft.x)  / KORL_I16_MAX;
+        device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_LEFT_Y]  = KORL_C_CAST(f32, stickLeft.y)  / KORL_I16_MAX;
+        device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_RIGHT_X] = KORL_C_CAST(f32, stickRight.x) / KORL_I16_MAX;
+        device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_RIGHT_Y] = KORL_C_CAST(f32, stickRight.y) / KORL_I16_MAX;
+        BYTE triggerLeft, triggerRight;
+        triggerLeft  = out[13];
+        triggerRight = out[14];
+        device->lastState.axes[KORL_GAMEPAD_AXIS_TRIGGER_LEFT]  = KORL_C_CAST(f32, triggerLeft)  / KORL_U8_MAX;
+        device->lastState.axes[KORL_GAMEPAD_AXIS_TRIGGER_RIGHT] = KORL_C_CAST(f32, triggerRight) / KORL_U8_MAX;
+        for(u$ a = 0; a < KORL_GAMEPAD_AXIS_ENUM_COUNT; a++)
         {
-            if(   (            device->lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b])
-               == (deviceStatePrevious.lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]))
+            if(device->lastState.axes[a] == deviceStatePrevious.lastState.axes[a])
                 continue;
             if(!onGamepadEvent)
                 continue;
-            onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_BUTTON
-                                              ,.subType = {.button = {.index   = KORL_C_CAST(Korl_GamepadButton, b)
-                                                                     ,.pressed = device->lastState.xbox.buttons & XBOX_BUTTON_FLAGS[b]}}});
-        }
-        for(u$ a = 0; a < korl_arraySize(deviceStatePrevious.lastState.xbox.sticks.array); a++)
-        {
-            if(device->lastState.xbox.sticks.array[a] != deviceStatePrevious.lastState.xbox.sticks.array[a])
-                if(onGamepadEvent)
-                    onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
-                                                      ,.subType = {.axis = {.index = KORL_C_CAST(Korl_GamepadAxis, a)
-                                                                           ,.value = KORL_C_CAST(f32, device->lastState.xbox.sticks.array[a]) / KORL_I16_MAX}}});
-        }
-        for(u$ t = 0; t < korl_arraySize(deviceStatePrevious.lastState.xbox.triggers.array); t++)
-        {
-            if(device->lastState.xbox.triggers.array[t] != deviceStatePrevious.lastState.xbox.triggers.array[t])
-                if(onGamepadEvent)
-                    onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
-                                                      ,.subType = {.axis = {.index = KORL_C_CAST(Korl_GamepadAxis, t + KORL_GAMEPAD_AXIS_TRIGGER_LEFT)
-                                                                           ,.value = KORL_C_CAST(f32, device->lastState.xbox.triggers.array[t]) / KORL_U8_MAX}}});
+            onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                              ,.subType = {.axis = {.index = KORL_C_CAST(Korl_GamepadAxis, a)
+                                                                   ,.value = device->lastState.axes[a]}}});
         }
     }
 }
