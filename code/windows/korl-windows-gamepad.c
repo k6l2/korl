@@ -229,7 +229,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
         switch(GET_RAWINPUT_CODE_WPARAM(wParam))
         {
         case RIM_INPUT:{// window is in foreground; DefWindowProc _must_ be called for system clean up
-            /* obtain the HANDLE of the device generating this RawInput data */
+            /* get input reports from the RawInput device, as well as the Device HANDLE (so we can match it with our database) */
             UINT rawInputBytes = 0;
             UINT resultRawInput = GetRawInputData(handleRawInput, RID_INPUT, NULL, &rawInputBytes, sizeof(RAWINPUTHEADER));
             if(resultRawInput != 0)
@@ -254,10 +254,13 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                     device = currentDevice;
             if(!device)
                 break;
-            /* get RawInput input reports from the device */
+            const _Korl_Windows_Gamepad_Device deviceStatePrevious = *device;
+            /* process the input reports based on the device type */
             switch(device->type)
             {
             case _KORL_WINDOWS_GAMEPAD_DEVICETYPE_DUALSHOCK4:{
+                /* first, we need to determine the connection type, as the device 
+                    codec varies depending on USB/Bluetooth connection */
                 const _Korl_Windows_Gamepad_ConnectionType connectionTypePrevious = device->connectionType;
                 if(rawInput->data.hid.dwSizeHid == 547)
                     device->connectionType = _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_BLUETOOTH;
@@ -269,7 +272,7 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                     korl_log(ERROR, "invalid DS4 input report size: %u", rawInput->data.hid.dwSizeHid);
                     break;
                 }
-                korl_log(VERBOSE, "DS4 input reports: %u", rawInput->data.hid.dwCount);
+                // korl_log(VERBOSE, "DS4 input reports: %u", rawInput->data.hid.dwCount);
                 switch (device->connectionType)
                 {
                 case _KORL_WINDOWS_GAMEPAD_CONNECTIONTYPE_BLUETOOTH:{
@@ -282,12 +285,60 @@ korl_internal bool korl_windows_gamepad_processMessage(HWND hWnd, UINT message, 
                     break;}
                 default: break;
                 }
+                /* decode DS4 input state 
+                    https://www.psdevwiki.com/ps4/DS4-USB#Data_Format
+                    https://www.psdevwiki.com/ps4/DS4-BT#0x11 */
+                // korl_log(VERBOSE, "DS4 leftStick.x=%hhx", *(rawInput->data.hid.bRawData + 1));
+                korl_shared_const Korl_Math_V2f32 DIRECTION_PAD_STATES[] = {{0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0}, {-1,1}, {0,0}};
+                const             u8              dPad                   = *(rawInput->data.hid.bRawData + 5) & 0x0F;
+                korl_assert(dPad < korl_arraySize(DIRECTION_PAD_STATES));
+                device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_LEFT_X]               =  (KORL_C_CAST(f32, *(rawInput->data.hid.bRawData + 1)) / KORL_C_CAST(f32, KORL_U8_MAX) * 2 - 1);
+                device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_LEFT_Y]               = -(KORL_C_CAST(f32, *(rawInput->data.hid.bRawData + 2)) / KORL_C_CAST(f32, KORL_U8_MAX) * 2 - 1);
+                device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_RIGHT_X]              =  (KORL_C_CAST(f32, *(rawInput->data.hid.bRawData + 3)) / KORL_C_CAST(f32, KORL_U8_MAX) * 2 - 1);
+                device->lastState.axes[KORL_GAMEPAD_AXIS_STICK_RIGHT_Y]              = -(KORL_C_CAST(f32, *(rawInput->data.hid.bRawData + 4)) / KORL_C_CAST(f32, KORL_U8_MAX) * 2 - 1);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_UP]      = *(rawInput->data.hid.bRawData + 5) & (1 << 7);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_RIGHT]   = *(rawInput->data.hid.bRawData + 5) & (1 << 6);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_DOWN]    = *(rawInput->data.hid.bRawData + 5) & (1 << 5);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_RIGHT_LEFT]    = *(rawInput->data.hid.bRawData + 5) & (1 << 4);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_UP]       = DIRECTION_PAD_STATES[dPad].y > 0;
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_DOWN]     = DIRECTION_PAD_STATES[dPad].y < 0;
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_RIGHT]    = DIRECTION_PAD_STATES[dPad].x > 0;
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_LEFT_LEFT]     = DIRECTION_PAD_STATES[dPad].x < 0;
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_STICK_RIGHT]           = *(rawInput->data.hid.bRawData + 6) & (1 << 7);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_STICK_LEFT]            = *(rawInput->data.hid.bRawData + 6) & (1 << 6);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_RIGHT]  = *(rawInput->data.hid.bRawData + 6) & (1 << 5);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_LEFT]   = *(rawInput->data.hid.bRawData + 6) & (1 << 4);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_TOP_RIGHT]     = *(rawInput->data.hid.bRawData + 6) & (1 << 1);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_TOP_LEFT]      = *(rawInput->data.hid.bRawData + 6) & (1 << 0);
+                device->lastState.buttons[KORL_GAMEPAD_BUTTON_CLUSTER_CENTER_MIDDLE] = *(rawInput->data.hid.bRawData + 7) & (1 << 0);
+                device->lastState.axes[KORL_GAMEPAD_AXIS_TRIGGER_LEFT]               = KORL_C_CAST(f32, *(rawInput->data.hid.bRawData + 8)) / KORL_C_CAST(f32, KORL_U8_MAX);
+                device->lastState.axes[KORL_GAMEPAD_AXIS_TRIGGER_RIGHT]              = KORL_C_CAST(f32, *(rawInput->data.hid.bRawData + 9)) / KORL_C_CAST(f32, KORL_U8_MAX);
                 break;}
             default:
                 korl_log(ERROR, "unsupported RawInput device type: %u", device->type);
             }
+            /* dispatch events based on changed input state */
+            for(u8 i = 0; i < KORL_GAMEPAD_BUTTON_ENUM_COUNT; i++)
+            {
+                if(device->lastState.buttons[i] == deviceStatePrevious.lastState.buttons[i])
+                    continue;
+                if(!onGamepadEvent)
+                    continue;
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_BUTTON
+                                                  ,.subType = {.button = {.index   = KORL_C_CAST(Korl_GamepadButton, i)
+                                                                         ,.pressed = device->lastState.buttons[i]}}});
+            }
+            for(u$ a = 0; a < KORL_GAMEPAD_AXIS_ENUM_COUNT; a++)
+            {
+                if(device->lastState.axes[a] == deviceStatePrevious.lastState.axes[a])
+                    continue;
+                if(!onGamepadEvent)
+                    continue;
+                onGamepadEvent((Korl_GamepadEvent){.type = KORL_GAMEPAD_EVENT_TYPE_AXIS
+                                                  ,.subType = {.axis = {.index = KORL_C_CAST(Korl_GamepadAxis, a)
+                                                                       ,.value = device->lastState.axes[a]}}});
+            }
             // korl_log(VERBOSE, "RawInput report: rawInput=0x%p bytes=%u", rawInput, rawInputBytes);
-            /* process the input reports based on the device type */
             /* currently, we are assuming that DefWindowProc will be called for this message by our caller (korl-windows-window) */
             break;}
         case RIM_INPUTSINK:{// window is _not_ in foreground
