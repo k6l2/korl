@@ -77,7 +77,9 @@ rem ----- automatically call the shader build script -----
 set "buildingShaders=FALSE"
 if "%isNewRef%"=="FALSE" (
     if "%buildOptionGlsl%"=="FALSE" (
-        goto :SKIP_BUILD_SHADERS
+        if exist "%KORL_PROJECT_ROOT%\build\shaders" (
+            goto :SKIP_BUILD_SHADERS
+        )
     )
 )
 set "buildingShaders=TRUE"
