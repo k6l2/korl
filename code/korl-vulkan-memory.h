@@ -73,15 +73,14 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     {
         struct
         {
-            VkBuffer vulkanBuffer;
-            VkBufferUsageFlags bufferUsageFlags;
-            /** A \c stride value of \c 0 here indicates that this buffer does not 
-             * contain the vertex attribute at that respective index of this array */
-            struct
-            {
-                u$  offset;
-                u32 stride;
-            } attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
+            VkBuffer                               vulkanBuffer;
+            VkBufferUsageFlags                     bufferUsageFlags;
+            u32                                    indexCount;
+            Korl_Vulkan_VertexIndexType            indexType;
+            /** A \c elementType value of \c KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID 
+             * here indicates that this buffer does not contain the vertex 
+             * attribute at that respective index of this array */
+            Korl_Vulkan_VertexAttributeDescriptor2 attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
         } buffer;
         struct
         {

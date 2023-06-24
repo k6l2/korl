@@ -79,7 +79,6 @@
 [ ] KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
 [ ] KORL-ISSUE-000-000-149: vulkan: HACK; uvAabb fragment shader push constant is hacky & very implementation-specific; I would much rather allow the user to be able to configure their own push constants or something
 [ ] KORL-ISSUE-000-000-150: vulkan: incomplete normals vertex attribute support
-[ ] KORL-ISSUE-000-000-151: vulkan: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
 [ ] KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
 [ ] KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
 [ ] KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
@@ -146,7 +145,7 @@
 [ ] KORL-FEATURE-000-000-036: gamepad: (low priority); expose gamepad deadzone values as configurable through the KORL platform interface
 [ ] KORL-FEATURE-000-000-037: crash: enable floating point exceptions; I've already had one instance of a bug manifesting as a result of NAN f32 values being calculated accidentally
 [ ] KORL-FEATURE-000-000-038: frame-by-frame stepping, as well as history scrubbing using savestate mechanism (just keep a circular buffer of savestates)
-[ ] KORL-FEATURE-000-000-043: vulkan: add ability to configure color; default color is RGBA; should this be more well-defined somewhere, such as a Korl_Vulkan_ColorChannel datatype or something?
+[~] KORL-FEATURE-000-000-043: vulkan: add ability to configure color; default color is RGBA; should this be more well-defined somewhere, such as a Korl_Vulkan_ColorChannel datatype or something?; as of now, _technically_ this is partially solved now since korl-vulkan users can configure vertex attributes to arbitrary formats, although whether or not we support a desired format is a different matter which I can address in the future if such a need arises
 [ ] KORL-FEATURE-000-000-044: vulkan: add ability to create batches, combining draw calls of a bunch of different pipelines; this could be done entirely on the GPU with transfer commands to device-local memory; related to KORL-PERFORMANCE-000-000-035
 [ ] KORL-FEATURE-000-000-045: gui: add some kind of "style stack" API, and deprecate korl_gui_setFontAsset since it seems too inflexible
 [ ] KORL-FEATURE-000-000-046: resource: right now it is very difficult to trace the owner of a resource; modify API to require FILE:LINE information for Resource allocations
@@ -232,6 +231,7 @@
 [x] KORL-ISSUE-000-000-138: gui: crash when all windows are minimized
 [x] KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
 [x] KORL-ISSUE-000-000-143: asset/resource/gfx: not sure where the root of this issue is; sometimes randomly (but experimentally, most often from a cold start), a texture file-asset-backed resource will fail to render; after investigating a memoryState in renderdoc, it seems the texture is loading just fine, and the Batch UVs are all 0 for some reason?; this was actually resolved by commit a0922667fca8892dc3a7b738e425086fb621e11e I think
+[x] KORL-ISSUE-000-000-151: vulkan: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
 [x] KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple mesh primitives
 [x] KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
 [x] KORL-ISSUE-000-000-157: gfx: it doesn't make much sense to draw a "SCENE3D"; Drawable types should really be more primitive, such as "MODEL", "TEXT", "MESH"

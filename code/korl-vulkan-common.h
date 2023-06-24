@@ -17,11 +17,11 @@ typedef enum _Korl_Vulkan_DescriptorSetIndex
     /* ideally, these descriptor sets indices are defined in the order of least- 
         to most-frequently-changed for performance reasons; see 
         "Pipeline Layout Compatibility" in the Vulkan spec for more details */
-    { _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE// used for things like glyph mesh lookup tables, maybe animation transforms, etc.; mostly stuff in vertex shader
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL// color maps, textures, etc.; mostly stuff used in fragment shader
-    , _KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT// Keep last!
+    {_KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE
+    ,_KORL_VULKAN_DESCRIPTOR_SET_INDEX_LIGHTS
+    ,_KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE// used for things like glyph mesh lookup tables, maybe animation transforms, etc.; mostly stuff in vertex shader
+    ,_KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL// color maps, textures, etc.; mostly stuff used in fragment shader
+    ,_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT// Keep last!
 } _Korl_Vulkan_DescriptorSetIndex;
 KORL_STATIC_ASSERT(_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT <= 4);// Vulkan Spec 42.1; maxBoundDescriptorSets minimum is 4; any higher than this is hardware-dependent
 typedef enum _Korl_Vulkan_DescriptorSetBinding
@@ -104,19 +104,18 @@ typedef struct _Korl_Vulkan_Pipeline
     VkPrimitiveTopology            primitiveTopology;
     VkPolygonMode                  polygonMode;
     VkCullModeFlags                cullModeFlags;
-    u8                             positionDimensions;        // only acceptable values: {2, 3}
-    u8                             normalDimensions;          // only acceptable values: {2, 3}
-    u8                             instancePositionDimensions;// only acceptable values: {2, 3}
-    u32                            positionsStride;       // 0 => absence of this attribute
-    u32                            normalsStride;         // 0 => absence of this attribute
-    u32                            uvsStride;             // 0 => absence of this attribute
-    u32                            colorsStride;          // 0 => absence of this attribute
-    u32                            instancePositionStride;// 0 => absence of this attribute
-    u32                            instanceUintStride;    // 0 => absence of this attribute
     Korl_Vulkan_DrawState_Features features;
     Korl_Vulkan_DrawState_Blend    blend;
     VkShaderModule                 shaderVertex;
     VkShaderModule                 shaderFragment;
+    struct
+    {
+        //note: `binding` & `input` values are implicit; those are just the index into this array!
+        VkFormat          format;// VK_FORMAT_UNDEFINED => attribute binding unused by this pipeline
+        u32               byteOffset;
+        u32               byteStride;
+        VkVertexInputRate inputRate;
+    } vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
 } _Korl_Vulkan_Pipeline;
 typedef struct _Korl_Vulkan_Shader
 {

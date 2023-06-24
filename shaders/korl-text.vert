@@ -22,8 +22,8 @@ layout(set     = KORL_DESCRIPTOR_SET_STORAGE
 {
     GlyphVertex glyphVertices[];
 };
-layout(location = KORL_VERTEX_INPUT_INSTANCE_POSITION) in vec2 instanceAttributeGlyphPosition;// KORL-ISSUE-000-000-151: re-use KORL_VERTEX_INPUT_POSITION location? it would be nice if we had a way to configure any given attribute as per-vertex/instance in korl-vulkan
-layout(location = KORL_VERTEX_INPUT_INSTANCE_UINT)     in uint instanceAttributeGlyphIndex;
+layout(location = KORL_VERTEX_INPUT_POSITION) in vec2 instanceAttributeGlyphPosition;
+layout(location = KORL_VERTEX_INPUT_UINT)     in uint instanceAttributeGlyphIndex;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_INPUT_UV)    out vec2 fragmentUv;
 void main()

@@ -2,6 +2,7 @@
 #include "korl-vulkan-common.h"
 #include "korl-memoryPool.h"
 #include "korl-stb-ds.h"
+#include "korl-interface-platform.h"
 #if KORL_DEBUG
     // #define _KORL_VULKAN_DEVICEMEMORY_DEBUG_VALIDATE
 #endif

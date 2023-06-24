@@ -1,6 +1,27 @@
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-checkCast.h"
 #include "korl-interface-platform.h"
+korl_internal Korl_Math_V4f32 korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_V4f32){KORL_C_CAST(f32, color.r) / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                  ,KORL_C_CAST(f32, color.g) / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                  ,KORL_C_CAST(f32, color.b) / KORL_C_CAST(f32, KORL_U8_MAX)
+                                                  ,KORL_C_CAST(f32, color.a) / KORL_C_CAST(f32, KORL_U8_MAX)};
+}
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(void)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.drawState = {.polygonMode = KORL_GFX_POLYGON_MODE_FILL
+                                                                  ,.cullMode    = KORL_GFX_CULL_MODE_BACK}
+                                                    ,.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                   ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                   ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                   ,.shininess           = 0}
+                                                    ,.maps = {.resourceHandleTextureBase     = 0
+                                                             ,.resourceHandleTextureSpecular = 0
+                                                             ,.resourceHandleTextureEmissive = 0}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = 0
+                                                                ,.resourceHandleShaderFragment = 0}};
+}
 korl_internal Korl_Gfx_Camera korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
