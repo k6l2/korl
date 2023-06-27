@@ -193,6 +193,8 @@ typedef struct Korl_Vulkan_CreateInfoTexture
 typedef struct Korl_Vulkan_CreateInfoVertexBuffer
 {
     u$                                     bytes;
+    Korl_Vulkan_VertexIndexType            indexType;
+    u32                                    indexByteOffset;
     Korl_Vulkan_VertexAttributeDescriptor2 vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
     bool                                   useAsStorageBuffer;
 } Korl_Vulkan_CreateInfoVertexBuffer;

@@ -120,6 +120,25 @@ korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);/** calls korl
 korl_internal inline f32 korl_math_f32_positive(f32 x);
 korl_internal inline f32 korl_math_f32_nan(void);
 korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor);
+//@TODO: this sphere mesh generating API is crappy and does not generate vertex indices, so we will end up duplicating a ton of vertices
+korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments);
+/**
+ * Generate mesh data for a sphere made of (semi)circles along latitudes and 
+ * longitudes with the specified respective resolutions.
+ * \param latitudeSegments 
+ * The # of latitude circles in the sphere equals `latitudeSegments - 1`, as 
+ * the sphere's "top" and "bottom" vertices will define `latitudeSegments` 
+ * strips of solid geometry.  This value MUST be >= 2.
+ * \param longitudeSegments 
+ * The # of longitude semicircles in the sphere.  This value MUST be >= 3.
+ * \param o_vertexPositions REQUIRED;
+ * Pointer to the array where the vertex data will be stored.  Caller must 
+ * supply an array of >= `korl_math_generateMeshSphereVertexCount(...)` 
+ * elements!  Output vertices are a list of right-handed triangles.
+ * \param o_vertexTextureNormals OPTIONAL;
+ * Vertex textureNormals are generated using a cylindrical projection.
+ */
+korl_internal void korl_math_generateMeshSphere(f32 radius, u32 latitudeSegments, u32 longitudeSegments, Korl_Math_V3f32* o_vertexPositions, u$ vertexPositionByteStride, Korl_Math_V2f32* o_vertexTextureNormals, u$ vertexTextureNormalByteStride);
 /* RNG ************************************************************************/
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2);
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed);

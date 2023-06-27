@@ -1886,6 +1886,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
 }
 korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData)
 {
+    #if 0//@TODO: do we just deprecate this functionality right now?...
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
@@ -2517,6 +2518,7 @@ korl_internal void korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData
                  ,instanceCount, /*firstVertex*/0, /*firstInstance*/0);
     korl_time_probeStop(draw_compose_gfx_commands);
     surfaceContext->drawStateLast = surfaceContext->drawState;
+    #endif
 }
 korl_internal VkDeviceSize _korl_vulkan_vertexAttribute_vectorBytes(const Korl_Vulkan_VertexAttributeDescriptor2* vertexAttributeDescriptor)
 {
@@ -2554,7 +2556,7 @@ korl_internal VkFormat _korl_vulkan_vertexAttribute_format(const Korl_Vulkan_Ver
         default: return VK_FORMAT_UNDEFINED;
         }
     default:
-        korl_log(WARNING, "undefined vertex attribute element type: %u", vertexAttributeDescriptor->elementType);
+        // korl_log(WARNING, "undefined vertex attribute element type: %u", vertexAttributeDescriptor->elementType);
         return VK_FORMAT_UNDEFINED;
     }
 }
@@ -2584,17 +2586,8 @@ korl_internal void _korl_vulkan_flushPipelineState(const Korl_Vulkan_VertexStagi
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
-    /* if the swap chain image context is invalid for this frame for some reason, 
-        then just do nothing (this happens during deferred resize for example) */
-    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
-        return;
-    /* it is possible for the graphics command buffer to be not available for 
-        this frame (such as a minimized window); do nothing if that happens */
-    if(!surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics)
-        return;
     /* prepare the pipeline config cache with the vertex data properties */
     _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
-    korl_time_probeStart(draw_config_pipeline);
     switch(drawMode->primitiveType)
     {
     case KORL_VULKAN_PRIMITIVETYPE_TRIANGLES: pipelineCache->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;
@@ -2621,11 +2614,6 @@ korl_internal void _korl_vulkan_flushPipelineState(const Korl_Vulkan_VertexStagi
         case KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE: pipelineCache->vertexAttributes[i].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; break;
         }
     }
-    /* now that we have potentially configured the pipeline config cache to use 
-        the vertex data from a vertex buffer, we can do a final round of sanity 
-        checks before attempting to configure a pipeline */
-    /// It really feels like I should be doing some sanity checks here, but I honestly don't know what I should be checking for...
-    /// Maybe if _korl_vulkan_setPipelineMetaData fails in the future we can revisit this validation step.
     /* determine which shader modules this pipeline should use */
     // KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx; when the hard-coded context->shaders are removed from korl-vulkan, we can assert that the pipelineCache _must_ be configured with valid shaders
     if(surfaceContext->drawState.transientShaderHandleVertex)
@@ -2634,16 +2622,19 @@ korl_internal void _korl_vulkan_flushPipelineState(const Korl_Vulkan_VertexStagi
         korl_assert(shaderIndex < arrlenu(context->stbDaShaders));
         pipelineCache->shaderVertex = context->stbDaShaders[shaderIndex].shaderModule;
     }
-    else if(pipelineCache->instancePositionStride && pipelineCache->instanceUintStride)
+    else if(   pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].format != VK_FORMAT_UNDEFINED
+            && pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UINT].format     != VK_FORMAT_UNDEFINED
+            && pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE
+            && pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UINT].inputRate     == VK_VERTEX_INPUT_RATE_INSTANCE)
         pipelineCache->shaderVertex = context->shaderVertexText;
-    else if(pipelineCache->positionDimensions == 2)
+    else if(pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].format == VK_FORMAT_R32G32_SFLOAT)
         pipelineCache->shaderVertex = context->shaderVertex2d;
-    else if(pipelineCache->positionDimensions == 3)
-        if(   !pipelineCache->colorsStride
-           &&  pipelineCache->uvsStride)
+    else if(pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].format == VK_FORMAT_R32G32B32_SFLOAT)
+        if(   pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_COLOR].format == VK_FORMAT_UNDEFINED
+           && pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].format    != VK_FORMAT_UNDEFINED)
             pipelineCache->shaderVertex = context->shaderVertex3dUv;
-        else if(    pipelineCache->colorsStride
-                && !pipelineCache->uvsStride)
+        else if(   pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_COLOR].format != VK_FORMAT_UNDEFINED
+                && pipelineCache->vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].format    == VK_FORMAT_UNDEFINED)
             pipelineCache->shaderVertex = context->shaderVertex3dColor;
         else
             pipelineCache->shaderVertex = context->shaderVertex3d;
@@ -2934,6 +2925,14 @@ korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexSta
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
+    /* if the swap chain image context is invalid for this frame for some reason, 
+        then just do nothing (this happens during deferred resize for example) */
+    if(surfaceContext->frameSwapChainImageIndex == _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* it is possible for the graphics command buffer to be not available for 
+        this frame (such as a minimized window); do nothing if that happens */
+    if(!surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics)
+        return;
     _korl_vulkan_flushPipelineState(stagingMeta, drawMode);// calls vkCmdBindPipeline
     _korl_vulkan_flushDescriptors();// calls vkUpdateDescriptorSets & vkCmdBindDescriptorSets
     /* compose the draw commands */
@@ -2947,10 +2946,12 @@ korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexSta
                       ,&surfaceContext->drawState.pushConstants.fragment);
     vkCmdSetScissor(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                    ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
-    VkBuffer     vertexBuffers          [KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
-    VkDeviceSize vertexBufferByteOffsets[KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT];
-    for(u8 i = 0; i < KORL_VULKAN_VERTEX_ATTRIBUTE_ENUM_COUNT; i++)
+    VkBuffer     vertexBuffers          [KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+    VkDeviceSize vertexBufferByteOffsets[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+    for(u8 i = 0; i < KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; i++)
     {
+        vertexBuffers[i]           = stagingAllocation->deviceBuffer;
+        vertexBufferByteOffsets[i] = stagingAllocation->deviceBufferOffset;
     }
     vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                           ,0/*first binding*/, korl_arraySize(vertexBuffers)
@@ -2958,9 +2959,15 @@ korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexSta
     const uint32_t instanceCount = 1;
     if(stagingMeta->indexCount)
     {
+        VkIndexType indexType = VK_INDEX_TYPE_NONE_KHR;
+        switch(stagingMeta->indexType)
+        {
+        case KORL_VULKAN_VERTEX_INDEX_TYPE_U16: indexType = VK_INDEX_TYPE_UINT16; break;
+        case KORL_VULKAN_VERTEX_INDEX_TYPE_U32: indexType = VK_INDEX_TYPE_UINT32; break;
+        }
         vkCmdBindIndexBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                             ,stagingAllocation->deviceBuffer, stagingAllocation->deviceBufferOffset/*assumption: index buffer (if it exists) is at the start of the deviceBuffer*/
-                            ,_korl_vulkan_vertexIndexType());
+                            ,indexType);
         vkCmdDrawIndexed(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                         ,stagingMeta->indexCount
                         ,instanceCount, /*firstIndex*/0, /*vertexOffset*/0, /*firstInstance*/0);
@@ -2983,6 +2990,8 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
+    return 0;
+    #if 0//@TODO: refactor this
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* determine the buffer usage flags based on the buffer's attribute descriptors */
     VkBufferUsageFlags bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -3016,6 +3025,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
     }
     /**/
     return allocationHandle;
+    #endif
 }
 korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle)
 {

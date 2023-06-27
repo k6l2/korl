@@ -815,6 +815,7 @@ korl_internal void korl_gfx_flushGlyphPages(void)
 }
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
 {
+    #if 0//@TODO: ???
     KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
     vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
     vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
@@ -826,6 +827,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     createInfoBufferText.vertexAttributeDescriptorCount = korl_arraySize(vertexAttributeDescriptors);
     createInfoBufferText.vertexAttributeDescriptors     = vertexAttributeDescriptors;
     createInfoBufferText.bytes                          = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
+    #endif
     const u$ bytesRequired = sizeof(Korl_Gfx_Text) + (utf16AssetNameFont.size + 1/*for null-terminator*/)*sizeof(*utf16AssetNameFont.data);
     Korl_Gfx_Text*const result    = korl_allocate(allocator, bytesRequired);
     u16*const resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
@@ -835,7 +837,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->assetNameFontRawUtf16Size       = korl_checkCast_u$_to_u32(utf16AssetNameFont.size);
     result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
     result->modelScale                      = KORL_MATH_V3F32_ONE;
-    result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);
+    // result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);//@TODO: ???
     mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
@@ -2065,6 +2067,42 @@ korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
         Korl_Gfx_Light*const newLight = KORL_MEMORY_POOL_ADD(_korl_gfx_context->pendingLights);
         *newLight = lights[i];
     }
+}
+korl_internal KORL_FUNCTION_korl_gfx_drawSphere(korl_gfx_drawSphere)
+{
+    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
+    Korl_Vulkan_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+    model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
+    features.enableDepthTest = true;
+    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    drawState.features = &features;
+    drawState.model    = &model;
+    drawState.material = material;
+    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
+    {
+        korl_memory_zero(&lighting, sizeof(lighting));
+        lighting.lightsCount = KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights);
+        lighting.lights      = _korl_gfx_context->pendingLights;
+        drawState.lighting = &lighting;
+        _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
+    }
+    korl_vulkan_setDrawState(&drawState);
+    KORL_ZERO_STACK(Korl_Vulkan_VertexStagingMeta, stagingMeta);
+    stagingMeta.vertexCount = korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments));
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffset  = 0;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride  = sizeof(Korl_Math_V3f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate   = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize  = 3;
+    Korl_Vulkan_StagingAllocation stagingAllocation = korl_vulkan_stagingAllocate(&stagingMeta);
+    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, KORL_C_CAST(Korl_Math_V3f32*, stagingAllocation.buffer), sizeof(Korl_Math_V3f32), NULL/*o_uvs*/, 0/*uv stride*/);
+    KORL_ZERO_STACK(Korl_Vulkan_DrawMode, drawMode);
+    drawMode.cullMode    = material->drawState.cullMode;
+    drawMode.polygonMode = material->drawState.polygonMode;
+    drawMode.polygonMode = KORL_GFX_POLYGON_MODE_FILL;//@TODO: add this property to Korl_Gfx_Material
+    korl_vulkan_drawStagingAllocation(&stagingMeta, &stagingAllocation, &drawMode);
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

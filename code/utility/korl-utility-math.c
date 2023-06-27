@@ -68,6 +68,70 @@ korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor)
 {
     return from + factor*(to - from);
 }
+korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments)
+{
+    return ((latitudeSegments - 2)*6 + 6) * longitudeSegments;
+}
+korl_internal void korl_math_generateMeshSphere(f32 radius, u32 latitudeSegments, u32 longitudeSegments, Korl_Math_V3f32* o_vertexPositions, u$ vertexPositionByteStride, Korl_Math_V2f32* o_vertexTextureNormals, u$ vertexTextureNormalByteStride)
+{
+    korl_assert(latitudeSegments  >= 2);
+    korl_assert(longitudeSegments >= 3);
+    const u$ requiredVertexCount = korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments);
+    const f32             radiansPerSemiLongitude = 2*KORL_PI32 / KORL_C_CAST(f32, longitudeSegments);
+    const f32             radiansPerLatitude      =   KORL_PI32 / KORL_C_CAST(f32, latitudeSegments);
+    const Korl_Math_V3f32 verticalRadius          = {0, 0, radius};
+    u$ currentVertex = 0;
+    for(u32 longitude = 1; longitude <= longitudeSegments; longitude++)
+    {
+        /* add the next triangle to the top cap */
+        const Korl_Math_Quaternion quatLongitude           = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, KORL_C_CAST(f32, longitude)     * radiansPerSemiLongitude, true);
+        const Korl_Math_Quaternion quatLongitudePrevious   = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, KORL_C_CAST(f32, longitude - 1) * radiansPerSemiLongitude, true);
+        const Korl_Math_V3f32      capTopZeroLongitude     = korl_math_quaternion_transformV3f32(korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Y, radiansPerLatitude, true), verticalRadius, true);
+        const Korl_Math_V3f32      capTopLongitudeCurrent  = korl_math_quaternion_transformV3f32(quatLongitude        , capTopZeroLongitude, true);
+        const Korl_Math_V3f32      capTopLongitudePrevious = korl_math_quaternion_transformV3f32(quatLongitudePrevious, capTopZeroLongitude, true);
+        *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = capTopLongitudePrevious;
+        *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = capTopLongitudeCurrent;
+        *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = verticalRadius;
+        /* add the next triangle to the bottom cap */
+        *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex) = capTopLongitudeCurrent;
+        KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++)->z *= -1;
+        *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex) = capTopLongitudePrevious;
+        KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++)->z *= -1;
+        *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = korl_math_v3f32_multiplyScalar(verticalRadius, -1);
+        /* add the quads to the internal latitude strips */
+        for(u32 latitude = 1; latitude < latitudeSegments - 1; latitude++)
+        {
+            const Korl_Math_Quaternion quatLatitudePrevious = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Y, KORL_C_CAST(f32, latitude)     * radiansPerLatitude, true);
+            const Korl_Math_Quaternion quatLatitude         = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Y, KORL_C_CAST(f32, latitude + 1) * radiansPerLatitude, true);
+            const Korl_Math_V3f32      latStripTopPrevious     = korl_math_quaternion_transformV3f32(korl_math_quaternion_hamilton(quatLongitudePrevious, quatLatitudePrevious), verticalRadius, true);
+            const Korl_Math_V3f32      latStripBottomPrevious  = korl_math_quaternion_transformV3f32(korl_math_quaternion_hamilton(quatLongitudePrevious, quatLatitude)        , verticalRadius, true);
+            const Korl_Math_V3f32      latStripTop             = korl_math_quaternion_transformV3f32(korl_math_quaternion_hamilton(quatLongitude        , quatLatitudePrevious), verticalRadius, true);
+            const Korl_Math_V3f32      latStripBottom          = korl_math_quaternion_transformV3f32(korl_math_quaternion_hamilton(quatLongitude        , quatLatitude)        , verticalRadius, true);
+            *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = latStripTopPrevious;
+            *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = latStripBottomPrevious;
+            *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = latStripBottom;
+            *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = latStripBottom;
+            *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = latStripTop;
+            *KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * currentVertex++) = latStripTopPrevious;
+        }
+    }
+    korl_assert(currentVertex == requiredVertexCount);
+    if(o_vertexTextureNormals)
+    {
+        /* calculate proper texture normals based on cylindrical projection 
+            Source: https://gamedev.stackexchange.com/a/114416 */
+        /* @TODO: figure out how to improve this at some point?  it seems very 
+            glitchy on the north & south poles, as well as some other issues with 
+            low resolution spheres...  But I don't care about generated sphere 
+            textures right now so... */
+        for(size_t v = 0; v < requiredVertexCount; v++)
+        {
+            const Korl_Math_V3f32 positionNorm = korl_math_v3f32_normal(*KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * v));
+            KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, o_vertexTextureNormals) + vertexTextureNormalByteStride * v)->x = 1.f - (korl_math_arcTangent(positionNorm.x, positionNorm.y) / (2 * KORL_PI32) + 0.5f);
+            KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, o_vertexTextureNormals) + vertexTextureNormalByteStride * v)->y = 1.f - (positionNorm.z * 0.5f + 0.5f);
+        }
+    }
+}
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2)
 {
     KORL_ZERO_STACK(Korl_Math_Rng_WichmannHill, result);
