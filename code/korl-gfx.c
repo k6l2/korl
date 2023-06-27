@@ -2101,7 +2101,6 @@ korl_internal KORL_FUNCTION_korl_gfx_drawSphere(korl_gfx_drawSphere)
     KORL_ZERO_STACK(Korl_Vulkan_DrawMode, drawMode);
     drawMode.cullMode    = material->drawState.cullMode;
     drawMode.polygonMode = material->drawState.polygonMode;
-    drawMode.polygonMode = KORL_GFX_POLYGON_MODE_FILL;//@TODO: add this property to Korl_Gfx_Material
     korl_vulkan_drawStagingAllocation(&stagingMeta, &stagingAllocation, &drawMode);
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
