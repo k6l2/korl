@@ -349,8 +349,8 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             default:
                                 korl_log(ERROR, "invalid index accessor componentType: %u", accessor->componentType);
                             }
-                            meshPrimitiveVertexMeta->indexCount      = accessor->count;
-                            meshPrimitiveVertexMeta->indexByteOffset = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
+                            meshPrimitiveVertexMeta->indexCount            = accessor->count;
+                            meshPrimitiveVertexMeta->indexByteOffsetBuffer = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
                             createInfoBuffer.bytes += bufferView->byteLength;
                             createInfoBuffer.usageFlags |= KORL_VULKAN_BUFFER_USAGE_FLAG_INDEX;
                         }
@@ -381,9 +381,9 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             }
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
                             korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffset = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteStride = korl_codec_gltf_accessor_getStride(accessor);
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].inputRate  = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
+                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteStride       = korl_codec_gltf_accessor_getStride(accessor);
+                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].inputRate        = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
                             switch(accessor->componentType)
                             {
                             case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U8 : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].elementType = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;  break;
@@ -439,7 +439,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                         {
                             const Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->indices;
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->indexByteOffset
+                            korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->indexByteOffsetBuffer
                                             ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
                                             ,meshPrimitiveVertexMeta->indexCount * korl_codec_gltf_accessor_getStride(accessor));
                         }
@@ -458,7 +458,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                                 continue;
                             const Korl_Codec_Gltf_Accessor*const   accessor   = accessors + attributeIndex;
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffset
+                            korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer
                                             ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
                                             ,bufferView->byteLength);
                         }
@@ -911,15 +911,10 @@ korl_internal Korl_Vulkan_DrawState_Material korl_resource_scene3d_getMaterial(K
 }
 korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Vulkan_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Vulkan_DrawMode** o_meshPrimitiveDrawModes)
 {
-    //@TODO
-}
-#if 0//@TODO: delete
-korl_internal const Korl_Vulkan_DrawVertexData* korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount)
-{
     _Korl_Resource_Context*const context = _korl_resource_context;
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, drawVertexData);
     if(!handleResourceScene3d)
-        return NULL;
+        goto returnNothing;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
     korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceScene3d);
@@ -929,7 +924,7 @@ korl_internal const Korl_Vulkan_DrawVertexData* korl_resource_scene3d_getDrawVer
     if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     if(!resource->subType.graphics.subType.scene3d.gltf)
-        return NULL;
+        goto returnNothing;
     /* at this point, we know the glTF data is loaded & ready to render */
     const Korl_Codec_Gltf*const                gltf               = resource->subType.graphics.subType.scene3d.gltf;
     const Korl_Codec_Gltf_Mesh*const           meshes             = korl_codec_gltf_getMeshes(gltf);
@@ -948,15 +943,20 @@ korl_internal const Korl_Vulkan_DrawVertexData* korl_resource_scene3d_getDrawVer
     if(!mesh)
     {
         korl_log(ERROR, "failed to find mesh \"%.*hs\" in SCENE3D resource", utf8MeshName.size, utf8MeshName.data);
-        return NULL;
+        goto returnNothing;
     }
     /* the Vulkan_DrawVertexData for all this mesh's meshPrimitives was already 
         constructed when the Resource finished loading & decoding; all we need 
         to do is return this const data array to the user */
-    *o_meshPrimitiveCount = mesh->primitives.size;
-    return resource->subType.graphics.subType.scene3d.meshPrimitiveDrawVertexData + meshPrimitiveOffset;
+    *o_meshPrimitiveCount       = mesh->primitives.size;
+    *o_meshPrimitiveBuffer      = resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer;
+    *o_meshPrimitiveVertexMetas = resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta + meshPrimitiveOffset;
+    *o_meshPrimitiveDrawModes   = resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes  + meshPrimitiveOffset;
+    return;
+    returnNothing:
+        *o_meshPrimitiveCount  = 0;
+        *o_meshPrimitiveBuffer = 0;
 }
-#endif
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
     if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleRuntime))

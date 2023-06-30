@@ -112,7 +112,7 @@ typedef struct _Korl_Vulkan_Pipeline
     {
         //note: `binding` & `input` values are implicit; those are just the index into this array!
         VkFormat          format;// VK_FORMAT_UNDEFINED => attribute binding unused by this pipeline
-        u32               byteOffset;
+        u32               byteOffset;// per-vertex byte offset; _not_ the byte offset into the buffer where this attribute data resides or anything like that
         u32               byteStride;
         VkVertexInputRate inputRate;
     } vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];

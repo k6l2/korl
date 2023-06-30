@@ -120,7 +120,7 @@ korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);/** calls korl
 korl_internal inline f32 korl_math_f32_positive(f32 x);
 korl_internal inline f32 korl_math_f32_nan(void);
 korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor);
-//@TODO: this sphere mesh generating API is crappy and does not generate vertex indices, so we will end up duplicating a ton of vertices
+//KORL-PERFORMANCE-000-000-051: math: this sphere mesh generating API is crappy and does not generate vertex indices, so we will end up duplicating a ton of vertices
 korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments);
 /**
  * Generate mesh data for a sphere made of (semi)circles along latitudes and 

@@ -2574,8 +2574,8 @@ korl_internal VkDeviceSize _korl_vulkan_vertexStagingMeta_bytes(const Korl_Vulka
         default:
             korl_log(ERROR, "invalid index type: %u", stagingMeta->indexType);
         }
-        const VkDeviceSize indexByteStart = stagingMeta->indexByteOffset;
-        const VkDeviceSize indexByteEnd   = stagingMeta->indexByteOffset + stagingMeta->indexCount * indexElementBytes;
+        const VkDeviceSize indexByteStart = stagingMeta->indexByteOffsetBuffer;
+        const VkDeviceSize indexByteEnd   = stagingMeta->indexByteOffsetBuffer + stagingMeta->indexCount * indexElementBytes;
         KORL_MATH_ASSIGN_CLAMP_MAX(vertexByteStart, indexByteStart);
         KORL_MATH_ASSIGN_CLAMP_MIN(vertexByteEnd  , indexByteEnd);
     }
@@ -2585,8 +2585,8 @@ korl_internal VkDeviceSize _korl_vulkan_vertexStagingMeta_bytes(const Korl_Vulka
         if(vertexAttributeDescriptor->elementType == KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
             continue;
         const VkDeviceSize attributeVectorBytes = _korl_vulkan_vertexAttribute_vectorBytes(vertexAttributeDescriptor);
-        const VkDeviceSize attributeByteStart   = vertexAttributeDescriptor->byteOffset;
-        const VkDeviceSize attributeByteEnd     = vertexAttributeDescriptor->byteOffset + (stagingMeta->vertexCount * vertexAttributeDescriptor->byteStride) + attributeVectorBytes;
+        const VkDeviceSize attributeByteStart   = vertexAttributeDescriptor->byteOffsetBuffer;
+        const VkDeviceSize attributeByteEnd     = vertexAttributeDescriptor->byteOffsetBuffer + (stagingMeta->vertexCount * vertexAttributeDescriptor->byteStride) + attributeVectorBytes;
         KORL_MATH_ASSIGN_CLAMP_MAX(vertexByteStart, attributeByteStart);
         KORL_MATH_ASSIGN_CLAMP_MIN(vertexByteEnd  , attributeByteEnd);
     }
@@ -2623,7 +2623,7 @@ korl_internal void _korl_vulkan_flushPipelineState(const Korl_Vulkan_VertexStagi
     }
     for(u32 i = 0; i < KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; i++)
     {
-        pipelineCache->vertexAttributes[i].byteOffset = stagingMeta->vertexAttributeDescriptors[i].byteOffset;
+        pipelineCache->vertexAttributes[i].byteOffset = 0;// we will _always_ make sure to bind the vertex attribute to the byte offset of the first element!
         pipelineCache->vertexAttributes[i].byteStride = stagingMeta->vertexAttributeDescriptors[i].byteStride;
         pipelineCache->vertexAttributes[i].format     = _korl_vulkan_vertexAttribute_format(stagingMeta->vertexAttributeDescriptors + i);
         switch(stagingMeta->vertexAttributeDescriptors[i].inputRate)
@@ -2938,7 +2938,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
                                ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
     }
 }
-korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_StagingAllocation* stagingAllocation, const Korl_Vulkan_DrawMode* drawMode)
+korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOffset, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode)
 {
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
@@ -2968,8 +2968,8 @@ korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexSta
     VkDeviceSize vertexBufferByteOffsets[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
     for(u8 i = 0; i < KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; i++)
     {
-        vertexBuffers[i]           = stagingAllocation->deviceBuffer;
-        vertexBufferByteOffsets[i] = stagingAllocation->deviceBufferOffset + stagingMeta->vertexAttributeDescriptors[i].byteOffset;
+        vertexBuffers[i]           = buffer;
+        vertexBufferByteOffsets[i] = bufferByteOffset + stagingMeta->vertexAttributeDescriptors[i].byteOffsetBuffer;
     }
     vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                           ,0/*first binding; we're just going to re-bind all our bindings*/, korl_arraySize(vertexBuffers)
@@ -2985,8 +2985,8 @@ korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexSta
         case KORL_VULKAN_VERTEX_INDEX_TYPE_INVALID: indexType = VK_INDEX_TYPE_NONE_KHR; break;
         }
         vkCmdBindIndexBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
-                            ,stagingAllocation->deviceBuffer
-                            ,stagingAllocation->deviceBufferOffset + stagingMeta->indexByteOffset
+                            ,buffer
+                            ,bufferByteOffset + stagingMeta->indexByteOffsetBuffer
                             ,indexType);
         vkCmdDrawIndexed(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                         ,stagingMeta->indexCount, instanceCount, /*firstIndex*/0, /*vertexOffset*/0, /*firstInstance*/0);
@@ -2996,9 +2996,20 @@ korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexSta
                  ,stagingMeta->vertexCount, instanceCount, /*firstVertex*/0, /*firstInstance*/0);
     surfaceContext->drawStateLast = surfaceContext->drawState;
 }
+korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Vulkan_StagingAllocation* stagingAllocation, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode)
+{
+    _korl_vulkan_draw(stagingAllocation->deviceBuffer, stagingAllocation->deviceBufferOffset, stagingMeta, drawMode);
+}
 korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode)
 {
-    //@TODO
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    /* attempt to obtain the vertex buffer device memory allocation; we can't do anything if the handle is invalid */
+    _Korl_Vulkan_DeviceMemory_Alloctation*const bufferAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, vertexBuffer);
+    if(!bufferAllocation || bufferAllocation->freeQueued)
+        return;
+    korl_assert(bufferAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);// sanity check; make sure user is using a Buffer allocation
+    /**/
+    _korl_vulkan_draw(bufferAllocation->subType.buffer.vulkanBuffer, 0/*bufferByteOffset*/, stagingMeta, drawMode);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {

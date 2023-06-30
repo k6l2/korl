@@ -2092,17 +2092,18 @@ korl_internal KORL_FUNCTION_korl_gfx_drawSphere(korl_gfx_drawSphere)
     korl_vulkan_setDrawState(&drawState);
     KORL_ZERO_STACK(Korl_Vulkan_VertexStagingMeta, stagingMeta);
     stagingMeta.vertexCount = korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments));
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffset  = 0;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride  = sizeof(Korl_Math_V3f32);
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate   = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize  = 3;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = 0;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V3f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 3;
     Korl_Vulkan_StagingAllocation stagingAllocation = korl_vulkan_stagingAllocate(&stagingMeta);
-    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, KORL_C_CAST(Korl_Math_V3f32*, stagingAllocation.buffer), sizeof(Korl_Math_V3f32), NULL/*o_uvs*/, 0/*uv stride*/);
+    Korl_Math_V3f32*const positions = KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
+    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), NULL/*o_uvs*/, 0/*uv stride*/);
     KORL_ZERO_STACK(Korl_Vulkan_DrawMode, drawMode);
     drawMode.cullMode    = material->drawState.cullMode;
     drawMode.polygonMode = material->drawState.polygonMode;
-    korl_vulkan_drawStagingAllocation(&stagingMeta, &stagingAllocation, &drawMode);
+    korl_vulkan_drawStagingAllocation(&stagingAllocation, &stagingMeta, &drawMode);
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

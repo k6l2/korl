@@ -120,10 +120,7 @@ korl_internal void korl_math_generateMeshSphere(f32 radius, u32 latitudeSegments
     {
         /* calculate proper texture normals based on cylindrical projection 
             Source: https://gamedev.stackexchange.com/a/114416 */
-        /* @TODO: figure out how to improve this at some point?  it seems very 
-            glitchy on the north & south poles, as well as some other issues with 
-            low resolution spheres...  But I don't care about generated sphere 
-            textures right now so... */
+        //KORL-ISSUE-000-000-166: math: glitchy generated sphere mesh UV coordinates
         for(size_t v = 0; v < requiredVertexCount; v++)
         {
             const Korl_Math_V3f32 positionNorm = korl_math_v3f32_normal(*KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, o_vertexPositions) + vertexPositionByteStride * v));

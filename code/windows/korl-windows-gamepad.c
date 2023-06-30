@@ -42,16 +42,7 @@ typedef enum _Korl_Windows_Gamepad_ConnectionType
 /**
  * \note: when I mention "(dis)connection" for Gamepad_Device here, that does 
  *     _not_ necessarily mean physical device connection to the machine
- * @TODO: maybe I should just refactor all the mentions of "(dis)connection" in 
- *     this module with a more fitting term, such as "(un)registration"; actual 
- *     device connection technique will likely vary depending on the device; for 
- *     example, XINPUT devices will need to be polled to determine what 
- *     controllers are connected to it, and BLUETOOTH devices such as DS4 will 
- *     likely need some kind of metric to determine if the device is still 
- *     connected: for example, we could periodically attempt communication with 
- *     the device by sending an output report and base the connection off the 
- *     result of that command; TLDR: connection & registration seem to be two 
- *     distinct states that need to be tracked _seperately_!
+ * KORL-ISSUE-000-000-171: gamepad: refactor all the mentions of "(dis)connection" in this module with a more fitting term, such as "(un)registration"; actual device connection technique will likely vary depending on the device; for example, XINPUT devices will need to be polled to determine what controllers are connected to it, and BLUETOOTH devices such as DS4 will likely need some kind of metric to determine if the device is still connected: for example, we could periodically attempt communication with the device by sending an output report and base the connection off the result of that command; TLDR: connection & registration seem to be two distinct states that need to be tracked _seperately_!
  */
 typedef struct _Korl_Windows_Gamepad_Device
 {
@@ -118,39 +109,6 @@ korl_internal void _korl_windows_gamepad_connectXbox(LPTSTR devicePath)
     /**/
     korl_log(INFO, "xbox gamepad [%lli] connected: \"%ws\"", newDevice - context->stbDaDevices, string_getRawUtf16(&newDevice->path));
 }
-#if 0//@TODO: delete this stuff?
-korl_internal void _korl_windows_gamepad_disconnectIndex(u$ devicesIndex)
-{
-    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
-    korl_assert(devicesIndex < arrlenu(context->stbDaDevices));
-    korl_log(INFO, "disconnecting gamepad \"%ws\"", string_getRawUtf16(&context->stbDaDevices[devicesIndex].path));
-    string_free(&context->stbDaDevices[devicesIndex].path);
-    if(!CloseHandle(context->stbDaDevices[devicesIndex].handleFileIo))
-        korl_logLastError("CloseHandle failed");
-    arrdelswap(context->stbDaDevices, devicesIndex);
-}
-korl_internal void _korl_windows_gamepad_disconnectPath(LPTSTR devicePath)
-{
-    _Korl_Windows_Gamepad_Context*const context = &_korl_windows_gamepad_context;
-    Korl_StringPool_String stringDevicePath = string_newUtf16(devicePath);
-    string_toUpper(stringDevicePath);// necessary since apparently SetupDi* API & WM_DEVICECHANGE message structures provide different path cases
-    const _Korl_Windows_Gamepad_Device*const devicesEnd = context->stbDaDevices + arrlen(context->stbDaDevices);
-    for(_Korl_Windows_Gamepad_Device* device = context->stbDaDevices
-       ;device < devicesEnd
-       ;device++)
-        /* if a device in our database matches the devicePath, we need to clean it up and remove it */
-        if(string_equals(&stringDevicePath, &device->path))
-        {
-            KORL_WINDOWS_CHECK(CloseHandle(device->handleFileIo));
-            device->handleFileIo = INVALID_HANDLE_VALUE;
-            korl_log(INFO, "device disconnected: \"%ws\"", string_getRawUtf16(&stringDevicePath));
-            goto cleanUp;
-        }
-    korl_log(WARNING, "device disconnected, but not present in database: \"%ws\"", string_getRawUtf16(&stringDevicePath));
-    cleanUp:
-        string_free(&stringDevicePath);
-}
-#endif
 korl_internal void korl_windows_gamepad_initialize(void)
 {
     korl_memory_zero(&_korl_windows_gamepad_context, sizeof(_korl_windows_gamepad_context));

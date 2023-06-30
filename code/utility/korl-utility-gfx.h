@@ -3,6 +3,7 @@
 #include "korl-interface-platform-gfx.h"
 korl_internal Korl_Math_V4f32   korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color);
 korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(void);
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(void);
 korl_internal Korl_Gfx_Camera   korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp);
 korl_internal Korl_Gfx_Camera   korl_gfx_camera_createOrtho(f32 clipDepth);
 korl_internal Korl_Gfx_Camera   korl_gfx_camera_createOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);

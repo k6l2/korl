@@ -123,7 +123,7 @@ korl_internal void _korl_audio_output_open(IMMDevice* mmDevice)
         }
         korl_log(INFO, "\textensible wave format: subFormat=%hs validBits/sample=%hu channelMask=0x%X", sampleFormatCString, waveFormatExtensible->Samples.wValidBitsPerSample, waveFormatExtensible->dwChannelMask);
     }
-    //@TODO: we should hanle the case where our sampleFormat == KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN at this point, since it's entirely possible we might encounter this in the wild; test this later
+    //KORL-ISSUE-000-000-170: audio: we should hanle the case where our sampleFormat == KORL_AUDIO_SAMPLE_FORMAT_UNKNOWN at this point, since it's entirely possible we might encounter this in the wild; test this later
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, Initialize, AUDCLNT_SHAREMODE_SHARED, 0/*streamFlags*/, _KORL_AUDIO_BUFFER_HECTO_NANO_SECONDS, 0/*devicePeriod; _must_ == 0 in SHARED mode*/, context->output.waveFormat, NULL/*AudioSessionGuid; NULL=>create new session*/))
         goto cleanUp;
     if(!_KORL_AUDIO_CHECK_COM(context->output.audioClient, GetBufferSize, &context->output.bufferFramesSize))

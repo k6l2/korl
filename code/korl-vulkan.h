@@ -167,15 +167,16 @@ typedef enum Korl_Vulkan_VertexAttributeInputRate
 } Korl_Vulkan_VertexAttributeInputRate;
 typedef struct Korl_Vulkan_VertexAttributeDescriptor2//@TODO: rename to Korl_Vulkan_VertexAttributeDescriptor
 {
-    u32                                    byteOffset;
-    u32                                    byteStride;
+    u32                                    byteOffsetBuffer;// the byte offset within the buffer containing this attribute which contains the first attribute value
+    u32                                    byteStride;// aka byteOffsetPerVertex
     Korl_Vulkan_VertexAttributeInputRate   inputRate;
     Korl_Vulkan_VertexAttributeElementType elementType;
     u8                                     vectorSize;
 } Korl_Vulkan_VertexAttributeDescriptor2;
 typedef struct Korl_Vulkan_VertexStagingMeta
 {
-    u32                                    indexByteOffset;
+    // indexByteStride is implicitly _always_ == sizeof(indexType), so we don't need such a member
+    u32                                    indexByteOffsetBuffer;
     u32                                    indexCount;
     Korl_Vulkan_VertexIndexType            indexType;
     u32                                    vertexCount;
@@ -221,7 +222,7 @@ korl_internal void                                      korl_vulkan_setDrawState
 korl_internal void                                      korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);//@TODO: delete/deprecate
 korl_internal Korl_Vulkan_StagingAllocation             korl_vulkan_stagingAllocate(const Korl_Vulkan_VertexStagingMeta* stagingMeta);
 //@TODO: stagingReallocate?
-korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_StagingAllocation* stagingAllocation, const Korl_Vulkan_DrawMode* drawMode);
+korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Vulkan_StagingAllocation* stagingAllocation, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode);
 korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 //@TODO: rename to korl_vulkan_deviceAsset_createBuffer

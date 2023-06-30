@@ -72,7 +72,7 @@ typedef enum Korl_StringPool_CompareResult
     single string pool context.  So for each source file that the user wants to 
     use these macros in, they would simply redefine _LOCAL_STRING_POOL_POINTER 
     to be whatever string pool context they want. */
-// @TODO: API rectification: we should provide a macro mechanism to allow the user to define their own "namespace" to these APIs; if none is provided, the default should just be `korl_string_*`
+//KORL-ISSUE-000-000-167: stringPool: API rectification: we should provide a macro mechanism to allow the user to define their own "namespace" to these APIs; if none is provided, the default should just be `korl_string_*`
 #if defined(__cplusplus)
     /* if we're using C++, we can have convenience macros for function overloads, 
         which are defined later in this header file */
@@ -127,7 +127,7 @@ typedef enum Korl_StringPool_CompareResult
 #endif
 /* convenience macros specifically for korl-stringPool module, which 
     automatically inject file/line information */
-//@TODO: API rectification; just make these macros `korl_stringPool_*` as with the normal APIs below; they will just call their `_full` API counterparts
+//KORL-ISSUE-000-000-168: stringPool: API rectification; just make these macros `korl_stringPool_*` as with the normal APIs below; they will just call their `_full` API counterparts
 #define korl_stringNewUtf8(stringPoolPointer, cString)                                                korl_stringPool_newFromUtf8(stringPoolPointer, cString, __FILEW__, __LINE__)
 #define korl_stringNewUtf16(stringPoolPointer, cString)                                               korl_stringPool_newFromUtf16(stringPoolPointer, cString, __FILEW__, __LINE__)
 #define korl_stringNewAci8(stringPoolPointer, constArrayCi8)                                          korl_stringPool_newFromAci8(stringPoolPointer, constArrayCi8, __FILEW__, __LINE__)
@@ -162,7 +162,7 @@ typedef enum Korl_StringPool_CompareResult
  * The user of this code module is advised to be careful about how they manage 
  * the Korl_StringPool returned by this function given the behavior described 
  * above! @korl-string-pool-no-data-segment-storage */
-//@TODO: API rectification; the APIs that require file/line information are full-form APIs that probably shouldn't be getting called in the first place, so we should just make them longer by adding `_full` to their identifiers or something
+//KORL-ISSUE-000-000-169: stringPool: API rectification; the APIs that require file/line information are full-form APIs that probably shouldn't be getting called in the first place, so we should just make them longer by adding `_full` to their identifiers or something
 korl_internal Korl_StringPool               korl_stringPool_create(Korl_Memory_AllocatorHandle allocatorHandle);
 korl_internal void                          korl_stringPool_empty(Korl_StringPool* context);
 korl_internal void                          korl_stringPool_destroy(Korl_StringPool* context);
