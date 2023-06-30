@@ -600,8 +600,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         createInfoTexture.sizeY = glyphPage->dataSquareSize;
         glyphPage->resourceHandleTexture = korl_resource_createTexture(&createInfoTexture);
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfo);
-        createInfo.bytes              = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
-        createInfo.useAsStorageBuffer = true;
+        createInfo.bytes = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
         glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_createVertexBuffer(&createInfo);
         /**/
         korl_time_probeStop(create_font_cache);
@@ -2045,19 +2044,21 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
     }
     korl_vulkan_setDrawState(&drawState);
-    u32 meshPrimitiveCount = 0;
     const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
                                     ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
-    const Korl_Vulkan_DrawVertexData*const meshVertexDataArray = korl_resource_scene3d_getDrawVertexData(context->subType.mesh.resourceHandleScene3d, utf8MeshName, &meshPrimitiveCount);
-    if(!meshVertexDataArray)
-        return;/* we can't draw the scene3d if it has not yet loaded*/
+    u32                                       meshPrimitiveCount       = 0;
+    Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
+    Korl_Vulkan_VertexStagingMeta*            meshPrimitiveVertexMetas = NULL;
+    Korl_Vulkan_DrawMode*                     meshPrimitiveDrawModes   = NULL;
+    korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
+                                         ,&meshPrimitiveCount
+                                         ,&meshPrimitiveBuffer
+                                         ,&meshPrimitiveVertexMetas
+                                         ,&meshPrimitiveDrawModes);
     for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
     {
         // @TODO: each mesh primitive is actually associated with a respective material, so we need to obtain & use materials in this loop!
-        Korl_Vulkan_DrawVertexData drawVertexData = meshVertexDataArray[mp];
-        drawVertexData.polygonMode = material.drawState.polygonMode;
-        drawVertexData.cullMode    = material.drawState.cullMode;
-        korl_vulkan_draw(&drawVertexData);
+        korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, meshPrimitiveVertexMetas + mp, meshPrimitiveDrawModes + mp);
     }
 }
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)

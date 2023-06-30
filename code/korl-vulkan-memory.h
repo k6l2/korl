@@ -73,36 +73,30 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     {
         struct
         {
-            VkBuffer                               vulkanBuffer;
-            VkBufferUsageFlags                     bufferUsageFlags;
-            u32                                    indexCount;
-            Korl_Vulkan_VertexIndexType            indexType;
-            /** A \c elementType value of \c KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID 
-             * here indicates that this buffer does not contain the vertex 
-             * attribute at that respective index of this array */
-            Korl_Vulkan_VertexAttributeDescriptor2 attributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+            VkBuffer           vulkanBuffer;
+            VkBufferUsageFlags bufferUsageFlags;
         } buffer;
         struct
         {
-            VkImage image;
+            VkImage     image;
             VkImageView imageView;
-            VkSampler sampler;
-            u32 sizeX;
-            u32 sizeY;
+            VkSampler   sampler;
+            u32         sizeX;
+            u32         sizeY;
         } texture;
         struct
         {
-            VkImage image;
+            VkImage     image;
             VkImageView imageView;
         } imageBuffer;
         /* @vulkan-device-allocation-type */
     } subType;
-    VkDeviceSize byteOffset;// this value will _always_ be aligned according to the memory requirements of the device object contained in this allocation
-    VkDeviceSize bytesOccupied;// Derived from the Vulkan memory requirements of this allocation; it's entirely possible for an allocation to occupy more bytes than it utilizes!  This is mostly only useful for the internal allocation strategy.
-    VkDeviceSize bytesUsed;// The size originally requested when the user called allocate.  The user is likely only going to care about this value for the purposes of manipulation of the data stored in this allocation.
+    VkDeviceSize   byteOffset;// this value will _always_ be aligned according to the memory requirements of the device object contained in this allocation
+    VkDeviceSize   bytesOccupied;// Derived from the Vulkan memory requirements of this allocation; it's entirely possible for an allocation to occupy more bytes than it utilizes!  This is mostly only useful for the internal allocation strategy.
+    VkDeviceSize   bytesUsed;// The size originally requested when the user called allocate.  The user is likely only going to care about this value for the purposes of manipulation of the data stored in this allocation.
     const wchar_t* file;// currently, korl-vulkan should not be exposed to any dynamic code modules, so we can safely just store raw file string pointers here
-    int line;
-    bool freeQueued;
+    int            line;
+    bool           freeQueued;
 } _Korl_Vulkan_DeviceMemory_Alloctation;
 #define _korl_vulkan_deviceMemory_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation)                                                     _korl_vulkan_deviceMemory_allocator_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation, __FILEW__, __LINE__)
 #define _korl_vulkan_deviceMemory_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, requiredHandle, out_allocation)                                                 _korl_vulkan_deviceMemory_allocator_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, requiredHandle, out_allocation, __FILEW__, __LINE__)

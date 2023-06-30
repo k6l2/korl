@@ -807,13 +807,13 @@ korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Acces
         componentMultiplier = 4;
         break;}
     case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT2:{
-        componentMultiplier = 4;
+        componentMultiplier = 2 * 2;
         break;}
     case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3:{
-        componentMultiplier = 9;
+        componentMultiplier = 3 * 3;
         break;}
     case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4:{
-        componentMultiplier = 12;
+        componentMultiplier = 4 * 4;
         break;}
     }
     return componentBytes * componentMultiplier;

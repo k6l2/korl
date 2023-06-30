@@ -72,6 +72,7 @@ korl_internal void                                           korl_resource_initi
 korl_internal Korl_Resource_Handle                           korl_resource_createVertexBuffer(const struct Korl_Vulkan_CreateInfoVertexBuffer* createInfo);
 korl_internal Korl_Resource_Handle                           korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
 korl_internal void                                           korl_resource_destroy(Korl_Resource_Handle handle);
+//@TODO: deprecate korl_resource_update, replace with `void* korl_resource_getUpdateBuffer(handle)`; we want the user to do whatever the fuck they want with the buffer until the end of frame
 korl_internal void                                           korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset);
 korl_internal u$                                             korl_resource_getByteSize(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize);
@@ -82,7 +83,7 @@ korl_internal void                                           korl_resource_setAu
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
 korl_internal Korl_Vulkan_ShaderHandle                       korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader);
 korl_internal Korl_Vulkan_DrawState_Material                 korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d);
-korl_internal const Korl_Vulkan_DrawVertexData*              korl_resource_scene3d_getDrawVertexData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount);
+korl_internal void                                           korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Vulkan_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Vulkan_DrawMode** o_meshPrimitiveDrawModes);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void                                           korl_resource_memoryStateRead(const u8* memoryState);

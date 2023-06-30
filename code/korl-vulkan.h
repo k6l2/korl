@@ -143,7 +143,8 @@ typedef struct Korl_Vulkan_DrawState
     const Korl_Vulkan_DrawState_Lighting*        lighting;
 } Korl_Vulkan_DrawState;
 typedef enum Korl_Vulkan_VertexIndexType
-    {KORL_VULKAN_VERTEX_INDEX_TYPE_U16
+    {KORL_VULKAN_VERTEX_INDEX_TYPE_INVALID
+    ,KORL_VULKAN_VERTEX_INDEX_TYPE_U16
     ,KORL_VULKAN_VERTEX_INDEX_TYPE_U32
 } Korl_Vulkan_VertexIndexType;
 typedef enum Korl_Vulkan_VertexAttributeBinding
@@ -174,6 +175,7 @@ typedef struct Korl_Vulkan_VertexAttributeDescriptor2//@TODO: rename to Korl_Vul
 } Korl_Vulkan_VertexAttributeDescriptor2;
 typedef struct Korl_Vulkan_VertexStagingMeta
 {
+    u32                                    indexByteOffset;
     u32                                    indexCount;
     Korl_Vulkan_VertexIndexType            indexType;
     u32                                    vertexCount;
@@ -190,13 +192,15 @@ typedef struct Korl_Vulkan_CreateInfoTexture
 {
     u32 sizeX, sizeY;// @TODO: V2u32
 } Korl_Vulkan_CreateInfoTexture;
-typedef struct Korl_Vulkan_CreateInfoVertexBuffer
+enum Korl_Vulkan_BufferUsageFlags
+    {KORL_VULKAN_BUFFER_USAGE_FLAG_INDEX   = 1 << 0
+    ,KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX  = 1 << 1
+    ,KORL_VULKAN_BUFFER_USAGE_FLAG_STORAGE = 1 << 2
+};
+typedef struct Korl_Vulkan_CreateInfoVertexBuffer//@TODO: rename to Korl_Vulkan_CreateInfoBuffer
 {
-    u$                                     bytes;
-    Korl_Vulkan_VertexIndexType            indexType;
-    u32                                    indexByteOffset;
-    Korl_Vulkan_VertexAttributeDescriptor2 vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
-    bool                                   useAsStorageBuffer;
+    u$  bytes;
+    u32 usageFlags;// see: Korl_Vulkan_BufferUsageFlags
 } Korl_Vulkan_CreateInfoVertexBuffer;
 typedef struct Korl_Vulkan_CreateInfoShader
 {
@@ -218,12 +222,15 @@ korl_internal void                                      korl_vulkan_draw(const K
 korl_internal Korl_Vulkan_StagingAllocation             korl_vulkan_stagingAllocate(const Korl_Vulkan_VertexStagingMeta* stagingMeta);
 //@TODO: stagingReallocate?
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_StagingAllocation* stagingAllocation, const Korl_Vulkan_DrawMode* drawMode);
+korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
+//@TODO: rename to korl_vulkan_deviceAsset_createBuffer
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
 korl_internal void                                      korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
 korl_internal void                                      korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
+korl_internal void*                                     korl_vulkan_vertexBuffer_getStagingBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, u$ bytes, u$ bufferByteOffset);
 korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
 korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);
