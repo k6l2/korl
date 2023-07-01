@@ -112,6 +112,7 @@ typedef struct _Korl_Gfx_Context
     Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
     Korl_Gfx_Camera             currentCameraState;
     f32                         seconds;// passed to the renderer as UBO data to allow shader animations; passed when a Camera is used
+    Korl_Resource_Handle        blankTexture;// a 1x1 texture whose color channels are fully-saturated; can be used as a "default" material map texture
     KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, KORL_VULKAN_MAX_LIGHTS);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
@@ -725,6 +726,15 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
     _korl_gfx_context->surfaceSize = surfaceSize;
     _korl_gfx_context->seconds    += deltaSeconds;
     KORL_MEMORY_POOL_EMPTY(_korl_gfx_context->pendingLights);
+    if(!_korl_gfx_context->blankTexture)
+    {
+        KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoBlankTexture);
+        createInfoBlankTexture.sizeX = 1;
+        createInfoBlankTexture.sizeY = 1;
+        _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
+        const Korl_Vulkan_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
+        korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
+    }
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
@@ -994,7 +1004,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     vertexData.indices                 = triQuadIndices;
     vertexData.instancePositionsStride = 2*sizeof(f32);
     vertexData.instanceUintStride      = sizeof(u32);
-    Korl_Vulkan_DrawState_Material material = KORL_GFX_MATERIAL_DEFAULT;
+    Korl_Vulkan_DrawState_Material material = korl_gfx_material_defaultUnlit();
     material.maps.resourceHandleTextureBase = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
     KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
@@ -1361,7 +1371,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
         korl_math_v2f32_assignAddScalar     (&model.uvAabb.min, batch->uvAabbOffset);
         korl_math_v2f32_assignSubtractScalar(&model.uvAabb.max, batch->uvAabbOffset);
     }
-    Korl_Vulkan_DrawState_Material material = KORL_GFX_MATERIAL_DEFAULT;
+    Korl_Vulkan_DrawState_Material material = korl_gfx_material_defaultUnlit();
     material.properties.factorColorBase = (Korl_Math_V4f32){batch->modelColor.r / KORL_C_CAST(f32, KORL_U8_MAX)
                                                            ,batch->modelColor.g / KORL_C_CAST(f32, KORL_U8_MAX)
                                                            ,batch->modelColor.b / KORL_C_CAST(f32, KORL_U8_MAX)
@@ -2091,19 +2101,32 @@ korl_internal KORL_FUNCTION_korl_gfx_drawSphere(korl_gfx_drawSphere)
     }
     korl_vulkan_setDrawState(&drawState);
     KORL_ZERO_STACK(Korl_Vulkan_VertexStagingMeta, stagingMeta);
+    u32 byteOffsetBuffer = 0;
     stagingMeta.vertexCount = korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments));
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = 0;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
     stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V3f32);
     stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
     stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
     stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 3;
+    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
+    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
     Korl_Vulkan_StagingAllocation stagingAllocation = korl_vulkan_stagingAllocate(&stagingMeta);
     Korl_Math_V3f32*const positions = KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), NULL/*o_uvs*/, 0/*uv stride*/);
+    Korl_Math_V2f32*const uvs       = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV      ].byteOffsetBuffer);
+    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
     KORL_ZERO_STACK(Korl_Vulkan_DrawMode, drawMode);
     drawMode.cullMode    = material->drawState.cullMode;
     drawMode.polygonMode = material->drawState.polygonMode;
     korl_vulkan_drawStagingAllocation(&stagingAllocation, &stagingMeta, &drawMode);
+}
+korl_internal KORL_FUNCTION_korl_gfx_getBlankTexture(korl_gfx_getBlankTexture)
+{
+    return _korl_gfx_context->blankTexture;
 }
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

@@ -150,11 +150,7 @@ typedef struct Korl_Gfx_Material
     Korl_Gfx_Material_Properties properties;
     Korl_Gfx_Material_Maps       maps;
     Korl_Gfx_Material_Shaders    shaders;
-} Korl_Gfx_Material;
-korl_global_const Korl_Gfx_Material KORL_GFX_MATERIAL_DEFAULT = {.properties = {.factorColorBase     = {1,1,1,1}
-                                                                               ,.factorColorEmissive = {0,0,0}
-                                                                               ,.factorColorSpecular = {1,1,1,1}
-                                                                               ,.shininess           = 32}};
+} Korl_Gfx_Material;// korl-utility-gfx has APIs to obtain "default" materials
 typedef struct Korl_Gfx_Drawable_MaterialSlot
 {
     Korl_Gfx_Material material;
@@ -341,3 +337,4 @@ typedef struct Korl_Gfx_Font_Metrics
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                  name(const Korl_Gfx_Drawable*const context)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                  name(const Korl_Gfx_Light*const lights, u$ lightsSize)
 #define KORL_FUNCTION_korl_gfx_drawSphere(name)                              void                  name(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material)
+#define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle  name(void)

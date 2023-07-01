@@ -11,6 +11,7 @@
 #include "korl-stb-ds.h"
 #include "korl-time.h"
 #include "korl-resource.h"
+#include "utility/korl-utility-gfx.h"
 #if defined(KORL_PLATFORM_WINDOWS)
     #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
@@ -1098,7 +1099,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache         = _korl_vulkan_pipeline_default();
     surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties              = KORL_GFX_MATERIAL_DEFAULT.properties;
+    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit().properties;
     surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;

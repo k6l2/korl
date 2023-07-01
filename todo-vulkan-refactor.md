@@ -8,11 +8,12 @@ This time, we are going to construct a Vulkan API to just give the user direct a
 [x] build new korl-vulkan API to allow immediate draw calls
 [x] add support for construction & drawing of data stored in Vulkan Buffers
     - at this point, we should be able to draw meshes from simple GLB files again
+[ ] refactor korl-gui to not use old "korl-gfx-batch" APIs
+    - at this point, we should be able to at least draw text from the log console again
 [ ] refactor all the garbage from korl-gfx to use new APIs
     [ ] destroy all the korl-batch* nonsense
     [ ] refactor Text stuff
     [ ] refactor korl-gui to use this stuff
-    - at this point, we should be able to at least draw text from the log console again
 [ ] flesh out immediate draw calls to make them as streamlined as possible
     - ???
 [ ] add support for modification of vertex attribute data for an existing "Drawable" primitive

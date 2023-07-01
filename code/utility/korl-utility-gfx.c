@@ -30,10 +30,9 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(void)
                                                                    ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
                                                                    ,.factorColorSpecular = KORL_MATH_V4F32_ONE
                                                                    ,.shininess           = 32}
-                                                    //@TODO: create default "white" 1x1 texture resource, and use it for all these maps
-                                                    ,.maps = {.resourceHandleTextureBase     = 0
-                                                             ,.resourceHandleTextureSpecular = 0
-                                                             ,.resourceHandleTextureEmissive = 0}
+                                                    ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
                                                     ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
                                                                 ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
 }
