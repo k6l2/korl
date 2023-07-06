@@ -21,7 +21,9 @@ korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   
 typedef enum Korl_Gfx_PrimitiveType
     {KORL_GFX_PRIMITIVE_TYPE_INVALID
     ,KORL_GFX_PRIMITIVE_TYPE_TRIANGLES
+    ,KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP
     ,KORL_GFX_PRIMITIVE_TYPE_LINES
+    ,KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP
 } Korl_Gfx_PrimitiveType;
 typedef enum Korl_Gfx_PolygonMode
     {KORL_GFX_POLYGON_MODE_FILL
@@ -145,7 +147,7 @@ typedef struct Korl_Gfx_DrawState_Lighting
 typedef struct Korl_Gfx_DrawState
 {
     const Korl_Gfx_DrawState_Modes*           modes;
-    const Korl_Gfx_DrawState_Blend*           blend;
+    const Korl_Gfx_DrawState_Blend*           blend;//@TODO: eliminate this member; merge this data into `material`?
     const Korl_Gfx_DrawState_SceneProperties* sceneProperties;
     const Korl_Gfx_DrawState_Model*           model;
     const Korl_Gfx_DrawState_Scissor*         scissor;

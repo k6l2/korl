@@ -996,18 +996,15 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
     korl_assert(fontCache);
     const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     /**/
-    korl_shared_const Korl_Vulkan_VertexIndex triQuadIndices[] = 
-        { 0, 1, 3
-        , 1, 2, 3 };
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
     vertexData.primitiveType           = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
     vertexData.polygonMode             = KORL_GFX_POLYGON_MODE_FILL;
     vertexData.cullMode                = KORL_GFX_CULL_MODE_BACK;
-    vertexData.indexCount              = korl_arraySize(triQuadIndices);
-    vertexData.indices                 = triQuadIndices;
+    vertexData.indexCount              = korl_arraySize(_KORL_GFX_TRI_QUAD_INDICES);
+    vertexData.indices                 = _KORL_GFX_TRI_QUAD_INDICES;
     vertexData.instancePositionsStride = 2*sizeof(f32);
     vertexData.instanceUintStride      = sizeof(u32);
-    Korl_Gfx_DrawState_Material material = korl_gfx_material_defaultUnlit();
+    Korl_Gfx_DrawState_Material material = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
     material.maps.resourceHandleTextureBase = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
@@ -1046,7 +1043,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
             drawStateLine.material = &material;
             drawStateLine.model    = &model;
             korl_vulkan_setDrawState(&drawStateLine);
-            vertexData.instanceCount                        = line->visibleCharacters;
+            vertexData.instanceCount                       = line->visibleCharacters;
             vertexData.vertexBuffer.type                   = KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE;
             vertexData.vertexBuffer.subType.handleResource = context->resourceHandleBufferText;
             vertexData.vertexBuffer.byteOffset             = currentVisibleGlyphOffset*sizeof(_Korl_Gfx_FontGlyphInstance);

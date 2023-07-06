@@ -544,9 +544,11 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoInputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     switch(pipeline->modes.primitiveType)
     {
-    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLES: createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;
-    case KORL_GFX_PRIMITIVE_TYPE_LINES    : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;     break;
-    default                               : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLES     : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  break;
+    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP: createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; break;
+    case KORL_GFX_PRIMITIVE_TYPE_LINES         : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;      break;
+    case KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP    : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;     break;
+    case KORL_GFX_PRIMITIVE_TYPE_INVALID       : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;       break;
     }
     VkViewport viewPort;
     viewPort.x        = 0.f;
@@ -1104,7 +1106,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache         = _korl_vulkan_pipeline_default();
     surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit().properties;
+    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).properties;
     surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;

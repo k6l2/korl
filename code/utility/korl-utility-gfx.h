@@ -1,8 +1,9 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-gfx.h"
+korl_internal u8                korl_gfx_indexBytes(Korl_Gfx_VertexIndexType vertexIndexType);
 korl_internal Korl_Math_V4f32   korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color);
-korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(void);
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(Korl_Math_V4f32 colorLinear4Base);
 korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(void);
 korl_internal Korl_Gfx_Camera   korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp);
 korl_internal Korl_Gfx_Camera   korl_gfx_camera_createOrtho(f32 clipDepth);
@@ -38,3 +39,4 @@ korl_internal void              korl_gfx_draw3dLine(const Korl_Math_V3f32 points
 //@TODO: deprecate/delete
 korl_internal void              korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Vulkan_Color4u8 color, Korl_Memory_AllocatorHandle allocator);
 korl_internal void              korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material);
+korl_internal void              korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 size, Korl_Math_V2f32 anchorRatio, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline);

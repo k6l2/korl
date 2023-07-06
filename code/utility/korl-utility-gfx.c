@@ -2,6 +2,15 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
 #include "korl-interface-platform.h"
+korl_internal u8 korl_gfx_indexBytes(Korl_Gfx_VertexIndexType vertexIndexType)
+{
+    switch(vertexIndexType)
+    {
+    case KORL_GFX_VERTEX_INDEX_TYPE_U16    : return sizeof(u16);
+    case KORL_GFX_VERTEX_INDEX_TYPE_U32    : return sizeof(u32);
+    case KORL_GFX_VERTEX_INDEX_TYPE_INVALID: return 0;
+    }
+}
 korl_internal Korl_Math_V4f32 korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color)
 {
     return KORL_STRUCT_INITIALIZE(Korl_Math_V4f32){KORL_C_CAST(f32, color.r) / KORL_C_CAST(f32, KORL_U8_MAX)
@@ -9,11 +18,11 @@ korl_internal Korl_Math_V4f32 korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color
                                                   ,KORL_C_CAST(f32, color.b) / KORL_C_CAST(f32, KORL_U8_MAX)
                                                   ,KORL_C_CAST(f32, color.a) / KORL_C_CAST(f32, KORL_U8_MAX)};
 }
-korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(void)
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(Korl_Math_V4f32 colorLinear4Base)
 {
     return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.drawState = {.polygonMode = KORL_GFX_POLYGON_MODE_FILL
                                                                   ,.cullMode    = KORL_GFX_CULL_MODE_BACK}
-                                                    ,.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                    ,.properties = {.factorColorBase     = colorLinear4Base
                                                                    ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
                                                                    ,.factorColorSpecular = KORL_MATH_V4F32_ONE
                                                                    ,.shininess           = 0}
@@ -328,16 +337,18 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
-    drawMode.cullMode      = material->drawState.cullMode;
-    drawMode.polygonMode   = material->drawState.polygonMode;
+    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
+    drawMode.cullMode        = material->drawState.cullMode;
+    drawMode.polygonMode     = material->drawState.polygonMode;
     drawMode.enableDepthTest = true;
+    const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.modes    = &drawMode;
     drawState.model    = &model;
     drawState.material = material;
+    drawState.blend    = &blend;
     korl_gfx_setDrawState(&drawState);
-    /* generate the sphere mesh directly into graphics staging memory; draw it! */
+    /* generate the mesh directly into graphics staging memory; draw it! */
     KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
     u32 byteOffsetBuffer = 0;
     stagingMeta.vertexCount = korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments));
@@ -360,4 +371,104 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
     Korl_Math_V2f32*const uvs       = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      ].byteOffsetBuffer);
     korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
     korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
+}
+korl_internal void korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 size, Korl_Math_V2f32 anchorRatio, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+{
+    /* configure the renderer draw state */
+    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
+    const bool isMaterialTranslucent = material->properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
+    model.transform = korl_math_makeM4f32_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
+    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP;// for separate individual quad draws, TRIANGLE_STRIP is the least amount of data we can possibly send to the renderer; if we wanted to draw _many_ quads all at once using this topology, we would need to enable a feature, and either set pipeline input state statically or dynamically (for Vulkan)
+    drawMode.cullMode        = material->drawState.cullMode;
+    drawMode.polygonMode     = material->drawState.polygonMode;
+    drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
+    drawMode.enableBlend     = isMaterialTranslucent;
+    const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
+    drawState.modes    = &drawMode;
+    drawState.model    = &model;
+    drawState.material = material;
+    drawState.blend    = &blend;
+    korl_gfx_setDrawState(&drawState);
+    /* generate the mesh directly into graphics staging memory; draw it! */
+    korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
+    korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_LOOP     [4] = {{0,0}, {1,0}, {1,1}, {0,1}};
+    KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
+    u32 byteOffsetBuffer = 0;
+    stagingMeta.vertexCount = korl_arraySize(QUAD_POSITION_NORMALS_TRI_STRIP);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
+    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+    if(material->maps.resourceHandleTextureBase)
+    {
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
+        byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
+    }
+    Korl_Gfx_StagingAllocation stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
+    Korl_Math_V2f32*const positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
+    Korl_Math_V2f32*const uvs       = stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID 
+                                      ? KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer)
+                                      : NULL;
+    for(u32 v = 0; v < korl_arraySize(QUAD_POSITION_NORMALS_TRI_STRIP); v++)
+    {
+        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
+                                                              ,QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
+        if(uvs)
+            uvs[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_TRI_STRIP[v].x
+                                                            ,QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
+    }
+    // korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
+    korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
+    if(materialOutline)
+    {
+        /* configure the renderer draw state */
+        drawMode.primitiveType = outlineThickness == 0 ? KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP : KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP;
+        drawMode.cullMode      = material->drawState.cullMode;
+        drawMode.polygonMode   = material->drawState.polygonMode;
+        KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateOutline);
+        drawStateOutline.modes    = &drawMode;
+        drawStateOutline.material = materialOutline;
+        korl_gfx_setDrawState(&drawStateOutline);
+        /* generate the mesh directly into graphics staging memory; draw it! */
+        korl_memory_zero(&stagingMeta, sizeof(stagingMeta));
+        byteOffsetBuffer = 0;
+        stagingMeta.vertexCount = outlineThickness == 0 
+                                  ?      korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1 
+                                  : 2 * (korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1);
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
+        byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+        stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
+        Korl_Math_V2f32*const outlinePositions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
+        const Korl_Math_V2f32 centerOfMass = korl_math_v2f32_subtract(korl_math_v2f32_multiplyScalar(size, 0.5f), korl_math_v2f32_multiply(anchorRatio, size));
+        for(u32 v = 0; v < korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1; v++)
+        {
+            const u32 cornerIndex = v % korl_arraySize(QUAD_POSITION_NORMALS_LOOP);
+            if(outlineThickness == 0)
+                outlinePositions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_LOOP[cornerIndex].x * size.x - anchorRatio.x * size.x
+                                                                             ,QUAD_POSITION_NORMALS_LOOP[cornerIndex].y * size.y - anchorRatio.y * size.y};
+            else
+            {
+                outlinePositions[2 * v + 0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_LOOP[cornerIndex].x * size.x - anchorRatio.x * size.x
+                                                                                     ,QUAD_POSITION_NORMALS_LOOP[cornerIndex].y * size.y - anchorRatio.y * size.y};
+                const Korl_Math_V2f32 fromCenter      = korl_math_v2f32_subtract(outlinePositions[2 * v + 0], centerOfMass);
+                const Korl_Math_V2f32 fromCenterNorms = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){fromCenter.x / korl_math_f32_positive(fromCenter.x)
+                                                                                              ,fromCenter.y / korl_math_f32_positive(fromCenter.y)};
+                outlinePositions[2 * v + 1] = korl_math_v2f32_add(outlinePositions[2 * v + 0], korl_math_v2f32_multiplyScalar(fromCenterNorms, outlineThickness));
+            }
+        }
+        korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
+    }
 }
