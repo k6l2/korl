@@ -52,19 +52,13 @@ typedef enum Korl_Vulkan_DrawVertexData_VertexBufferType
     ,KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE
     ,KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION
 } Korl_Vulkan_DrawVertexData_VertexBufferType;
-typedef struct Korl_Vulkan_DrawMode
-{
-    Korl_Vulkan_PrimitiveType primitiveType;
-    Korl_Gfx_PolygonMode      polygonMode;
-    Korl_Gfx_CullMode         cullMode;
-} Korl_Vulkan_DrawMode;
 typedef struct Korl_Vulkan_DrawVertexData//@TODO: delete/deprecate
 {
     // @TODO: I'm torn on this; do we keep placing these types of properties inside DrawVertexData, or do we move them into DrawState ? 🤔🤔🤔🤔🤔
     // @TODO: copy-pasta of Korl_Vulkan_DrawMode!
-    Korl_Vulkan_PrimitiveType      primitiveType;
-    Korl_Gfx_PolygonMode           polygonMode;
-    Korl_Gfx_CullMode              cullMode;
+    Korl_Gfx_PrimitiveType      primitiveType;
+    Korl_Gfx_PolygonMode        polygonMode;
+    Korl_Gfx_CullMode           cullMode;
     struct
     {
         Korl_Vulkan_DrawVertexData_VertexBufferType type;
@@ -92,103 +86,6 @@ typedef struct Korl_Vulkan_DrawVertexData//@TODO: delete/deprecate
     const u32*                     instanceUint;
     u32                            instanceUintStride;
 } Korl_Vulkan_DrawVertexData;
-typedef struct Korl_Vulkan_DrawState_Features
-{
-    u32 enableBlend     : 1;
-    u32 enableDepthTest : 1;//KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
-} Korl_Vulkan_DrawState_Features;
-typedef struct Korl_Vulkan_DrawState_Blend
-{
-    struct
-    {
-        Korl_Vulkan_BlendOperation operation;
-        Korl_Vulkan_BlendFactor    factorSource;
-        Korl_Vulkan_BlendFactor    factorTarget;
-    } color, alpha;
-} Korl_Vulkan_DrawState_Blend;
-typedef struct Korl_Vulkan_DrawState_SceneProperties
-{
-    Korl_Math_M4f32 view, projection;
-    f32             seconds;
-} Korl_Vulkan_DrawState_SceneProperties;
-typedef struct Korl_Vulkan_DrawState_Model
-{
-    Korl_Math_M4f32    transform;
-    Korl_Math_Aabb2f32 uvAabb;
-} Korl_Vulkan_DrawState_Model;
-typedef struct Korl_Vulkan_DrawState_Scissor
-{
-    u32 x, y;
-    u32 width, height;
-} Korl_Vulkan_DrawState_Scissor;
-typedef Korl_Gfx_Material Korl_Vulkan_DrawState_Material;//KORL-ISSUE-000-000-160: vulkan: Korl_Vulkan_DrawState_Material; likely unnecessary abstraction
-typedef struct Korl_Vulkan_DrawState_StorageBuffers
-{
-    Korl_Resource_Handle resourceHandleVertex;
-} Korl_Vulkan_DrawState_StorageBuffers;
-typedef struct Korl_Vulkan_DrawState_Lighting
-{
-    u32                   lightsCount;
-    const Korl_Gfx_Light* lights;
-} Korl_Vulkan_DrawState_Lighting;
-typedef struct Korl_Vulkan_DrawState
-{
-    const Korl_Vulkan_DrawState_Features*        features;
-    const Korl_Vulkan_DrawState_Blend*           blend;
-    const Korl_Vulkan_DrawState_SceneProperties* sceneProperties;
-    const Korl_Vulkan_DrawState_Model*           model;
-    const Korl_Vulkan_DrawState_Scissor*         scissor;
-    const Korl_Vulkan_DrawState_Material*        material;
-    const Korl_Vulkan_DrawState_StorageBuffers*  storageBuffers;
-    const Korl_Vulkan_DrawState_Lighting*        lighting;
-} Korl_Vulkan_DrawState;
-typedef enum Korl_Vulkan_VertexIndexType
-    {KORL_VULKAN_VERTEX_INDEX_TYPE_INVALID
-    ,KORL_VULKAN_VERTEX_INDEX_TYPE_U16
-    ,KORL_VULKAN_VERTEX_INDEX_TYPE_U32
-} Korl_Vulkan_VertexIndexType;
-typedef enum Korl_Vulkan_VertexAttributeBinding
-    {KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_COLOR
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_NORMAL
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UINT
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT// keep last!
-} Korl_Vulkan_VertexAttributeBinding;
-typedef enum Korl_Vulkan_VertexAttributeElementType
-    {KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32
-} Korl_Vulkan_VertexAttributeElementType;
-typedef enum Korl_Vulkan_VertexAttributeInputRate
-    {KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX
-    ,KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE
-} Korl_Vulkan_VertexAttributeInputRate;
-typedef struct Korl_Vulkan_VertexAttributeDescriptor2//@TODO: rename to Korl_Vulkan_VertexAttributeDescriptor
-{
-    u32                                    byteOffsetBuffer;// the byte offset within the buffer containing this attribute which contains the first attribute value
-    u32                                    byteStride;// aka byteOffsetPerVertex
-    Korl_Vulkan_VertexAttributeInputRate   inputRate;
-    Korl_Vulkan_VertexAttributeElementType elementType;
-    u8                                     vectorSize;
-} Korl_Vulkan_VertexAttributeDescriptor2;
-typedef struct Korl_Vulkan_VertexStagingMeta
-{
-    // indexByteStride is implicitly _always_ == sizeof(indexType), so we don't need such a member
-    u32                                    indexByteOffsetBuffer;
-    u32                                    indexCount;
-    Korl_Vulkan_VertexIndexType            indexType;
-    u32                                    vertexCount;
-    Korl_Vulkan_VertexAttributeDescriptor2 vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
-} Korl_Vulkan_VertexStagingMeta;
-typedef struct Korl_Vulkan_StagingAllocation
-{
-    void*        buffer;
-    VkDeviceSize bytes;
-    VkBuffer     deviceBuffer;
-    VkDeviceSize deviceBufferOffset;
-} Korl_Vulkan_StagingAllocation;
 typedef struct Korl_Vulkan_CreateInfoTexture
 {
     u32 sizeX, sizeY;// @TODO: V2u32
@@ -218,12 +115,11 @@ korl_internal void                                      korl_vulkan_clearAllDevi
 korl_internal void                                      korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3]);
 korl_internal void                                      korl_vulkan_frameEnd(void);
 korl_internal void                                      korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
-korl_internal void                                      korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
+korl_internal void                                      korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state);
 korl_internal void                                      korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);//@TODO: delete/deprecate
-korl_internal Korl_Vulkan_StagingAllocation             korl_vulkan_stagingAllocate(const Korl_Vulkan_VertexStagingMeta* stagingMeta);
-//@TODO: stagingReallocate?
-korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Vulkan_StagingAllocation* stagingAllocation, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode);
-korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Vulkan_VertexStagingMeta* stagingMeta, const Korl_Vulkan_DrawMode* drawMode);
+korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta);
+korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta);
+korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 //@TODO: rename to korl_vulkan_deviceAsset_createBuffer
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);

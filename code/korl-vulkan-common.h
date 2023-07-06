@@ -101,13 +101,10 @@ typedef struct _Korl_Vulkan_Pipeline
     /* ---------------------------------------------------------------------- */
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself: */
-    VkPrimitiveTopology            primitiveTopology;
-    VkPolygonMode                  polygonMode;
-    VkCullModeFlags                cullModeFlags;
-    Korl_Vulkan_DrawState_Features features;
-    Korl_Vulkan_DrawState_Blend    blend;
-    VkShaderModule                 shaderVertex;
-    VkShaderModule                 shaderFragment;
+    Korl_Gfx_DrawState_Modes modes;
+    Korl_Gfx_DrawState_Blend blend;
+    VkShaderModule           shaderVertex;
+    VkShaderModule           shaderFragment;
     struct
     {
         //note: `binding` & `input` values are implicit; those are just the index into this array!
@@ -115,7 +112,7 @@ typedef struct _Korl_Vulkan_Pipeline
         u32               byteOffset;// per-vertex byte offset; _not_ the byte offset into the buffer where this attribute data resides or anything like that
         u32               byteStride;
         VkVertexInputRate inputRate;
-    } vertexAttributes[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+    } vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
 } _Korl_Vulkan_Pipeline;
 typedef struct _Korl_Vulkan_Shader
 {

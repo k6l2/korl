@@ -824,7 +824,7 @@ korl_internal void korl_gfx_flushGlyphPages(void)
 }
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
 {
-    #if 0//@TODO: ???
+    #if 0//@TODO: store vertex attribute meta data in the result
     KORL_ZERO_STACK_ARRAY(Korl_Vulkan_VertexAttributeDescriptor, vertexAttributeDescriptors, 2);
     vertexAttributeDescriptors[0].offset          = offsetof(_Korl_Gfx_FontGlyphInstance, position);
     vertexAttributeDescriptors[0].stride          = sizeof(_Korl_Gfx_FontGlyphInstance);
@@ -837,6 +837,9 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     createInfoBufferText.vertexAttributeDescriptors     = vertexAttributeDescriptors;
     createInfoBufferText.bytes                          = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
     #endif
+    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoBufferText);
+    createInfoBufferText.bytes      = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
+    createInfoBufferText.usageFlags = KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX;
     const u$ bytesRequired = sizeof(Korl_Gfx_Text) + (utf16AssetNameFont.size + 1/*for null-terminator*/)*sizeof(*utf16AssetNameFont.data);
     Korl_Gfx_Text*const result    = korl_allocate(allocator, bytesRequired);
     u16*const resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
@@ -846,7 +849,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->assetNameFontRawUtf16Size       = korl_checkCast_u$_to_u32(utf16AssetNameFont.size);
     result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
     result->modelScale                      = KORL_MATH_V3F32_ONE;
-    // result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);//@TODO: ???
+    result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);
     mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
@@ -997,34 +1000,37 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
         { 0, 1, 3
         , 1, 2, 3 };
     KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, vertexData);
-    vertexData.primitiveType           = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    vertexData.primitiveType           = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
     vertexData.polygonMode             = KORL_GFX_POLYGON_MODE_FILL;
     vertexData.cullMode                = KORL_GFX_CULL_MODE_BACK;
     vertexData.indexCount              = korl_arraySize(triQuadIndices);
     vertexData.indices                 = triQuadIndices;
     vertexData.instancePositionsStride = 2*sizeof(f32);
     vertexData.instanceUintStride      = sizeof(u32);
-    Korl_Vulkan_DrawState_Material material = korl_gfx_material_defaultUnlit();
+    Korl_Gfx_DrawState_Material material = korl_gfx_material_defaultUnlit();
     material.maps.resourceHandleTextureBase = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleTexture;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_StorageBuffers, storageBuffers);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = _korl_gfx_fontCache_getGlyphPage(fontCache)->resourceHandleSsboGlyphMeshVertices;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
-    features.enableDepthTest = false;
-    features.enableBlend     = true;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Blend, blend);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, modes);
+    modes.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
+    modes.polygonMode     = KORL_GFX_POLYGON_MODE_FILL;
+    modes.cullMode        = KORL_GFX_CULL_MODE_BACK;
+    modes.enableDepthTest = false;
+    modes.enableBlend     = true;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Blend, blend);
     blend.color.operation    = KORL_GFX_BLEND_ALPHA.color.operation;
     blend.color.factorSource = KORL_GFX_BLEND_ALPHA.color.factorSource;
     blend.color.factorTarget = KORL_GFX_BLEND_ALPHA.color.factorTarget;
     blend.alpha.operation    = KORL_GFX_BLEND_ALPHA.alpha.operation;
     blend.alpha.factorSource = KORL_GFX_BLEND_ALPHA.alpha.factorSource;
     blend.alpha.factorTarget = KORL_GFX_BLEND_ALPHA.alpha.factorTarget;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.features       = &features;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
+    drawState.modes          = &modes;
     drawState.blend          = &blend;
     drawState.material       = &material;
     drawState.storageBuffers = &storageBuffers;
     korl_vulkan_setDrawState(&drawState);
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     Korl_Math_V3f32 modelTranslation = context->modelTranslate;
     modelTranslation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     u$ currentVisibleGlyphOffset = 0;// used to determine the byte (transform required) offset into the Text object's text buffer resource
@@ -1036,7 +1042,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
         {
             material.properties.factorColorBase = line->color;
             model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->modelRotate, context->modelScale, modelTranslation);
-            KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawStateLine);
+            KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateLine);
             drawStateLine.material = &material;
             drawStateLine.model    = &model;
             korl_vulkan_setDrawState(&drawStateLine);
@@ -1161,7 +1167,7 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
     _Korl_Gfx_Context*const context = _korl_gfx_context;
     korl_time_probeStart(useCamera);
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Scissor, scissor);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Scissor, scissor);
     switch(camera._scissorType)
     {
     case KORL_GFX_CAMERA_SCISSOR_TYPE_RATIO:{
@@ -1183,7 +1189,7 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
         scissor.height = korl_math_round_f32_to_u32(camera._viewportScissorSize.y);
         break;}
     }
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_SceneProperties, sceneProperties);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_SceneProperties, sceneProperties);
     sceneProperties.view = korl_gfx_camera_view(&camera);
     switch(camera.type)
     {
@@ -1221,7 +1227,7 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
         break;}
     }
     sceneProperties.seconds = context->seconds;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.scissor         = &scissor;
     drawState.sceneProperties = &sceneProperties;
     korl_vulkan_setDrawState(&drawState);
@@ -1326,6 +1332,7 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldT
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(gfx_batch);
     korl_time_probeStart(text_generate_mesh);
     if(batch->_assetNameFont)
@@ -1427,9 +1434,11 @@ korl_internal KORL_FUNCTION_korl_gfx_batch(korl_gfx_batch)
     korl_vulkan_draw(&vertexData);
     done:
     korl_time_probeStop(gfx_batch);
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(korl_gfx_createBatchRectangleTextured)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(create_batch_rect_tex);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
@@ -1441,7 +1450,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(korl_gfx_creat
         korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1473,9 +1482,12 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleTextured(korl_gfx_creat
     /* return the batch */
     korl_time_probeStop(create_batch_rect_tex);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_createBatchRectangleColored)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(create_batch_rect_color);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
@@ -1487,7 +1499,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
                                              ,korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1520,6 +1532,8 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
     /**/
     korl_time_probeStop(create_batch_rect_color);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircle)
 {
@@ -1527,6 +1541,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircl
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatchCircleSector)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(create_batch_circle);
     /* we can't really make a circle shape with < 3 points around the circumference */
     korl_assert(pointCount >= 3);
@@ -1541,7 +1556,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
     Korl_Gfx_Batch*const result = KORL_C_CAST(Korl_Gfx_Batch*, korl_allocate(allocatorHandle, totalBytes));
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_TRIANGLES;//KORL-PERFORMANCE-000-000-018: GFX; (MINOR) use triangle fan primitive for less vertex indices
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1577,9 +1592,12 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatc
     /**/
     korl_time_probeStop(create_batch_circle);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTriangles)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(create_batch_tris);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
@@ -1589,7 +1607,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTr
     Korl_Gfx_Batch*const result = korl_allocate(allocatorHandle, totalBytes);
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1601,9 +1619,12 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchTriangles(korl_gfx_createBatchTr
     /* return the batch */
     korl_time_probeStop(create_batch_tris);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBatchQuadsTextured)
 {
+    #if 0//@TODO: deprecated; delete
     korl_assert(quadCount > 0);
     korl_assert(quadCount <= KORL_U16_MAX / 6);// ensure that we can store the required vertex index count
     korl_time_probeStart(create_batch_quads_textured);
@@ -1616,7 +1637,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBat
     Korl_Gfx_Batch*const result = korl_allocate(allocatorHandle, totalBytes);
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1636,9 +1657,12 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTextured(korl_gfx_createBat
     /* return the batch */
     korl_time_probeStop(create_batch_quads_textured);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_createBatchQuadsTexturedColored)
 {
+    #if 0//@TODO: deprecated; delete
     korl_assert(quadCount > 0);
     korl_assert(quadCount <= KORL_U16_MAX / 6);// ensure that we can store the required vertex index count
     korl_time_probeStart(create_batch_quads_textured);
@@ -1652,7 +1676,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_cr
     Korl_Gfx_Batch*const result = korl_allocate(allocatorHandle, totalBytes);
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_TRIANGLES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1673,9 +1697,12 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchQuadsTexturedColored(korl_gfx_cr
     /* return the batch */
     korl_time_probeStop(create_batch_quads_textured);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(create_batch_lines);
     /* calculate required amount of memory for the batch */
     const u$ totalBytes = sizeof(Korl_Gfx_Batch)
@@ -1685,7 +1712,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines)
     Korl_Gfx_Batch*const result = korl_allocate(allocatorHandle, totalBytes);
     /* initialize the batch struct */
     result->allocatorHandle           = allocatorHandle;
-    result->primitiveType             = KORL_VULKAN_PRIMITIVETYPE_LINES;
+    result->primitiveType             = KORL_GFX_PRIMITIVETYPE_LINES;
     result->_scale                    = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                 = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                = KORL_COLOR4U8_WHITE;
@@ -1697,17 +1724,23 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchLines(korl_gfx_createBatchLines)
     /* return the batch */
     korl_time_probeStop(create_batch_lines);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchAxisLines(korl_gfx_createBatchAxisLines)
 {
+    #if 0//@TODO: deprecated; delete
     Korl_Gfx_Batch*const result = korl_gfx_createBatchLines(allocatorHandle, 3);
     korl_gfx_batchSetLine(result, 0, KORL_MATH_V3F32_ZERO.elements, (Korl_Math_V3f32){1,0,0}.elements, 3, KORL_COLOR4U8_RED);
     korl_gfx_batchSetLine(result, 1, KORL_MATH_V3F32_ZERO.elements, (Korl_Math_V3f32){0,1,0}.elements, 3, KORL_COLOR4U8_GREEN);
     korl_gfx_batchSetLine(result, 2, KORL_MATH_V3F32_ZERO.elements, (Korl_Math_V3f32){0,0,1}.elements, 3, KORL_COLOR4U8_BLUE);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
 {
+    #if 0//@TODO: deprecated; delete
     korl_time_probeStart(create_batch_text);
     korl_assert(text);
     korl_assert(textPixelHeight  >= 1.f);
@@ -1742,7 +1775,7 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
     korl_time_probeStop(allocate_batch);
     /* initialize the batch struct */
     result->allocatorHandle             = allocatorHandle;
-    result->primitiveType               = KORL_VULKAN_PRIMITIVETYPE_TRIANGLES;
+    result->primitiveType               = KORL_GFX_PRIMITIVETYPE_TRIANGLES;
     result->_scale                      = (Korl_Math_V3f32){1.f, 1.f, 1.f};
     result->_rotation                   = KORL_MATH_QUATERNION_IDENTITY;
     result->modelColor                  = KORL_COLOR4U8_WHITE;
@@ -1782,6 +1815,8 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
     /* return the batch */
     korl_time_probeStop(create_batch_text);
     return result;
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetBlendState(korl_gfx_batchSetBlendState)
 {
@@ -2027,10 +2062,10 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_collectDefragmentPointers(korl_gfx_ba
 }
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
-    Korl_Vulkan_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
+    Korl_Gfx_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
-    Korl_Vulkan_DrawState_Material material;
+    Korl_Gfx_DrawState_Material material;
     /* if the user provided a material to use with this VertexData, then we just 
         override whatever Material was provided by the SCENE3D Resource */
     if(context->subType.mesh.materialSlots->used)
@@ -2038,11 +2073,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     else
         material = korl_resource_scene3d_getMaterial(context->subType.mesh.resourceHandleScene3d);
     // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
-    features.enableBlend     = false;
-    features.enableDepthTest = true;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.features = &features;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.model    = &model;
     drawState.material = &material;
     if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
@@ -2058,8 +2089,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
                                     ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
     u32                                       meshPrimitiveCount       = 0;
     Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
-    Korl_Vulkan_VertexStagingMeta*            meshPrimitiveVertexMetas = NULL;
-    Korl_Vulkan_DrawMode*                     meshPrimitiveDrawModes   = NULL;
+    Korl_Gfx_VertexStagingMeta*               meshPrimitiveVertexMetas = NULL;
+    Korl_Gfx_DrawState_Modes*                 meshPrimitiveDrawModes   = NULL;
     korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
                                          ,&meshPrimitiveCount
                                          ,&meshPrimitiveBuffer
@@ -2067,9 +2098,34 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
                                          ,&meshPrimitiveDrawModes);
     for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
     {
+        KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateMeshPrimitive);
+        drawStateMeshPrimitive.modes = meshPrimitiveDrawModes + mp;
+        korl_vulkan_setDrawState(&drawStateMeshPrimitive);
         // @TODO: each mesh primitive is actually associated with a respective material, so we need to obtain & use materials in this loop!
-        korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, meshPrimitiveVertexMetas + mp, meshPrimitiveDrawModes + mp);
+        korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, meshPrimitiveVertexMetas + mp);
     }
+}
+korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
+{
+    Korl_Gfx_DrawState drawState2 = *drawState;
+    Korl_Gfx_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
+    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
+    {
+        korl_memory_zero(&lighting, sizeof(lighting));
+        lighting.lightsCount = KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights);
+        lighting.lights      = _korl_gfx_context->pendingLights;
+        drawState2.lighting = &lighting;
+        _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
+    }
+    korl_vulkan_setDrawState(&drawState2);
+}
+korl_internal KORL_FUNCTION_korl_gfx_stagingAllocate(korl_gfx_stagingAllocate)
+{
+    return korl_vulkan_stagingAllocate(stagingMeta);
+}
+korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingAllocation)
+{
+    korl_vulkan_drawStagingAllocation(stagingAllocation, stagingMeta);
 }
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
 {
@@ -2078,51 +2134,6 @@ korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
         Korl_Gfx_Light*const newLight = KORL_MEMORY_POOL_ADD(_korl_gfx_context->pendingLights);
         *newLight = lights[i];
     }
-}
-korl_internal KORL_FUNCTION_korl_gfx_drawSphere(korl_gfx_drawSphere)
-{
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
-    Korl_Vulkan_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Model, model);
-    model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState_Features, features);
-    features.enableDepthTest = true;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawState, drawState);
-    drawState.features = &features;
-    drawState.model    = &model;
-    drawState.material = material;
-    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
-    {
-        korl_memory_zero(&lighting, sizeof(lighting));
-        lighting.lightsCount = KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights);
-        lighting.lights      = _korl_gfx_context->pendingLights;
-        drawState.lighting = &lighting;
-        _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
-    }
-    korl_vulkan_setDrawState(&drawState);
-    KORL_ZERO_STACK(Korl_Vulkan_VertexStagingMeta, stagingMeta);
-    u32 byteOffsetBuffer = 0;
-    stagingMeta.vertexCount = korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments));
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V3f32);
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 3;
-    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_VULKAN_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = KORL_VULKAN_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-    stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
-    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
-    Korl_Vulkan_StagingAllocation stagingAllocation = korl_vulkan_stagingAllocate(&stagingMeta);
-    Korl_Math_V3f32*const positions = KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    Korl_Math_V2f32*const uvs       = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_VULKAN_VERTEX_ATTRIBUTE_BINDING_UV      ].byteOffsetBuffer);
-    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
-    KORL_ZERO_STACK(Korl_Vulkan_DrawMode, drawMode);
-    drawMode.cullMode    = material->drawState.cullMode;
-    drawMode.polygonMode = material->drawState.polygonMode;
-    korl_vulkan_drawStagingAllocation(&stagingAllocation, &stagingMeta, &drawMode);
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBlankTexture(korl_gfx_getBlankTexture)
 {

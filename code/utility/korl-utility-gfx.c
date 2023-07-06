@@ -1,4 +1,5 @@
 #include "utility/korl-utility-gfx.h"
+#include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
 #include "korl-interface-platform.h"
 korl_internal Korl_Math_V4f32 korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color)
@@ -319,4 +320,44 @@ korl_internal void korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_
                          ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
                          ,3, color);
     korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+}
+korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material)
+{
+    /* configure the renderer draw state */
+    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
+    model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
+    drawMode.primitiveType = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
+    drawMode.cullMode      = material->drawState.cullMode;
+    drawMode.polygonMode   = material->drawState.polygonMode;
+    drawMode.enableDepthTest = true;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
+    drawState.modes    = &drawMode;
+    drawState.model    = &model;
+    drawState.material = material;
+    korl_gfx_setDrawState(&drawState);
+    /* generate the sphere mesh directly into graphics staging memory; draw it! */
+    KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
+    u32 byteOffsetBuffer = 0;
+    stagingMeta.vertexCount = korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments));
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V3f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 3;
+    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+    //@TODO: only generate UV data if we're using texture maps
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
+    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
+    //@TODO: conditionally generate normals (needed for lit materials, for example)
+    Korl_Gfx_StagingAllocation stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
+    Korl_Math_V3f32*const positions = KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
+    Korl_Math_V2f32*const uvs       = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      ].byteOffsetBuffer);
+    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
+    korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
 }

@@ -65,6 +65,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-resource.h"
+#include "korl-interface-platform-gfx.h"
 #include "korl-vulkan.h"// because of the separation between the korl-platform-interface headers, we can just include Vulkan here and not have to worry about exposing renderer-specific stuff to things like the client module
 #include "utility/korl-utility-memory.h"
 typedef struct Korl_Audio_Format Korl_Audio_Format;
@@ -82,8 +83,8 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVu
 korl_internal void                                           korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat);
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
 korl_internal Korl_Vulkan_ShaderHandle                       korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader);
-korl_internal Korl_Vulkan_DrawState_Material                 korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d);
-korl_internal void                                           korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Vulkan_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Vulkan_DrawMode** o_meshPrimitiveDrawModes);
+korl_internal Korl_Gfx_DrawState_Material                    korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d);
+korl_internal void                                           korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Gfx_DrawState_Modes** o_meshPrimitiveDrawModes);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void                                           korl_resource_memoryStateRead(const u8* memoryState);
