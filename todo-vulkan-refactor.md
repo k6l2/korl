@@ -9,7 +9,8 @@ This time, we are going to construct a Vulkan API to just give the user direct a
 [x] add support for construction & drawing of data stored in Vulkan Buffers
     - at this point, we should be able to draw meshes from simple GLB files again
 [ ] refactor korl-gui to not use old "korl-gfx-batch" APIs
-    - at this point, we should be able to at least draw text from the log console again
+    [ ] get to the point where everything in the log console (except text) is drawing
+    [ ] get to the point where log console text is drawing again
 [ ] refactor all the garbage from korl-gfx to use new APIs
     [ ] destroy all the korl-batch* nonsense
     [ ] refactor Text stuff

@@ -423,8 +423,8 @@ korl_internal void korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quater
         positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
                                                               ,QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
         if(uvs)
-            uvs[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_TRI_STRIP[v].x
-                                                            ,QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
+            uvs[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      QUAD_POSITION_NORMALS_TRI_STRIP[v].x
+                                                            ,1.f - QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
     }
     // korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
     korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
