@@ -159,6 +159,7 @@ typedef struct _Korl_Vulkan_Context
     VkQueue queuePresent;
     // KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx
     VkShaderModule shaderVertex2d;
+    VkShaderModule shaderVertex2dColor;
     VkShaderModule shaderVertex2dUv;
     VkShaderModule shaderVertex3d;
     VkShaderModule shaderVertex3dColor;

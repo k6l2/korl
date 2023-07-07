@@ -1534,6 +1534,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     /* load required built-in shader assets */
     Korl_AssetCache_AssetData assetShaderVertex2d;
     Korl_AssetCache_AssetData assetShaderVertex2dUv;
+    Korl_AssetCache_AssetData assetShaderVertex2dColor;
     Korl_AssetCache_AssetData assetShaderVertex3d;
     Korl_AssetCache_AssetData assetShaderVertex3dColor;
     Korl_AssetCache_AssetData assetShaderVertex3dUv;
@@ -1541,6 +1542,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     Korl_AssetCache_AssetData assetShaderFragmentColor;
     Korl_AssetCache_AssetData assetShaderFragmentColorTexture;
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
+    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d-color.vert.spv"     , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2dColor));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d-uv.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2dUv));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3d));
     korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-color.vert.spv"     , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dColor));
@@ -1554,6 +1556,9 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     createInfoShader.codeSize = assetShaderVertex2d.dataBytes;
     createInfoShader.pCode    = assetShaderVertex2d.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2d));
+    createInfoShader.codeSize = assetShaderVertex2dColor.dataBytes;
+    createInfoShader.pCode    = assetShaderVertex2dColor.data;
+    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2dColor));
     createInfoShader.codeSize = assetShaderVertex2dUv.dataBytes;
     createInfoShader.pCode    = assetShaderVertex2dUv.data;
     _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2dUv));
@@ -1661,6 +1666,7 @@ korl_internal void korl_vulkan_destroySurface(void)
         vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayouts[d], context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex2d, context->allocator);
+    vkDestroyShaderModule(context->device, context->shaderVertex2dColor, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex2dUv, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex3d, context->allocator);
     vkDestroyShaderModule(context->device, context->shaderVertex3dColor, context->allocator);
@@ -2645,16 +2651,20 @@ korl_internal void _korl_vulkan_flushPipelineState(const Korl_Gfx_VertexStagingM
             && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].inputRate     == VK_VERTEX_INPUT_RATE_INSTANCE)
         pipelineCache->shaderVertex = context->shaderVertexText;
     else if(pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].format == VK_FORMAT_R32G32_SFLOAT)
-        if(pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].format == VK_FORMAT_UNDEFINED)
-            pipelineCache->shaderVertex = context->shaderVertex2d;
-        else
+        if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format == VK_FORMAT_UNDEFINED
+           && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format != VK_FORMAT_UNDEFINED)
+            pipelineCache->shaderVertex = context->shaderVertex2dColor;
+        else if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format != VK_FORMAT_UNDEFINED
+                && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format == VK_FORMAT_UNDEFINED)
             pipelineCache->shaderVertex = context->shaderVertex2dUv;
+        else
+            pipelineCache->shaderVertex = context->shaderVertex2d;
     else if(pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].format == VK_FORMAT_R32G32B32_SFLOAT)
         if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format == VK_FORMAT_UNDEFINED
-           && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].format    != VK_FORMAT_UNDEFINED)
+           && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format != VK_FORMAT_UNDEFINED)
             pipelineCache->shaderVertex = context->shaderVertex3dUv;
         else if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format != VK_FORMAT_UNDEFINED
-                && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].format    == VK_FORMAT_UNDEFINED)
+                && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format == VK_FORMAT_UNDEFINED)
             pipelineCache->shaderVertex = context->shaderVertex3dColor;
         else
             pipelineCache->shaderVertex = context->shaderVertex3d;

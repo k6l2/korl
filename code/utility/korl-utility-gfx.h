@@ -40,3 +40,4 @@ korl_internal void              korl_gfx_draw3dLine(const Korl_Math_V3f32 points
 korl_internal void              korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Vulkan_Color4u8 color, Korl_Memory_AllocatorHandle allocator);
 korl_internal void              korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material);
 korl_internal void              korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 size, Korl_Math_V2f32 anchorRatio, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline);
+korl_internal void              korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
