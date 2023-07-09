@@ -2604,9 +2604,16 @@ korl_internal VkDeviceSize _korl_vulkan_vertexStagingMeta_bytes(const Korl_Gfx_V
         const Korl_Gfx_VertexAttributeDescriptor*const vertexAttributeDescriptor = stagingMeta->vertexAttributeDescriptors + i;
         if(vertexAttributeDescriptor->elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
             continue;
+        u32 attributeCount = 0;
+        switch(vertexAttributeDescriptor->inputRate)
+        {
+        case VK_VERTEX_INPUT_RATE_VERTEX:   attributeCount = stagingMeta->vertexCount;   break;
+        case VK_VERTEX_INPUT_RATE_INSTANCE: attributeCount = stagingMeta->instanceCount; break;
+        }
+        korl_assert(attributeCount);
         const VkDeviceSize attributeVectorBytes = _korl_vulkan_vertexAttribute_vectorBytes(vertexAttributeDescriptor);
         const VkDeviceSize attributeByteStart   = vertexAttributeDescriptor->byteOffsetBuffer;
-        const VkDeviceSize attributeByteEnd     = vertexAttributeDescriptor->byteOffsetBuffer + (stagingMeta->vertexCount * vertexAttributeDescriptor->byteStride) + attributeVectorBytes;
+        const VkDeviceSize attributeByteEnd     = vertexAttributeDescriptor->byteOffsetBuffer + (attributeCount * vertexAttributeDescriptor->byteStride) + attributeVectorBytes;
         KORL_MATH_ASSIGN_CLAMP_MAX(vertexByteStart, attributeByteStart);
         KORL_MATH_ASSIGN_CLAMP_MIN(vertexByteEnd  , attributeByteEnd);
     }
@@ -2986,7 +2993,7 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                           ,0/*first binding; we're just going to re-bind all our bindings*/, korl_arraySize(vertexBuffers)
                           ,vertexBuffers, vertexBufferByteOffsets);
-    const uint32_t instanceCount = 1;
+    const uint32_t instanceCount = stagingMeta->instanceCount ? stagingMeta->instanceCount : 1;// allow user to pass 0 for instanceCount, to implicitly draw one instance
     if(stagingMeta->indexCount)
     {
         VkIndexType indexType = VK_INDEX_TYPE_NONE_KHR;

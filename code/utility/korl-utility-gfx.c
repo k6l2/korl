@@ -372,7 +372,7 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
     korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
     korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
 }
-korl_internal void korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 size, Korl_Math_V2f32 anchorRatio, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+korl_internal void korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
 {
     /* configure the renderer draw state */
     // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
@@ -430,10 +430,12 @@ korl_internal void korl_gfx_drawBox2d(Korl_Math_V2f32 position, Korl_Math_Quater
     korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
     if(materialOutline)
     {
+        const bool isOutlineMaterialTranslucent = materialOutline->properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
         /* configure the renderer draw state */
         drawMode.primitiveType = outlineThickness == 0 ? KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP : KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP;
-        drawMode.cullMode      = material->drawState.cullMode;
-        drawMode.polygonMode   = material->drawState.polygonMode;
+        drawMode.cullMode      = materialOutline->drawState.cullMode;
+        drawMode.polygonMode   = materialOutline->drawState.polygonMode;
+        drawMode.enableBlend   = isOutlineMaterialTranslucent;
         KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateOutline);
         drawStateOutline.modes    = &drawMode;
         drawStateOutline.material = materialOutline;
@@ -480,7 +482,7 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;// for separate individual quad draws, TRIANGLE_STRIP is the least amount of data we can possibly send to the renderer; if we wanted to draw _many_ quads all at once using this topology, we would need to enable a feature, and either set pipeline input state statically or dynamically (for Vulkan)
+    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
     drawMode.cullMode        = material->drawState.cullMode;
     drawMode.polygonMode     = material->drawState.polygonMode;
     drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
@@ -517,4 +519,64 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
     *o_positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
     if(o_colors)
         *o_colors = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
+}
+korl_internal void korl_gfx_drawText2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+{
+    Korl_Gfx_Material materialOverride = *material;// the base color map of the material will always be set to the translucency mask texture containing the baked rasterized glyphs, so we need to override the material
+    /* determine how many glyphs need to be drawn from utf8Text, as well as the 
+        AABB size of the text so we can calculate position offset based on anchorRatio */
+    const Korl_Gfx_Font_TextMetrics textMetrics = korl_gfx_font_getTextMetrics(utf16FontAssetName, textPixelHeight, utf8Text);
+    /* configure the renderer draw state */
+    const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
+    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
+    materialOverride.maps.resourceHandleTextureBase = fontResources.resourceHandleTexture;
+    const bool isMaterialTranslucent = true/*_all_ text drawn this way _must_ be translucent*/;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
+    model.transform = korl_math_makeM4f32_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
+    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
+    drawMode.cullMode        = materialOverride.drawState.cullMode;
+    drawMode.polygonMode     = materialOverride.drawState.polygonMode;
+    drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
+    drawMode.enableBlend     = isMaterialTranslucent;
+    const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
+    storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
+    drawState.modes          = &drawMode;
+    drawState.model          = &model;
+    drawState.material       = &materialOverride;
+    drawState.blend          = &blend;
+    drawState.storageBuffers = &storageBuffers;
+    korl_gfx_setDrawState(&drawState);
+    /* allocate staging memory & issue draw command */
+    KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
+    u32 byteOffsetBuffer = 0;
+    stagingMeta.indexCount            = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);// @TODO: is there a way to just bake this into korl-text.vert?
+    stagingMeta.indexType             = KORL_GFX_VERTEX_INDEX_TYPE_U16;
+    stagingMeta.indexByteOffsetBuffer = byteOffsetBuffer;
+    byteOffsetBuffer += stagingMeta.indexCount * sizeof(*KORL_GFX_TRI_QUAD_INDICES);
+    stagingMeta.instanceCount = textMetrics.visibleGlyphCount;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
+    byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteStride       = sizeof(u32);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].vectorSize       = 1;
+    byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteStride;
+    Korl_Gfx_StagingAllocation stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
+    korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
+    /* generate the text vertex data */
+    u16*const indices = KORL_C_CAST(u16*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.indexByteOffsetBuffer);
+    korl_memory_copy(indices, KORL_GFX_TRI_QUAD_INDICES, sizeof(KORL_GFX_TRI_QUAD_INDICES));
+    korl_gfx_font_generateText(utf16FontAssetName, textPixelHeight, utf8Text
+                              ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
+                                                                      ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
+                              ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
+                              ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT    ].byteOffsetBuffer));
 }

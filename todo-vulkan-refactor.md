@@ -11,7 +11,8 @@ This time, we are going to construct a Vulkan API to just give the user direct a
 [ ] refactor korl-gui to not use old "korl-gfx-batch" APIs
     [x] draw quads
     [x] draw triangles (with vertex colors)
-    [ ] draw text
+    [x] draw text
+    [ ] draw buffered text (Korl_Gfx_Text objects)
 [ ] refactor all the garbage from korl-gfx to use new APIs
     [ ] destroy all the korl-batch* nonsense
     [ ] refactor Text stuff
@@ -20,3 +21,5 @@ This time, we are going to construct a Vulkan API to just give the user direct a
     - ???
 [ ] add support for modification of vertex attribute data for an existing "Drawable" primitive
     - for example: we create a quad (with or without vertex color attribute), draw it, then we want to change the quad's vertex colors & draw it somewhere else
+[ ] KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
+    - we _should_ be able to do this now, since korl-gfx now manages a default texture

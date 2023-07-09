@@ -325,6 +325,25 @@ typedef struct Korl_Gfx_Font_Metrics
     f32 decent;
     f32 lineGap;
 } Korl_Gfx_Font_Metrics;
+typedef struct Korl_Gfx_Font_Resources
+{
+    Korl_Resource_Handle resourceHandleTexture;
+    Korl_Resource_Handle resourceHandleSsboGlyphMeshVertices;
+} Korl_Gfx_Font_Resources;
+typedef struct Korl_Gfx_Font_TextMetrics
+{
+    Korl_Math_V2f32 aabbSize;
+    u32             visibleGlyphCount;
+} Korl_Gfx_Font_TextMetrics;
+/* Since we expect that all KORL renderer code requires right-handed 
+    triangle normals (counter-clockwise vertex winding), all tri quads have 
+    the following formation:
+    [3]-[2]
+     | \ | 
+    [0]-[1] */
+korl_global_const u16 KORL_GFX_TRI_QUAD_INDICES[] = 
+    { 0, 1, 3
+    , 1, 2, 3 };
 typedef enum Korl_Gfx_VertexIndexType
     {KORL_GFX_VERTEX_INDEX_TYPE_INVALID
     ,KORL_GFX_VERTEX_INDEX_TYPE_U16
@@ -335,7 +354,7 @@ typedef enum Korl_Gfx_VertexAttributeBinding
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_NORMAL
-    ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT
+    ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT//@TODO: rename this (and the corresponding constant in korl.glsl) to something generic, like "EXTRA_0" or something, since we can no longer expect this attribute to _just_ be used as text glyph indices
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT// keep last!
 } Korl_Gfx_VertexAttributeBinding;
 typedef enum Korl_Gfx_VertexAttributeElementType
@@ -358,6 +377,7 @@ typedef struct Korl_Gfx_VertexAttributeDescriptor
 } Korl_Gfx_VertexAttributeDescriptor;
 typedef struct Korl_Gfx_VertexStagingMeta
 {
+    u32                                instanceCount;
     // indexByteStride is implicitly _always_ == sizeof(indexType), so we don't need such a member
     u32                                indexByteOffsetBuffer;
     u32                                indexCount;
@@ -373,6 +393,9 @@ typedef struct Korl_Gfx_StagingAllocation
     u$    deviceBufferOffset;
 } Korl_Gfx_StagingAllocation;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics      name(acu16 utf16AssetNameFont, f32 textPixelHeight)
+#define KORL_FUNCTION_korl_gfx_font_getResources(name)                       Korl_Gfx_Font_Resources    name(acu16 utf16AssetNameFont, f32 textPixelHeight)
+#define KORL_FUNCTION_korl_gfx_font_getTextMetrics(name)                     Korl_Gfx_Font_TextMetrics  name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text)
+#define KORL_FUNCTION_korl_gfx_font_generateText(name)                       void                       name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
 #define KORL_FUNCTION_korl_gfx_useCamera(name)                               void                       name(Korl_Gfx_Camera camera)
 #define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)                       Korl_Gfx_Camera            name(void)
 #define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)                      Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context)

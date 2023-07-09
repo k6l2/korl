@@ -601,7 +601,8 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         createInfoTexture.sizeY = glyphPage->dataSquareSize;
         glyphPage->resourceHandleTexture = korl_resource_createTexture(&createInfoTexture);
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfo);
-        createInfo.bytes = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
+        createInfo.usageFlags = KORL_VULKAN_BUFFER_USAGE_FLAG_STORAGE;
+        createInfo.bytes      = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
         glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_createVertexBuffer(&createInfo);
         /**/
         korl_time_probeStop(create_font_cache);
@@ -1057,6 +1058,60 @@ korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text*
 {
     return context->_modelAabb;
 }
+korl_internal KORL_FUNCTION_korl_gfx_font_getTextMetrics(korl_gfx_font_getTextMetrics)
+{
+    Korl_Math_Aabb2f32 aabb = KORL_MATH_AABB2F32_EMPTY;
+    KORL_ZERO_STACK(Korl_Gfx_Font_TextMetrics, textMetrics);
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
+    if(!fontCache)
+        return textMetrics;// silently return nothing if font is not loaded
+    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
+    int glyphIndexPrevious = -1;
+    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+    for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
+       ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
+       ; korl_string_codepointIteratorUtf8_next(&codepointIt))
+    {
+        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
+        if(!bakedGlyph->isEmpty)
+        {
+            /* instead of generating an AABB that is shrink-wrapped to the actual 
+                rendered glyphs, let's generate the AABB with respect to the font's 
+                height metrics; so we only really care about the glyph's graphical 
+                AABB on the X-axis; why? because I am finding that in a lot of cases 
+                the user code cares more about visual alignment of rendered text, 
+                and this is a lot easier to achieve API-wise when we are calculating 
+                text AABBs relatvie to font metrics */
+            const f32 x0 = textBaselineCursor.x;
+            const f32 y0 = textBaselineCursor.y + fontCache->fontAscent;
+            const f32 x1 = x0 + bakedGlyph->bbox.offsetX + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
+            const f32 y1 = textBaselineCursor.y + fontCache->fontDescent;
+            /* at this point, we know that this is a valid visible glyph */
+            aabb.min = korl_math_v2f32_min(aabb.min, (Korl_Math_V2f32){x0, y1});
+            aabb.max = korl_math_v2f32_max(aabb.max, (Korl_Math_V2f32){x1, y0});
+            textMetrics.visibleGlyphCount++;
+        }
+        if(textBaselineCursor.x > 0.f)
+        {
+            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
+                                                             ,glyphIndexPrevious
+                                                             ,bakedGlyph->glyphIndex);
+            glyphIndexPrevious    = bakedGlyph->glyphIndex;
+            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
+        }
+        else
+            glyphIndexPrevious = -1;
+        textBaselineCursor.x += bakedGlyph->advanceX;
+        if(codepointIt._codepoint == L'\n')
+        {
+            textBaselineCursor.x  = 0.f;
+            textBaselineCursor.y -= lineDeltaY;
+        }
+    }
+    textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
+    return textMetrics;
+}
 korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics)
 {
     KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
@@ -1069,58 +1124,58 @@ korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics)
     korl_assert(metrics.ascent >= metrics.decent);// no idea if this is a hard requirement, but based on how these #s are used, it seems _very_ unlikely that this will ever be false
     return metrics;
 }
-korl_internal Korl_Math_Aabb2f32 korl_gfx_font_getTextAabb(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text)
+korl_internal KORL_FUNCTION_korl_gfx_font_getResources(korl_gfx_font_getResources)
 {
-    Korl_Math_Aabb2f32 result = KORL_MATH_AABB2F32_EMPTY;
-    KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
+    KORL_ZERO_STACK(Korl_Gfx_Font_Resources, resources);
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
     if(!fontCache)
-        return KORL_MATH_AABB2F32_EMPTY;// silently return empty AABB if font is not loaded
+        return resources;
+    _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
+    resources.resourceHandleSsboGlyphMeshVertices = fontGlyphPage->resourceHandleSsboGlyphMeshVertices;
+    resources.resourceHandleTexture               = fontGlyphPage->resourceHandleTexture;
+    return resources;
+}
+korl_internal KORL_FUNCTION_korl_gfx_font_generateText(korl_gfx_font_generateText)
+{
+    _Korl_Gfx_Context*const context = _korl_gfx_context;
+    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
+    if(!fontCache)
+        return;
+    _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
     const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
-    Korl_Math_V2f32 textBaselineCursor = KORL_MATH_V2F32_ZERO;
-    int glyphIndexPrevious = -1;
+    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
+    int glyphIndexPrevious  = -1;
+    u32 currentVisibleGlyph =  0;
+    //@TODO: there's a lot of copy-pasta between here & korl_gfx_font_getTextMetrics, not to mention the fact that we are looping over utf8Text twice & obtaining the FontCache like 4 times in order to draw text once
     //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
     for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
        ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
        ; korl_string_codepointIteratorUtf8_next(&codepointIt))
     {
         const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
+        if(!bakedGlyph->isEmpty)
+        {
+            o_glyphInstancePositions[currentVisibleGlyph] = korl_math_v2f32_add(textBaselineCursor, instancePositionOffset);
+            o_glyphInstanceIndices  [currentVisibleGlyph] = bakedGlyph->bakeOrder;
+            currentVisibleGlyph++;
+        }
         if(textBaselineCursor.x > 0.f)
         {
             const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
                                                              ,glyphIndexPrevious
                                                              ,bakedGlyph->glyphIndex);
-            glyphIndexPrevious = bakedGlyph->glyphIndex;
+            glyphIndexPrevious    = bakedGlyph->glyphIndex;
             textBaselineCursor.x += fontCache->fontScale*kernAdvance;
         }
-        /* instead of generating an AABB that is shrink-wrapped to the actual 
-            rendered glyphs, let's generate the AABB with respect to the font's 
-            height metrics; so we only really care about the glyph's graphical 
-            AABB on the X-axis; why? because I am finding that in a lot of cases 
-            the user code cares more about visual alignment of rendered text, 
-            and this is a lot easier to achieve API-wise when we are calculating 
-            text AABBs relatvie to font metrics */
-        const f32 x0 = textBaselineCursor.x + bakedGlyph->bbox.offsetX;
-        const f32 y0 = textBaselineCursor.y + fontCache->fontAscent;
-        const f32 x1 = x0 + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
-        const f32 y1 = textBaselineCursor.y - fontCache->fontDescent;
+        else
+            glyphIndexPrevious = -1;
         textBaselineCursor.x += bakedGlyph->advanceX;
         if(codepointIt._codepoint == L'\n')
         {
             textBaselineCursor.x  = 0.f;
             textBaselineCursor.y -= lineDeltaY;
-            glyphIndexPrevious = -1;
-            continue;
         }
-        if(bakedGlyph->isEmpty)
-            continue;
-        /* at this point, we know that this is a valid visible character, which 
-            must be accumulated into a text line; if we don't have a current 
-            working text line at this point, we need to make one */
-        result.min = korl_math_v2f32_min(result.min, (Korl_Math_V2f32){x0, y0});
-        result.max = korl_math_v2f32_max(result.max, (Korl_Math_V2f32){x1, y1});
     }
-    return result;
 }
 korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
 {
