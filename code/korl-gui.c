@@ -36,7 +36,7 @@ typedef struct _Korl_Gui_WidgetMap
     u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
 } _Korl_Gui_WidgetMap;
 #if KORL_DEBUG
-    // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+    #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     // #define _KORL_GUI_DEBUG_DRAW_SCROLL_AREA
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
@@ -302,7 +302,7 @@ korl_internal void _korl_gui_widget_collectDefragmentPointers(_Korl_Gui_Widget*c
         break;}
     }
 }
-/** Prepare a new GUI batch for the current application frame.  The user _must_ 
+/** Prepare a new GUI frame for the current application frame.  The user _must_ 
  * call \c korl_gui_frameEnd after each call to \c _korl_gui_frameBegin . */
 korl_internal void _korl_gui_frameBegin(void)
 {
@@ -1477,11 +1477,6 @@ korl_internal void korl_gui_frameEnd(void)
     korl_gfx_useCamera(cameraOrthographic);
     /* process _all_ sorted in-use widgets for this frame */
     korl_shared_const Korl_Math_V2f32 ORIGIN_RATIO_UPPER_LEFT = {0, 1};// remember, +Y is UP!
-    #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
-        Korl_Gfx_Batch*const batchLinesOrigin2d = korl_gfx_createBatchLines(context->allocatorHandleStack, 2);
-        korl_gfx_batchSetLine(batchLinesOrigin2d, 0, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_X.elements, 2, KORL_COLOR4U8_RED);
-        korl_gfx_batchSetLine(batchLinesOrigin2d, 1, KORL_MATH_V2F32_ZERO.elements, KORL_MATH_V2F32_Y.elements, 2, KORL_COLOR4U8_GREEN);
-    #endif
     u16 rootWidgetCount = 0;// used to normalize root widget orderIndex values, since it is possible to fragment these values at any time
     _Korl_Gui_UsedWidget** stbDaUsedWidgetStack = NULL;// used to perform logic based on each widget's parent; all logic with this is done under the assumption that the list of widgets has been topologically sorted
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbDaUsedWidgetStack, 16);
@@ -1880,15 +1875,16 @@ korl_internal void korl_gui_frameEnd(void)
             /* draw the background region */
             const Korl_Vulkan_Color4u8 colorBackground = context->style.colorScrollBar;
             Korl_Gfx_Batch* batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, colorBackground);
-            switch(widget->subType.scrollBar.axis)
-            {
-            case KORL_GUI_SCROLL_BAR_AXIS_X:{
-                batch->_vertexColors[2].a = batch->_vertexColors[3].a = 0;
-                break;}
-            case KORL_GUI_SCROLL_BAR_AXIS_Y:{
-                batch->_vertexColors[0].a = batch->_vertexColors[3].a = 0;
-                break;}
-            }
+            if(batch)
+                switch(widget->subType.scrollBar.axis)
+                {
+                case KORL_GUI_SCROLL_BAR_AXIS_X:{
+                    batch->_vertexColors[2].a = batch->_vertexColors[3].a = 0;
+                    break;}
+                case KORL_GUI_SCROLL_BAR_AXIS_Y:{
+                    batch->_vertexColors[0].a = batch->_vertexColors[3].a = 0;
+                    break;}
+                }
             korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
             korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
             break;}
@@ -1932,7 +1928,7 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, 3);
                 korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
             }
-            if(batchText->_instanceCount)
+            if(batchText && batchText->_instanceCount)
                 korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
             /* draw a cursor _above_ the text, if the cursor defines a single grapheme index */
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin >= cursorEnd)
@@ -2011,22 +2007,16 @@ korl_internal void korl_gui_frameEnd(void)
         processed */
     while(arrlenu(stbDaUsedWidgetStack))
         _korl_gui_frameEnd_onUsedWidgetChildrenProcessed(arrpop(stbDaUsedWidgetStack));
-#ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+    #ifdef _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     {
-        korl_gfx_cameraSetScissorPercent(&cameraOrthographic, 0,0, 1,1);
+        korl_gfx_camera_setScissorPercent(&cameraOrthographic, 0,0, 1,1);
         korl_gfx_useCamera(cameraOrthographic);
-        korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){100,100,100});
-        korl_gfx_batchSetPosition2d(batchLinesOrigin2d, 1.f, 1.f);
-        korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+        const Korl_Gfx_Immediate immediateAxisNormalLines = korl_gfx_immediateAxisNormalLines();
+        korl_gfx_drawImmediate(&immediateAxisNormalLines, (Korl_Math_V3f32){1,1,0}, KORL_MATH_QUATERNION_IDENTITY, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, 100), NULL);
         for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
-        {
-            _Korl_Gui_Widget*const widget = usedWidget->widget;
-            korl_gfx_batchSetPosition2dV2f32(batchLinesOrigin2d, widget->position);
-            korl_gfx_batchSetScale(batchLinesOrigin2d, (Korl_Math_V3f32){32,32,32});
-            korl_gfx_batch(batchLinesOrigin2d, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-        }
+            korl_gfx_drawImmediate(&immediateAxisNormalLines, (Korl_Math_V3f32){.xy = usedWidget->widget->position}, KORL_MATH_QUATERNION_IDENTITY, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, 32), NULL);
     }
-#endif
+    #endif
     /* begin the next frame as soon as this frame has ended */
     _korl_gui_frameBegin();
 }

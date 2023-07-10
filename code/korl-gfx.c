@@ -631,6 +631,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
  * , top-left ] */
 korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 {
+    #if 0//@TODO: deprecate/delete
     _Korl_Gfx_Context*const context = _korl_gfx_context;
     if(!batch->_assetNameFont || batch->_fontTextureHandle)
         return;
@@ -710,6 +711,7 @@ korl_internal void _korl_gfx_textGenerateMesh(Korl_Gfx_Batch*const batch, Korl_A
     done_setFontTextureHandle:
     batch->_fontTextureHandle       = fontGlyphPage->resourceHandleTexture;
     batch->_glyphMeshBufferVertices = fontGlyphPage->resourceHandleSsboGlyphMeshVertices;
+    #endif
 }
 korl_internal void korl_gfx_initialize(void)
 {
@@ -992,6 +994,7 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
 }
 korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
+    #if 0//@TODO; for now, do nothing;
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
@@ -1053,6 +1056,7 @@ korl_internal void korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aa
         modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
     }
+    #endif
 }
 korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context)
 {
@@ -1589,7 +1593,10 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchRectangleColored(korl_gfx_create
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircle(korl_gfx_createBatchCircle)
 {
+    #if 0//@TODO: deprecate/delete
     return korl_gfx_createBatchCircleSector(allocatorHandle, radius, pointCount, color, KORL_TAU32);
+    #endif
+    return NULL;
 }
 korl_internal KORL_FUNCTION_korl_gfx_createBatchCircleSector(korl_gfx_createBatchCircleSector)
 {
@@ -1872,43 +1879,60 @@ korl_internal KORL_FUNCTION_korl_gfx_createBatchText(korl_gfx_createBatchText)
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetBlendState(korl_gfx_batchSetBlendState)
 {
+    #if 0//@TODO: deprecate/delete
     context->blend = blend;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition(korl_gfx_batchSetPosition)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(positionDimensions == 2 || positionDimensions == 3);
     for(u8 d = 0; d < positionDimensions; d++)
         context->_position.elements[d] = position[d];
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition2d(korl_gfx_batchSetPosition2d)
 {
+    #if 0//@TODO: deprecate/delete
     context->_position.x = x;
     context->_position.y = y;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetPosition2dV2f32(korl_gfx_batchSetPosition2dV2f32)
 {
+    #if 0//@TODO: deprecate/delete
     context->_position.xy = position;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetScale(korl_gfx_batchSetScale)
 {
+    #if 0//@TODO: deprecate/delete
     context->_scale = scale;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetQuaternion(korl_gfx_batchSetQuaternion)
 {
+    #if 0//@TODO: deprecate/delete
     context->_rotation = quaternion;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetRotation(korl_gfx_batchSetRotation)
 {
+    #if 0//@TODO: deprecate/delete
     context->_rotation = korl_math_quaternion_fromAxisRadians(axisOfRotation, radians, false);
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetVertexColor(korl_gfx_batchSetVertexColor)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexCount > vertexIndex);
     korl_assert(context->_vertexColors);
     context->_vertexColors[vertexIndex] = color;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchAddLine(korl_gfx_batchAddLine)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(pContext);
     korl_assert(*pContext);
     const u32 newVertexCount = (*pContext)->_vertexCount + 2;
@@ -1937,9 +1961,11 @@ korl_internal KORL_FUNCTION_korl_gfx_batchAddLine(korl_gfx_batchAddLine)
     }
     (*pContext)->_vertexColors[newVertexCount - 2] = color0;
     (*pContext)->_vertexColors[newVertexCount - 1] = color1;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchSetLine(korl_gfx_batchSetLine)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexCount > 2*lineIndex + 1);
     korl_assert(context->_vertexColors);
     korl_assert(positionDimensions == 2 || positionDimensions == 3);
@@ -1950,34 +1976,45 @@ korl_internal KORL_FUNCTION_korl_gfx_batchSetLine(korl_gfx_batchSetLine)
     }
     context->_vertexColors[2*lineIndex + 0] = color;
     context->_vertexColors[2*lineIndex + 1] = color;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchTextGetAabb(korl_gfx_batchTextGetAabb)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(batchContext->_text && batchContext->_assetNameFont);
     _korl_gfx_textGenerateMesh(batchContext, KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(!batchContext->_textVisibleCharacterCount)
         return (Korl_Math_Aabb2f32){{0, 0}, {0, 0}};
     return batchContext->_textAabb;
+    #endif
+    return KORL_MATH_AABB2F32_EMPTY;
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchTextSetPositionAnchor(korl_gfx_batchTextSetPositionAnchor)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(batchContext->_text && batchContext->_assetNameFont);
     batchContext->_textPositionAnchor = textPositionAnchor;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetSize(korl_gfx_batchRectangleSetSize)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     const Korl_Math_V2f32 originalSize = korl_math_v2f32_subtract(KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[2].xy, KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[0].xy);
     for(u$ c = 0; c < context->_vertexCount; c++)
         KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[c].xy = korl_math_v2f32_multiply(size, korl_math_v2f32_divide(KORL_C_CAST(Korl_Math_V3f32*, context->_vertexPositions)[c].xy, originalSize));
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchRectangleSetColor(korl_gfx_batchRectangleSetColor)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     context->modelColor = color;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_raw(korl_gfx_batch_rectangle_setUv_raw)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     korl_assert(context->_vertexUvs);
     /* NOTE: the renderer interprets UV {0,0} as the upper-left corner of the image */
@@ -1985,9 +2022,11 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_raw(korl_gfx_batch_re
     context->_vertexUvs[1] = aabbRawUvs.max;
     context->_vertexUvs[2] = (Korl_Math_V2f32){aabbRawUvs.max.x, aabbRawUvs.min.y};
     context->_vertexUvs[3] = aabbRawUvs.min;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel_to_normal(korl_gfx_batch_rectangle_setUv_pixel_to_normal)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexCount == 4 && context->_vertexIndexCount == 6);
     korl_assert(context->_vertexUvs);
     Korl_Math_V2f32 textureSize = korl_math_v2f32_fromV2u32(korl_resource_texture_getSize(context->_texture));
@@ -1998,16 +2037,20 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_rectangle_setUv_pixel_to_normal(korl_
     context->_vertexUvs[1] = korl_math_v2f32_divide(pixelSpaceAabb.max                                           , textureSize);
     context->_vertexUvs[2] = korl_math_v2f32_divide((Korl_Math_V2f32){pixelSpaceAabb.max.x, pixelSpaceAabb.min.y}, textureSize);
     context->_vertexUvs[3] = korl_math_v2f32_divide(pixelSpaceAabb.min                                           , textureSize);
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batchCircleSetColor(korl_gfx_batchCircleSetColor)
 {
+    #if 0//@TODO: deprecate/delete
     /// for refactoring this code module in the future; we should probably assert this is a circle batch?
     korl_assert(context->_vertexColors);
     for(u$ c = 0; c < context->_vertexCount; c++)
         context->_vertexColors[c] = color;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTexturedColored_set(korl_gfx_batch_quadsTexturedColored_set)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexIndexCount % 6 == 0);
     korl_assert(context->_vertexCount      % 4 == 0);
     korl_assert(context->_vertexPositionDimensions == 3);
@@ -2028,9 +2071,11 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTexturedColored_set(korl_gfx_bat
         for(u8 i = 0; i < 4; i++)
             context->_vertexColors[(quadIndex * 4) + i] = colors[i % colorsSize];
     }
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(korl_gfx_batch_quadsTextured_raw)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexIndexCount % 6 == 0);
     korl_assert(context->_vertexCount      % 4 == 0);
     korl_assert(context->_vertexPositionDimensions == 3);
@@ -2054,9 +2099,11 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_raw(korl_gfx_batch_quad
         for(u8 i = 0; i < 4; i++)
             context->_vertexColors[(quadIndex * 4) + i] = colors[i % colorsSize];
     }
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(korl_gfx_batch_quadsTextured_pixel_to_normal)
 {
+    #if 0//@TODO: deprecate/delete
     korl_assert(context->_vertexIndexCount % 6 == 0);
     korl_assert(context->_vertexCount      % 4 == 0);
     korl_assert(context->_vertexPositionDimensions == 3);
@@ -2077,6 +2124,7 @@ korl_internal KORL_FUNCTION_korl_gfx_batch_quadsTextured_pixel_to_normal(korl_gf
         context->_vertexUvs[(quadIndex * 4) + 3] = korl_math_v2f32_divide(pixelSpaceAabb.min                                           , textureSize);
     }
     //KORL-ISSUE-000-000-146: gfx: korl_gfx_batch_quadsTextured_setQuad: pixel-space => normalized UV coordinate transform requires the underlying texture to be loaded, but the implementation currently _assumes_ that it is already loaded; this leads to bugs where tile maps have corrupted UV data when the OS file cache is cold for the texture file asset (https://learn.microsoft.com/en-us/windows/win32/fileio/file-caching); easily reproduced by manually clearing the file cache using RAMMap: https://superuser.com/a/417112 https://learn.microsoft.com/en-us/sysinternals/downloads/rammap; solutions: (1) store whether or not _any_ quad is "dirty" (add a new flag to Korl_Gfx_Batch?), automatically attempt to re-obtain the correct texture coords each time the Batch is batched using the pixel-space coordinates provided by the user earlier, (2) return whether or not a quad was set with dirty UVs to the caller, then let them decide when to re-set the quads of this batch
+    #endif
 }
 korl_internal KORL_HEAP_ON_ALLOCATION_MOVED_CALLBACK(_korl_gfx_batch_collectDefragmentPointers_onAllocationMoved)
 {

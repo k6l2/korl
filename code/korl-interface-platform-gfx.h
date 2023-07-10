@@ -452,6 +452,7 @@ typedef struct Korl_Gfx_StagingAllocation
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(const Korl_Gfx_Drawable*const context)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
 #define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)
+//@TODO: why do we need a separate korl_gfx_setDrawState API?  technically, this could just be an _optional_ parameter to `drawStagingAllocation`; maybe just delete this API and see how things work out!
 #define KORL_FUNCTION_korl_gfx_setDrawState(name)                            void                       name(const Korl_Gfx_DrawState* drawState)
 #define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta)
