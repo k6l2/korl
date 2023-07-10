@@ -1575,40 +1575,32 @@ korl_internal void korl_gui_frameEnd(void)
                 titleBarColor = context->style.colorTitleBarActive;
             }
             korl_time_probeStart(draw_window_panel);
-            Korl_Gfx_Batch*const batchWindowPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, aabbSize, ORIGIN_RATIO_UPPER_LEFT, windowColor);
-            korl_gfx_batchSetPosition(batchWindowPanel, (f32[]){widget->position.x, widget->position.y, z}, 3);
-            korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAGS_NONE);
+            {/* draw the window panel background quad */
+                Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(windowColor));
+                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, aabbSize, 0, &material, NULL, NULL);
+            }
             if(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
             {
                 childWidgetCursorOffset = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
                 korl_time_probeStart(title_bar);
-                /* draw the window title bar */
-                korl_gfx_batchSetPosition(batchWindowPanel, (f32[]){widget->position.x, widget->position.y, z + 0.1f}, 3);
-                korl_gfx_batchRectangleSetSize(batchWindowPanel, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY});
-                korl_gfx_batchRectangleSetColor(batchWindowPanel, titleBarColor);// conditionally highlight the title bar color
-                korl_gfx_batchSetVertexColor(batchWindowPanel, 0, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
-                korl_gfx_batchSetVertexColor(batchWindowPanel, 1, context->style.colorTitleBar);// keep the bottom two vertices the default title bar color
-                korl_gfx_batch(batchWindowPanel, KORL_GFX_BATCH_FLAGS_NONE);
+                {/* draw the window title bar */
+                    Korl_Vulkan_Color4u8* colors;
+                    korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.1f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY}, 0, NULL, NULL, &colors);
+                    colors[0] = colors[2] = titleBarColor;// conditionally highlight the title bar color
+                    colors[1] = colors[3] = context->style.colorTitleBar;// keep the bottom two vertices the default title bar color
+                }
                 /* draw the window title bar text */
-                Korl_Gfx_Batch*const batchWindowTitleText = korl_gfx_createBatchText(context->allocatorHandleStack
-                                                                                    ,string_getRawUtf16(&context->style.fontWindowText)
-                                                                                    ,string_getRawUtf16(&widget->subType.window.titleBarText)
-                                                                                    ,context->style.windowTextPixelSizeY
-                                                                                    ,context->style.colorText
-                                                                                    ,context->style.textOutlinePixelSize
-                                                                                    ,context->style.colorTextOutline);
-                Korl_Math_Aabb2f32    batchTextAabb         = korl_gfx_batchTextGetAabb(batchWindowTitleText);// model-space, needs to be transformed to world-space
-                const Korl_Math_V2f32 batchTextAabbSize     = korl_math_aabb2f32_size(batchTextAabb);
-                const f32             titleBarTextAabbSizeX =   batchTextAabbSize.x 
-                                                              + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
-                const f32             titleBarTextAabbSizeY = context->style.windowTitleBarPixelSizeY;
-                const f32             textPaddingY          = batchTextAabbSize.y < context->style.windowTitleBarPixelSizeY 
-                                                              ? 0.5f * (context->style.windowTitleBarPixelSizeY - batchTextAabbSize.y)
-                                                              : 0;
-                korl_gfx_batchSetPosition(batchWindowTitleText, (f32[]){widget->position.x, widget->position.y - textPaddingY, z + 0.2f}, 3);
-                korl_gfx_batch(batchWindowTitleText, KORL_GFX_BATCH_FLAGS_NONE);
-                batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + titleBarTextAabbSizeX, widget->position.y - titleBarTextAabbSizeY);
-                usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
+                const Korl_Gfx_Font_TextMetrics textMetrics           = korl_gfx_font_getTextMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, string_getRawAcu8(&widget->subType.window.titleBarText));
+                const f32                       textPaddingY          = textMetrics.aabbSize.y < context->style.windowTitleBarPixelSizeY 
+                                                                        ? 0.5f * (context->style.windowTitleBarPixelSizeY - textMetrics.aabbSize.y)
+                                                                        : 0;
+                const f32                       titleBarTextAabbSizeX =   textMetrics.aabbSize.x 
+                                                                        + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
+                const Korl_Gfx_Material         textMaterial          = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorText));
+                const Korl_Gfx_Material         textMaterialOutline   = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorTextOutline));
+                korl_gfx_drawText3d((Korl_Math_V3f32){widget->position.x, widget->position.y - textPaddingY, z + 0.2f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, string_getRawAcu8(&widget->subType.window.titleBarText), string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, context->style.textOutlinePixelSize, &textMaterial, &textMaterialOutline);
+                usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent
+                                                                            ,korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + titleBarTextAabbSizeX, widget->position.y - textMetrics.aabbSize.y));
                 /**/
                 korl_time_probeStop(title_bar);
             }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
