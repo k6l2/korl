@@ -1640,45 +1640,43 @@ korl_internal void korl_gui_frameEnd(void)
                     }
                 }
                 // we create two triangles for the edge indicator fan so that we can lerp from the highlight color to the border color
-                Korl_Gfx_Batch*const batchEdgeHover = korl_gfx_createBatchTriangles(context->allocatorHandleStack, 2);
-                KORL_C_CAST(Korl_Math_V3f32*, batchEdgeHover->_vertexPositions)[0].xy = KORL_MATH_V2F32_ZERO;
-                KORL_C_CAST(Korl_Math_V3f32*, batchEdgeHover->_vertexPositions)[1].xy = (Korl_Math_V2f32){triLength + 1, 0.f};
-                KORL_C_CAST(Korl_Math_V3f32*, batchEdgeHover->_vertexPositions)[2].xy = (Korl_Math_V2f32){triLength + 1, triWidth};
-                KORL_C_CAST(Korl_Math_V3f32*, batchEdgeHover->_vertexPositions)[3].xy = KORL_MATH_V2F32_ZERO;
-                KORL_C_CAST(Korl_Math_V3f32*, batchEdgeHover->_vertexPositions)[4].xy = (Korl_Math_V2f32){triLength + 1, -triWidth};
-                KORL_C_CAST(Korl_Math_V3f32*, batchEdgeHover->_vertexPositions)[5].xy = (Korl_Math_V2f32){triLength + 1, 0.f};
-                batchEdgeHover->_vertexColors[0] = context->style.colorWindowBorderResize;
-                batchEdgeHover->_vertexColors[1] = context->style.colorWindowBorderResize;
-                batchEdgeHover->_vertexColors[2] = colorBorder;
-                batchEdgeHover->_vertexColors[3] = context->style.colorWindowBorderResize;
-                batchEdgeHover->_vertexColors[4] = colorBorder;
-                batchEdgeHover->_vertexColors[5] = context->style.colorWindowBorderResize;
-                korl_gfx_batchSetPosition(batchEdgeHover, (f32[]){windowMiddle.x, windowMiddle.y, z}, 3);
-                f32 edgeHoverRadians = 0.f;
-                if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
                 {
-                    edgeHoverRadians = KORL_PI32/2;
-                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.min.x, usedWidget->transient.aabb.max.y}, windowMiddle));
+                    Korl_Math_V2f32*      fanPositions;
+                    Korl_Vulkan_Color4u8* fanColors;
+                    const Korl_Gfx_Immediate immediateFan = korl_gfx_immediateTriangleFan2d(4, &fanPositions, &fanColors);
+                    fanPositions[0] = KORL_MATH_V2F32_ZERO;
+                    fanPositions[1] = (Korl_Math_V2f32){triLength + 1, -triWidth};
+                    fanPositions[2] = (Korl_Math_V2f32){triLength + 1,       0.f};
+                    fanPositions[3] = (Korl_Math_V2f32){triLength + 1,  triWidth};
+                    fanColors[0] = context->style.colorWindowBorderResize;
+                    fanColors[1] = colorBorder;
+                    fanColors[2] = context->style.colorWindowBorderResize;
+                    fanColors[3] = colorBorder;
+                    f32 edgeHoverRadians = 0.f;
+                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
+                    {
+                        edgeHoverRadians = KORL_PI32/2;
+                        if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
+                            edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.min.x, usedWidget->transient.aabb.max.y}, windowMiddle));
+                        else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
+                            edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.max.x, usedWidget->transient.aabb.max.y}, windowMiddle));
+                    }
+                    else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN)
+                    {
+                        edgeHoverRadians = -KORL_PI32/2;
+                        if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
+                            edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.min.x, usedWidget->transient.aabb.min.y}, windowMiddle));
+                        else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
+                            edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.max.x, usedWidget->transient.aabb.min.y}, windowMiddle));
+                    }
+                    else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
+                        edgeHoverRadians = KORL_PI32;
                     else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.max.x, usedWidget->transient.aabb.max.y}, windowMiddle));
+                    {
+                        // this is the default mesh position; no need to do anything
+                    }
+                    korl_gfx_drawImmediate(&immediateFan, (Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, edgeHoverRadians, true), KORL_MATH_V3F32_ONE, NULL);
                 }
-                else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_DOWN)
-                {
-                    edgeHoverRadians = -KORL_PI32/2;
-                    if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.min.x, usedWidget->transient.aabb.min.y}, windowMiddle));
-                    else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
-                        edgeHoverRadians = korl_math_v2f32_radiansZ(korl_math_v2f32_subtract((Korl_Math_V2f32){usedWidget->transient.aabb.max.x, usedWidget->transient.aabb.min.y}, windowMiddle));
-                }
-                else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_LEFT)
-                    edgeHoverRadians = KORL_PI32;
-                else if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_RIGHT)
-                {
-                    // this is the default mesh position; no need to do anything
-                }
-                korl_gfx_batchSetRotation(batchEdgeHover, KORL_MATH_V3F32_Z, edgeHoverRadians);
-                korl_gfx_batch(batchEdgeHover, KORL_GFX_BATCH_FLAGS_NONE);
             }
             /* instead of just naively drawing a bunch of lines around the window, which I have found to result in 
                 glitchy rasterization due to rounding errors (there isn't an easy way to place lines at an exact 

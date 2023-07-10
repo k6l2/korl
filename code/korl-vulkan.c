@@ -546,6 +546,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     {
     case KORL_GFX_PRIMITIVE_TYPE_TRIANGLES     : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  break;
     case KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP: createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; break;
+    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN  : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;   break;
     case KORL_GFX_PRIMITIVE_TYPE_LINES         : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;      break;
     case KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP    : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;     break;
     case KORL_GFX_PRIMITIVE_TYPE_INVALID       : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;       break;
