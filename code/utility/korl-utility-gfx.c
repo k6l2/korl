@@ -715,6 +715,19 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
     if(o_colors)
         *o_colors = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
 }
+korl_internal void korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
+{
+    korl_assert(vertexCount >= 3);
+    const Korl_Gfx_Immediate immediate = _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors);
+    //@TODO: disable depth test somehow
+    korl_gfx_drawImmediate(&immediate, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, KORL_MATH_V3F32_ONE, material);
+}
+korl_internal void korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
+{
+    korl_assert(vertexCount >= 3);
+    const Korl_Gfx_Immediate immediate = _korl_gfx_immediate3d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors);
+    korl_gfx_drawImmediate(&immediate, position, versor, KORL_MATH_V3F32_ONE, material);
+}
 korl_internal void _korl_gfx_drawText(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, bool enableDepthTest)
 {
     Korl_Gfx_Material materialOverride;// the base color map of the material will always be set to the translucency mask texture containing the baked rasterized glyphs, so we need to override the material

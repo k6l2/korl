@@ -1641,17 +1641,6 @@ korl_internal void korl_gui_frameEnd(void)
                 }
                 // we create two triangles for the edge indicator fan so that we can lerp from the highlight color to the border color
                 {
-                    Korl_Math_V2f32*      fanPositions;
-                    Korl_Vulkan_Color4u8* fanColors;
-                    const Korl_Gfx_Immediate immediateFan = korl_gfx_immediateTriangleFan2d(4, &fanPositions, &fanColors);
-                    fanPositions[0] = KORL_MATH_V2F32_ZERO;
-                    fanPositions[1] = (Korl_Math_V2f32){triLength + 1, -triWidth};
-                    fanPositions[2] = (Korl_Math_V2f32){triLength + 1,       0.f};
-                    fanPositions[3] = (Korl_Math_V2f32){triLength + 1,  triWidth};
-                    fanColors[0] = context->style.colorWindowBorderResize;
-                    fanColors[1] = colorBorder;
-                    fanColors[2] = context->style.colorWindowBorderResize;
-                    fanColors[3] = colorBorder;
                     f32 edgeHoverRadians = 0.f;
                     if(context->mouseHoverWindowEdgeFlags & KORL_GUI_EDGE_FLAG_UP)
                     {
@@ -1675,16 +1664,25 @@ korl_internal void korl_gui_frameEnd(void)
                     {
                         // this is the default mesh position; no need to do anything
                     }
-                    korl_gfx_drawImmediate(&immediateFan, (Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, edgeHoverRadians, true), KORL_MATH_V3F32_ONE, NULL);
+                    Korl_Math_V3f32*      fanPositions;
+                    Korl_Vulkan_Color4u8* fanColors;
+                    korl_gfx_drawTriangleFan3d((Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, edgeHoverRadians, true), 4, NULL, &fanPositions, &fanColors);
+                    fanPositions[0] = KORL_MATH_V3F32_ZERO;
+                    fanPositions[1] = (Korl_Math_V3f32){triLength + 1, -triWidth};
+                    fanPositions[2] = (Korl_Math_V3f32){triLength + 1,       0.f};
+                    fanPositions[3] = (Korl_Math_V3f32){triLength + 1,  triWidth};
+                    fanColors[0] = context->style.colorWindowBorderResize;
+                    fanColors[1] = colorBorder;
+                    fanColors[2] = context->style.colorWindowBorderResize;
+                    fanColors[3] = colorBorder;
                 }
             }
             /* instead of just naively drawing a bunch of lines around the window, which I have found to result in 
                 glitchy rasterization due to rounding errors (there isn't an easy way to place lines at an exact 
                 pixel outside of a rectangle), we simply use the depth buffer to draw a giant rectangle to fill the 
                 scissor rectangle placed behind (greater -Z magnitude) everything that was just drawn */
-            Korl_Gfx_Batch*const batchBorder = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, korl_math_v2f32_multiplyScalar(aabbSize, 2), (Korl_Math_V2f32){0.5f, 0.5f}, colorBorder);
-            korl_gfx_batchSetPosition(batchBorder, (f32[]){windowMiddle.x, windowMiddle.y, z}, 3);
-            korl_gfx_batch(batchBorder, KORL_GFX_BATCH_FLAGS_NONE);
+            Korl_Gfx_Material materialOutline = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(colorBorder));
+            korl_gfx_drawRectangle3d((Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V2f32){0.5f, 0.5f}, korl_math_v2f32_multiplyScalar(aabbSize, 2), 0, &materialOutline, NULL, NULL);
             korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
             /* clamp the window content size to some minimum */
