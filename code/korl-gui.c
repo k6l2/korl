@@ -1590,7 +1590,7 @@ korl_internal void korl_gui_frameEnd(void)
                     colors[1] = colors[3] = context->style.colorTitleBar;// keep the bottom two vertices the default title bar color
                 }
                 /* draw the window title bar text */
-                const Korl_Gfx_Font_TextMetrics textMetrics           = korl_gfx_font_getTextMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, string_getRawAcu8(&widget->subType.window.titleBarText));
+                const Korl_Gfx_Font_TextMetrics textMetrics           = korl_gfx_font_getUtf8Metrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, string_getRawAcu8(&widget->subType.window.titleBarText));
                 const f32                       textPaddingY          = textMetrics.aabbSize.y < context->style.windowTitleBarPixelSizeY 
                                                                         ? 0.5f * (context->style.windowTitleBarPixelSizeY - textMetrics.aabbSize.y)
                                                                         : 0;
@@ -1598,7 +1598,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                         + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
                 const Korl_Gfx_Material         textMaterial          = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorText));
                 const Korl_Gfx_Material         textMaterialOutline   = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorTextOutline));
-                korl_gfx_drawText3d((Korl_Math_V3f32){widget->position.x, widget->position.y - textPaddingY, z + 0.2f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, string_getRawAcu8(&widget->subType.window.titleBarText), string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, context->style.textOutlinePixelSize, &textMaterial, &textMaterialOutline);
+                korl_gfx_drawUtf83d((Korl_Math_V3f32){widget->position.x, widget->position.y - textPaddingY, z + 0.2f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, string_getRawAcu8(&widget->subType.window.titleBarText), string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, context->style.textOutlinePixelSize, &textMaterial, &textMaterialOutline);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent
                                                                             ,korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + titleBarTextAabbSizeX, widget->position.y - textMetrics.aabbSize.y));
                 /**/
@@ -1726,25 +1726,21 @@ korl_internal void korl_gui_frameEnd(void)
                     colorButton = context->style.colorTitleBar;
                 break;}
             }
-            Korl_Gfx_Batch* batchButtonPanel = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, colorButton);
-            korl_gfx_batchSetPosition2dV2f32(batchButtonPanel, widget->position);
-            korl_gfx_batch(batchButtonPanel, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+            const Korl_Gfx_Material materialButton = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(colorButton));
+            korl_gfx_drawRectangle2d(widget->position, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialButton, NULL, NULL);
             switch(widget->subType.button.display)
             {
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT:{
-                Korl_Gfx_Font_Metrics fontMetrics = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
-                const f32 textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines per button */;
-                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), widget->subType.button.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-                Korl_Math_Aabb2f32 batchTextAabb = korl_gfx_batchTextGetAabb(batchText);
-                const Korl_Math_V2f32 batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
-                const f32 buttonAabbSizeX = batchTextAabbSize.x + (context->style.widgetButtonLabelMargin * 2.f);
-                const f32 buttonAabbSizeY = textLineDeltaY      + (context->style.widgetButtonLabelMargin * 2.f);
-                batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
+                const Korl_Gfx_Font_TextMetrics textMetrics = korl_gfx_font_getUtf16Metrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, widget->subType.button.displayText);
+                const f32 buttonAabbSizeX = textMetrics.aabbSize.x + (context->style.widgetButtonLabelMargin * 2.f);
+                const f32 buttonAabbSizeY = textMetrics.aabbSize.y + (context->style.widgetButtonLabelMargin * 2.f);
+                const Korl_Math_Aabb2f32 batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
                 usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
-                korl_gfx_batchSetPosition2d(batchText
-                                           ,widget->position.x + context->style.widgetButtonLabelMargin
-                                           ,widget->position.y - context->style.widgetButtonLabelMargin);
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                korl_gfx_drawUtf162d((Korl_Math_V2f32){widget->position.x + context->style.widgetButtonLabelMargin
+                                                      ,widget->position.y - context->style.widgetButtonLabelMargin}
+                                    ,KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT
+                                    ,widget->subType.button.displayText, string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY
+                                    ,0.f, NULL, NULL);
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
                 const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);

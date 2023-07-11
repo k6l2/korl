@@ -395,8 +395,10 @@ typedef struct Korl_Gfx_StagingAllocation
 } Korl_Gfx_StagingAllocation;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics      name(acu16 utf16AssetNameFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_gfx_font_getResources(name)                       Korl_Gfx_Font_Resources    name(acu16 utf16AssetNameFont, f32 textPixelHeight)
-#define KORL_FUNCTION_korl_gfx_font_getTextMetrics(name)                     Korl_Gfx_Font_TextMetrics  name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text)
-#define KORL_FUNCTION_korl_gfx_font_generateText(name)                       void                       name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+#define KORL_FUNCTION_korl_gfx_font_getUtf8Metrics(name)                     Korl_Gfx_Font_TextMetrics  name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text)
+#define KORL_FUNCTION_korl_gfx_font_generateUtf8(name)                       void                       name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+#define KORL_FUNCTION_korl_gfx_font_getUtf16Metrics(name)                    Korl_Gfx_Font_TextMetrics  name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu16 utf16Text)
+#define KORL_FUNCTION_korl_gfx_font_generateUtf16(name)                      void                       name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
 #define KORL_FUNCTION_korl_gfx_useCamera(name)                               void                       name(Korl_Gfx_Camera camera)
 #define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)                       Korl_Gfx_Camera            name(void)
 #define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)                      Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context)
