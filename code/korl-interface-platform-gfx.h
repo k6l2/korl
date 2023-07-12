@@ -386,12 +386,13 @@ typedef struct Korl_Gfx_VertexStagingMeta
     u32                                vertexCount;
     Korl_Gfx_VertexAttributeDescriptor vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
 } Korl_Gfx_VertexStagingMeta;
+typedef void* Korl_Gfx_DeviceBufferHandle;// opaque type; example: for Vulkan implementation, it's a VkBuffer
 typedef struct Korl_Gfx_StagingAllocation
 {
-    void* buffer;
-    u$    bytes;
-    void* deviceBuffer;// opaque type; example: for Vulkan implementation, it's a VkBuffer
-    u$    deviceBufferOffset;
+    void*                       buffer;
+    u$                          bytes;
+    Korl_Gfx_DeviceBufferHandle deviceBuffer;
+    u$                          deviceBufferOffset;
 } Korl_Gfx_StagingAllocation;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics      name(acu16 utf16AssetNameFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_gfx_font_getResources(name)                       Korl_Gfx_Font_Resources    name(acu16 utf16AssetNameFont, f32 textPixelHeight)

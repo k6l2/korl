@@ -3154,6 +3154,15 @@ korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_Devi
     return (Korl_Math_V2u32){.x = deviceMemoryAllocation->subType.texture.sizeX
                             ,.y = deviceMemoryAllocation->subType.texture.sizeY};
 }
+korl_internal Korl_Gfx_DeviceBufferHandle korl_vulkan_buffer_getDeviceBufferHandle(Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle)
+{
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_DeviceMemory_Alloctation*const deviceMemoryAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, deviceMemoryAllocationHandle);
+    if(!deviceMemoryAllocation)
+        return NULL;
+    korl_assert(deviceMemoryAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
+    return deviceMemoryAllocation->subType.buffer.vulkanBuffer;
+}
 korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;

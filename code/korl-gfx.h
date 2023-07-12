@@ -10,7 +10,7 @@ korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
     Korl_Memory_AllocatorHandle allocator;
-    //@TODO: store bufferText vertex attribute meta data
+    Korl_Gfx_VertexStagingMeta  vertexStagingMeta;
     Korl_Resource_Handle        resourceHandleBufferText;// used to store the vertex buffer which contains all of the _Korl_Gfx_FontGlyphInstance data for all the lines contained in this Text object; each line will access an offset into this vertex buffer determined by the sum of all visible characters of all lines prior to it in the stbDaLines list
     struct _Korl_Gfx_Text_Line* stbDaLines;// the user can obtain the line count by calling arrlenu(text->stbDaLines)
     f32                         textPixelHeight;
@@ -29,7 +29,7 @@ korl_internal void               korl_gfx_text_destroy(Korl_Gfx_Text* context);
 korl_internal void               korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent);
 korl_internal void               korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData);
 korl_internal void               korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount);
-korl_internal void               korl_gfx_text_draw(const Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
+korl_internal void               korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
 korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context);
 korl_internal Korl_Math_V2f32    korl_gfx_font_textGraphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);

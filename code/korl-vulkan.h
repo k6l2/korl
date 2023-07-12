@@ -116,7 +116,8 @@ korl_internal void                                      korl_vulkan_setSurfaceCl
 korl_internal void                                      korl_vulkan_frameEnd(void);
 korl_internal void                                      korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void                                      korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state);
-korl_internal void                                      korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);//@TODO: delete/deprecate
+//@TODO: delete/deprecate
+korl_internal void                                      korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Gfx_VertexStagingMeta* stagingMeta);
@@ -126,6 +127,8 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
+korl_internal Korl_Gfx_DeviceBufferHandle               korl_vulkan_buffer_getDeviceBufferHandle(Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle);
+//@TODO: rename korl_vulkan_vertexBuffer* APIs to korl_vulkan_buffer*
 korl_internal void                                      korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
 korl_internal void                                      korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
 korl_internal void*                                     korl_vulkan_vertexBuffer_getStagingBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, u$ bytes, u$ bufferByteOffset);
