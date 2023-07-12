@@ -49,6 +49,7 @@ korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines3d(u32 lineCount, Korl_M
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles2d(u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles3d(u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangleFan2d(u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateRectangle(Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateAxisNormalLines(void);
 korl_internal void               korl_gfx_drawImmediate(const Korl_Gfx_Immediate* immediate, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material);

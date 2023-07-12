@@ -330,7 +330,7 @@ korl_internal void korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_
                          ,3, color);
     korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
 }
-korl_internal Korl_Gfx_Immediate _korl_gfx_immediate2d(Korl_Gfx_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
+korl_internal Korl_Gfx_Immediate _korl_gfx_immediate2d(Korl_Gfx_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     KORL_ZERO_STACK(Korl_Gfx_Immediate, result);
     result.primitiveType = primitiveType;
@@ -351,10 +351,21 @@ korl_internal Korl_Gfx_Immediate _korl_gfx_immediate2d(Korl_Gfx_PrimitiveType pr
         result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].vectorSize       = 4;
         byteOffsetBuffer += result.vertexStagingMeta.vertexCount * result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride;
     }
+    if(o_uvs)
+    {
+        result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
+        result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
+        result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+        result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
+        result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
+        byteOffsetBuffer += result.vertexStagingMeta.vertexCount * result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
+    }
     result.stagingAllocation = korl_gfx_stagingAllocate(&result.vertexStagingMeta);
     *o_positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, result.stagingAllocation.buffer) + result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
     if(o_colors)
         *o_colors = KORL_C_CAST(Korl_Vulkan_Color4u8*, KORL_C_CAST(u8*, result.stagingAllocation.buffer) + result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
+    if(o_uvs)
+        *o_uvs = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, result.stagingAllocation.buffer) + result.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer);
     return result;
 }
 korl_internal Korl_Gfx_Immediate _korl_gfx_immediate3d(Korl_Gfx_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
@@ -386,7 +397,7 @@ korl_internal Korl_Gfx_Immediate _korl_gfx_immediate3d(Korl_Gfx_PrimitiveType pr
 }
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines2d(u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
 {
-    return _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_LINES, 2 * lineCount, o_positions, o_colors);
+    return _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_LINES, 2 * lineCount, o_positions, o_colors, NULL);
 }
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines3d(u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
 {
@@ -394,7 +405,7 @@ korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines3d(u32 lineCount, Korl_M
 }
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles2d(u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
 {
-    return _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLES, 3 * triangleCount, o_positions, o_colors);
+    return _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLES, 3 * triangleCount, o_positions, o_colors, NULL);
 }
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles3d(u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
 {
@@ -403,7 +414,25 @@ korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles3d(u32 triangleCount
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangleFan2d(u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 3);
-    return _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors);
+    return _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors, NULL);
+}
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateRectangle(Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+{
+    //@TODO: resolve copy-pasta from _korl_gfx_drawRectangle
+    Korl_Math_V2f32* positions;
+    korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
+    Korl_Gfx_Immediate result = _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP, korl_arraySize(QUAD_POSITION_NORMALS_TRI_STRIP), &positions, o_colors, o_uvs);
+    for(u32 v = 0; v < korl_arraySize(QUAD_POSITION_NORMALS_TRI_STRIP); v++)
+    {
+        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
+                                                              ,QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
+        if(o_uvs)
+            (*o_uvs)[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      QUAD_POSITION_NORMALS_TRI_STRIP[v].x
+                                                                 ,1.f - QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
+    }
+    if(o_positions)
+        *o_positions = positions;
+    return result;
 }
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateAxisNormalLines(void)
 {
@@ -718,7 +747,7 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
 korl_internal void korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 3);
-    const Korl_Gfx_Immediate immediate = _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors);
+    const Korl_Gfx_Immediate immediate = _korl_gfx_immediate2d(KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors, NULL);
     //@TODO: disable depth test somehow
     korl_gfx_drawImmediate(&immediate, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, KORL_MATH_V3F32_ONE, material);
 }

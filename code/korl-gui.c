@@ -20,14 +20,14 @@ typedef struct _Korl_Gui_UsedWidget
     } dagMetaData;
     struct
     {
-        Korl_Math_V2f32 childWidgetCursor;// used to determine where the next child widget will be placed with respect to this widget's placement
-        Korl_Math_V2f32 childWidgetCursorOrigin;// offset relative to this widget's origin
-        f32 currentWidgetRowHeight;
+        Korl_Math_V2f32    childWidgetCursor;// used to determine where the next child widget will be placed with respect to this widget's placement
+        Korl_Math_V2f32    childWidgetCursorOrigin;// offset relative to this widget's origin
+        f32                currentWidgetRowHeight;
         Korl_Math_Aabb2f32 aabb;// used for collision detection at the top of the next frame; we need to do this because the widget's AABB must first be calculated based on its contents, and then it must be clipped to all parent widget AABBs so the user can't click on it "out of bounds"; IMPORTANT: do _NOT_ use this value for drawing widget content, as it will not accurately represent where the real widget placement is in world-space (this AABB is only useful for collision-detection purposes); IMPORTANT: do _NOT_ calculate the next frame's widget placement with this value except in very specific scenarios (like WINDOW widgets), as this value is subject to clipping applied by all the widget's parents recursively
         Korl_Math_Aabb2f32 aabbContent;// an accumulation of all content within this widget, including all content that lies outside of `aabb`; this is very important for performing auto-resize logic
         Korl_Math_Aabb2f32 aabbChildren;// an accumulation of all content AABBs _only_ of children of this widget, including all content that lies outside of `aabb`; useful for SCROLL_AREA widgets to clamp the child content AABB to our visible AABB
-        bool isFirstFrame;// storing this value during widget logic at the end of frame allows us to properly resize window widgets recursively without having to do an extra separate loop to clear all the widget flags that hold the same value
-        u64 candidateLeafWidgetActive;
+        bool               isFirstFrame;// storing this value during widget logic at the end of frame allows us to properly resize window widgets recursively without having to do an extra separate loop to clear all the widget flags that hold the same value
+        u64                candidateLeafWidgetActive;
     } transient;// this data is only used/valid at the end of the frame, when we need to process the list of all UsedWidgets that have been accumulated during the frame
 } _Korl_Gui_UsedWidget;
 typedef struct _Korl_Gui_WidgetMap
@@ -36,7 +36,8 @@ typedef struct _Korl_Gui_WidgetMap
     u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
 } _Korl_Gui_WidgetMap;
 #if KORL_DEBUG
-    #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
+    //@TODO: comment these out again
+    // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     // #define _KORL_GUI_DEBUG_DRAW_SCROLL_AREA
 #endif
 #if defined(_LOCAL_STRING_POOL_POINTER)
@@ -1734,8 +1735,8 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Gfx_Font_TextMetrics textMetrics = korl_gfx_font_getUtf16Metrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, widget->subType.button.displayText);
                 const f32 buttonAabbSizeX = textMetrics.aabbSize.x + (context->style.widgetButtonLabelMargin * 2.f);
                 const f32 buttonAabbSizeY = textMetrics.aabbSize.y + (context->style.widgetButtonLabelMargin * 2.f);
-                const Korl_Math_Aabb2f32 batchTextAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
-                usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, batchTextAabb);
+                const Korl_Math_Aabb2f32 textAabb = korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + buttonAabbSizeX, widget->position.y - buttonAabbSizeY);
+                usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent, textAabb);
                 korl_gfx_drawUtf162d((Korl_Math_V2f32){widget->position.x + context->style.widgetButtonLabelMargin
                                                       ,widget->position.y - context->style.widgetButtonLabelMargin}
                                     ,KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT
@@ -1744,36 +1745,29 @@ korl_internal void korl_gui_frameEnd(void)
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
                 const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
-                Korl_Gfx_Batch*const batchWindowTitleCloseIconPiece = 
-                    korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
-                                                        ,(Korl_Math_V2f32){0.1f*smallestSize
-                                                                          ,     smallestSize}
-                                                        ,(Korl_Math_V2f32){0.5f, 0.5f}
-                                                        ,context->style.colorButtonWindowTitleBarIcons);
-                korl_gfx_batchSetPosition2d(batchWindowTitleCloseIconPiece
-                                           ,widget->position.x + smallestSize/2.f
-                                           ,widget->position.y - smallestSize/2.f);
-                korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z,  KORL_PI32*0.25f);
-                korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
-                korl_gfx_batchSetRotation(batchWindowTitleCloseIconPiece, KORL_MATH_V3F32_Z, -KORL_PI32*0.25f);
-                korl_gfx_batch(batchWindowTitleCloseIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                const Korl_Gfx_Immediate iconPiece = korl_gfx_immediateRectangle((Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize}, NULL, NULL, NULL);
+                const Korl_Gfx_Material  material  = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
+                const Korl_Math_V3f32    position  = {widget->position.x + smallestSize/2.f
+                                                     ,widget->position.y - smallestSize/2.f};
+                korl_gfx_drawImmediate(&iconPiece, position
+                                      ,korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z,  KORL_PI32*0.25f, true)
+                                      ,KORL_MATH_V3F32_ONE, &material);
+                korl_gfx_drawImmediate(&iconPiece, position
+                                      ,korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, -KORL_PI32*0.25f, true)
+                                      ,KORL_MATH_V3F32_ONE, &material);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
                 usedWidget->transient.aabbContent.min.y -= widget->size.y;
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
                 const f32 smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
-                Korl_Gfx_Batch*const batchWindowTitleIconPiece = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack
-                                                                                                     ,(Korl_Math_V2f32){     smallestSize
-                                                                                                                       ,0.1f*smallestSize}
-                                                                                                     ,(Korl_Math_V2f32){0.5f, 0.5f}
-                                                                                                     ,context->style.colorButtonWindowTitleBarIcons);
-                korl_gfx_batchSetPosition2d(batchWindowTitleIconPiece
-                                           ,widget->position.x + smallestSize/2.f
-                                           ,widget->position.y - smallestSize/2.f);
-                if(widget->subType.button.specialButtonAlternateDisplay)
-                    korl_gfx_batchSetRotation(batchWindowTitleIconPiece, KORL_MATH_V3F32_Z, KORL_PI32/2);
-                korl_gfx_batch(batchWindowTitleIconPiece, KORL_GFX_BATCH_FLAG_DISABLE_DEPTH_TEST);
+                const Korl_Gfx_Immediate iconPiece = korl_gfx_immediateRectangle((Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize}, NULL, NULL, NULL);
+                const Korl_Gfx_Material  material  = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
+                const Korl_Math_V3f32    position  = {widget->position.x + smallestSize/2.f
+                                                     ,widget->position.y - smallestSize/2.f};
+                korl_gfx_drawImmediate(&iconPiece, position
+                                      ,korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, widget->subType.button.specialButtonAlternateDisplay ? KORL_PI32/2 : 0, true)
+                                      ,KORL_MATH_V3F32_ONE, &material);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
                 usedWidget->transient.aabbContent.min.y -= widget->size.y;
@@ -1799,13 +1793,13 @@ korl_internal void korl_gui_frameEnd(void)
             {
                 korl_assert(widget->subType.text.displayText.data);
                 korl_assert(!widget->subType.text.gfxText);
-                Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), widget->subType.text.displayText.data, context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-                korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y, z}, 3);
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);
-                const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
-                const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
-                usedWidget->transient.aabbContent.max.x += batchTextAabbSize.x;
-                usedWidget->transient.aabbContent.min.y -= batchTextAabbSize.y;
+                const Korl_Gfx_Font_TextMetrics textMetrics = korl_gfx_font_getUtf16Metrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, widget->subType.button.displayText);
+                korl_gfx_drawUtf163d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}
+                                    ,KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT
+                                    ,widget->subType.button.displayText, string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY
+                                    ,0.f, NULL, NULL);
+                usedWidget->transient.aabbContent.max.x += textMetrics.aabbSize.x;
+                usedWidget->transient.aabbContent.min.y -= textMetrics.aabbSize.y;
             }
             korl_time_probeStop(widget_text);
             break;}
@@ -1821,13 +1815,10 @@ korl_internal void korl_gui_frameEnd(void)
                 usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
             #ifdef _KORL_GUI_DEBUG_DRAW_SCROLL_AREA// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
             {
-                Korl_Gfx_Batch*const batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, (Korl_Vulkan_Color4u8){255,0,0,128});
-                if(widget->isHovered)
-                    batch->_vertexColors[1] = (Korl_Vulkan_Color4u8){0,0,255,128};
-                else
-                    batch->_vertexColors[1] = (Korl_Vulkan_Color4u8){0,255,0,128};
-                korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
-                korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+                Korl_Vulkan_Color4u8* colors;
+                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, NULL, NULL, &colors);
+                colors[0] = colors[1] = colors[2] = (Korl_Vulkan_Color4u8){255,0,0,128};
+                colors[3] = widget->isHovered ? (Korl_Vulkan_Color4u8){0,0,255,128} : (Korl_Vulkan_Color4u8){0,255,0,128};
             }
             #endif
             break;}
@@ -1845,53 +1836,42 @@ korl_internal void korl_gui_frameEnd(void)
             const f32 sliderOffset = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
                                      ? (widget->size.y - sliderSize.y)*widget->subType.scrollBar.scrollPositionRatio
                                      : (widget->size.x - sliderSize.x)*widget->subType.scrollBar.scrollPositionRatio;
-            Korl_Gfx_Batch* batchSlider = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, sliderSize, ORIGIN_RATIO_UPPER_LEFT, colorSlider);
+            Korl_Math_V3f32 sliderPosition = {0};
             switch(widget->subType.scrollBar.axis)
             {
-            case KORL_GUI_SCROLL_BAR_AXIS_X:{
-                korl_gfx_batchSetPosition(batchSlider, (f32[]){widget->position.x + sliderOffset, widget->position.y, z + 0.5f}, 3);
-                break;}
-            case KORL_GUI_SCROLL_BAR_AXIS_Y:{
-                korl_gfx_batchSetPosition(batchSlider, (f32[]){widget->position.x, widget->position.y - sliderOffset, z + 0.5f}, 3);
-                break;}
+            case KORL_GUI_SCROLL_BAR_AXIS_X: sliderPosition = (Korl_Math_V3f32){widget->position.x + sliderOffset, widget->position.y, z + 0.5f}; break;
+            case KORL_GUI_SCROLL_BAR_AXIS_Y: sliderPosition = (Korl_Math_V3f32){widget->position.x, widget->position.y - sliderOffset, z + 0.5f}; break;
             }
-            korl_gfx_batch(batchSlider, KORL_GFX_BATCH_FLAGS_NONE);
+            const Korl_Gfx_Material materialSlider = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(colorSlider));
+            korl_gfx_drawRectangle3d(sliderPosition, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, sliderSize, 0, &materialSlider, NULL, NULL);
             /* draw the background region */
-            const Korl_Vulkan_Color4u8 colorBackground = context->style.colorScrollBar;
-            Korl_Gfx_Batch* batch = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, widget->size, ORIGIN_RATIO_UPPER_LEFT, colorBackground);
-            if(batch)
-                switch(widget->subType.scrollBar.axis)
-                {
-                case KORL_GUI_SCROLL_BAR_AXIS_X:{
-                    batch->_vertexColors[2].a = batch->_vertexColors[3].a = 0;
-                    break;}
-                case KORL_GUI_SCROLL_BAR_AXIS_Y:{
-                    batch->_vertexColors[0].a = batch->_vertexColors[3].a = 0;
-                    break;}
-                }
-            korl_gfx_batchSetPosition(batch, (f32[]){widget->position.x, widget->position.y, z}, 3);
-            korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+            const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorScrollBar));
+            Korl_Vulkan_Color4u8* backgroundColors;
+            korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialBackground, NULL, &backgroundColors);
+            for(u8 i = 0; i < 4; i++)
+                backgroundColors[i] = KORL_COLOR4U8_WHITE;
+            switch(widget->subType.scrollBar.axis)
+            {
+            case KORL_GUI_SCROLL_BAR_AXIS_X: backgroundColors[0].a = backgroundColors[2].a = 0; break;
+            case KORL_GUI_SCROLL_BAR_AXIS_Y: backgroundColors[0].a = backgroundColors[1].a = 0; break;
+            }
             break;}
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
-            /* prepare the graphics to draw the text buffer to obtain metrics, but defer drawing until later */
-            const Korl_Gfx_Font_Metrics fontMetrics    = korl_gfx_font_getMetrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
-            const f32                   textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
-            Korl_Gfx_Batch*const batchText = korl_gfx_createBatchText(context->allocatorHandleStack, string_getRawUtf16(&context->style.fontWindowText), string_getRawUtf16(&widget->subType.inputText.string), context->style.windowTextPixelSizeY, context->style.colorText, context->style.textOutlinePixelSize, context->style.colorTextOutline);
-            korl_gfx_batchSetPosition(batchText, (f32[]){widget->position.x, widget->position.y, z + 0.5f}, 3);
-            const Korl_Math_Aabb2f32 batchTextAabb     = korl_gfx_batchTextGetAabb(batchText);
-            const Korl_Math_V2f32    batchTextAabbSize = korl_math_aabb2f32_size(batchTextAabb);
+            /* prepare the font/text metrics, but defer drawing until later, since we will be drawing some stuff behind the translucent text mesh */
+            const Korl_Gfx_Font_Metrics     fontMetrics    = korl_gfx_font_getMetrics    (string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
+            const f32                       textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
+            const Korl_Gfx_Font_TextMetrics textMetrics    = korl_gfx_font_getUtf8Metrics(string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY, string_getRawAcu8(&widget->subType.inputText.string));
             usedWidget->transient.aabbContent.min.y -= textLineDeltaY;
             /* draw a simple box around the input widget itself */
             korl_assert(usedWidgetParent);// for now, we want to just have the INPUT_TEXT widget fill the remaining X space of our parent
             usedWidget->transient.aabbContent.max.x = usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x;
             const Korl_Math_V2f32 contentAabbSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
-            Korl_Gfx_Batch*const batchBox = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, contentAabbSize, ORIGIN_RATIO_UPPER_LEFT, KORL_COLOR4U8_BLACK);
-            korl_gfx_batchSetPosition(batchBox, (f32[]){widget->position.x, widget->position.y, z}, 3);
-            korl_gfx_batch(batchBox, KORL_GFX_BATCH_FLAGS_NONE);
+            const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_BLACK));
+            korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, contentAabbSize, 0, &materialBackground, NULL, NULL);
             /* draw the selection region _behind_ the text, if our cursor defines a selection */
             const Korl_Math_V2f32      cursorSize          = {2, textLineDeltaY};
             const Korl_Math_V2f32      cursorOrigin        = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
-            const Korl_Vulkan_Color4u8 cursorColor         = {0, 255, 0, 100};
+            const Korl_Gfx_Material    cursorMaterial      = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear((Korl_Vulkan_Color4u8){0, 255, 0, 100}));
             const u$                   cursorBegin         = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
                                                                           ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
             const u$                   cursorEnd           = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
@@ -1908,30 +1888,20 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                             ,cursorEnd);
                 /* in this case, we need to draw a highlight region for the entire selected grapheme range */
                 const Korl_Math_V2f32 lineSelectionSize = {cursorPositionEnd.x - cursorPositionBegin.x, textLineDeltaY};
-                Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, lineSelectionSize, cursorOrigin, cursorColor);
-                korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, 3);
-                korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
+                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, KORL_MATH_QUATERNION_IDENTITY
+                                        ,cursorOrigin, lineSelectionSize, 0, &cursorMaterial, NULL, NULL);
             }
-            if(batchText && batchText->_instanceCount)
-                korl_gfx_batch(batchText, KORL_GFX_BATCH_FLAGS_NONE);// draw the text buffer now, after any background elements
+            /* draw the text buffer now, after any background elements */
+            if(textMetrics.visibleGlyphCount)
+                korl_gfx_drawUtf83d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.5f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT
+                                   ,string_getRawAcu8(&widget->subType.inputText.string), string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY
+                                   ,0, NULL, NULL);
             /* draw a cursor _above_ the text, if the cursor defines a single grapheme index */
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin >= cursorEnd)
             {
-                if(widget->subType.inputText.inputMode)
-                {
-                    /* in this case, we need to draw a single vertical bar */
-                    Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, cursorSize, cursorOrigin, cursorColor);
-                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
-                    korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
-                }
-                else
-                {
-                    const Korl_Math_V2f32 vimCursorSize = {10, 2};
-                    /* draw an underscore instead I guess? */
-                    Korl_Gfx_Batch*const batchCursor = korl_gfx_createBatchRectangleColored(context->allocatorHandleStack, vimCursorSize, cursorOrigin, cursorColor);
-                    korl_gfx_batchSetPosition(batchCursor, (f32[]){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, 3);
-                    korl_gfx_batch(batchCursor, KORL_GFX_BATCH_FLAGS_NONE);
-                }
+                const Korl_Math_V2f32 inputCursorSize = widget->subType.inputText.inputMode ? cursorSize : (Korl_Math_V2f32){10, 2};
+                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, KORL_MATH_QUATERNION_IDENTITY
+                                        ,cursorOrigin, inputCursorSize, 0, &cursorMaterial, NULL, NULL);
             }
             break;}
         default:{
@@ -1998,7 +1968,7 @@ korl_internal void korl_gui_frameEnd(void)
         const Korl_Gfx_Immediate immediateAxisNormalLines = korl_gfx_immediateAxisNormalLines();
         korl_gfx_drawImmediate(&immediateAxisNormalLines, (Korl_Math_V3f32){1,1,0}, KORL_MATH_QUATERNION_IDENTITY, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, 100), NULL);
         for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
-            korl_gfx_drawImmediate(&immediateAxisNormalLines, (Korl_Math_V3f32){.xy = usedWidget->widget->position}, KORL_MATH_QUATERNION_IDENTITY, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, 32), NULL);
+            korl_gfx_drawImmediate(&immediateAxisNormalLines, (Korl_Math_V3f32){.xy = usedWidget->widget->position}, KORL_MATH_QUATERNION_IDENTITY, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, 16), NULL);
     }
     #endif
     /* begin the next frame as soon as this frame has ended */
