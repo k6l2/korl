@@ -36,7 +36,6 @@ typedef struct _Korl_Gui_WidgetMap
     u$  value;// the index of the _Korl_Gui_UsedWidget in the context's stbDaUsedWidgets member
 } _Korl_Gui_WidgetMap;
 #if KORL_DEBUG
-    //@TODO: comment these out again
     // #define _KORL_GUI_DEBUG_DRAW_COORDINATE_FRAMES
     // #define _KORL_GUI_DEBUG_DRAW_SCROLL_AREA
 #endif
@@ -1748,7 +1747,8 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Gfx_Immediate iconPiece = korl_gfx_immediateRectangle((Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize}, NULL, NULL, NULL);
                 const Korl_Gfx_Material  material  = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
                 const Korl_Math_V3f32    position  = {widget->position.x + smallestSize/2.f
-                                                     ,widget->position.y - smallestSize/2.f};
+                                                     ,widget->position.y - smallestSize/2.f
+                                                     ,z};
                 korl_gfx_drawImmediate(&iconPiece, position
                                       ,korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z,  KORL_PI32*0.25f, true)
                                       ,KORL_MATH_V3F32_ONE, &material);
@@ -1764,7 +1764,8 @@ korl_internal void korl_gui_frameEnd(void)
                 const Korl_Gfx_Immediate iconPiece = korl_gfx_immediateRectangle((Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize}, NULL, NULL, NULL);
                 const Korl_Gfx_Material  material  = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
                 const Korl_Math_V3f32    position  = {widget->position.x + smallestSize/2.f
-                                                     ,widget->position.y - smallestSize/2.f};
+                                                     ,widget->position.y - smallestSize/2.f
+                                                     ,z};
                 korl_gfx_drawImmediate(&iconPiece, position
                                       ,korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, widget->subType.button.specialButtonAlternateDisplay ? KORL_PI32/2 : 0, true)
                                       ,KORL_MATH_V3F32_ONE, &material);
