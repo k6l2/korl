@@ -915,7 +915,6 @@ korl_internal Korl_Gfx_DrawState_Material korl_resource_scene3d_getMaterial(Korl
 korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Gfx_DrawState_Modes** o_meshPrimitiveDrawModes)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    KORL_ZERO_STACK(Korl_Vulkan_DrawVertexData, drawVertexData);
     if(!handleResourceScene3d)
         goto returnNothing;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
@@ -948,7 +947,7 @@ korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle ha
         korl_log(ERROR, "failed to find mesh \"%.*hs\" in SCENE3D resource", utf8MeshName.size, utf8MeshName.data);
         goto returnNothing;
     }
-    /* the Vulkan_DrawVertexData for all this mesh's meshPrimitives was already 
+    /* the render data structs for all this mesh's MeshPrimitives was already 
         constructed when the Resource finished loading & decoding; all we need 
         to do is return this const data array to the user */
     *o_meshPrimitiveCount       = mesh->primitives.size;

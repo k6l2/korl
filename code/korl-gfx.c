@@ -1049,12 +1049,10 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
             drawStateLine.material = &material;
             drawStateLine.model    = &model;
             korl_vulkan_setDrawState(&drawStateLine);
-            Korl_Gfx_StagingAllocation stagingAllocation = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_StagingAllocation);
-            stagingAllocation.deviceBuffer       = korl_vulkan_buffer_getDeviceBufferHandle(korl_resource_getVulkanDeviceMemoryAllocationHandle(context->resourceHandleBufferText));
-            stagingAllocation.deviceBufferOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_FontGlyphInstance);
-            context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - stagingAllocation.deviceBufferOffset);
+            const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_FontGlyphInstance);
+            context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
             context->vertexStagingMeta.instanceCount         = line->visibleCharacters;
-            korl_vulkan_drawStagingAllocation(&stagingAllocation, &context->vertexStagingMeta);
+            korl_vulkan_drawVertexBuffer(korl_resource_getVulkanDeviceMemoryAllocationHandle(context->resourceHandleBufferText), textLineByteOffset, &context->vertexStagingMeta);
         }
         modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
@@ -2302,7 +2300,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         drawStateMeshPrimitive.modes = meshPrimitiveDrawModes + mp;
         korl_vulkan_setDrawState(&drawStateMeshPrimitive);
         // @TODO: each mesh primitive is actually associated with a respective material, so we need to obtain & use materials in this loop!
-        korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, meshPrimitiveVertexMetas + mp);
+        korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, 0, meshPrimitiveVertexMetas + mp);
     }
 }
 korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)

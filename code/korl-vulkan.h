@@ -47,45 +47,6 @@
 #define KORL_VULKAN_MAX_LIGHTS 8
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef u64 Korl_Vulkan_ShaderHandle;
-typedef enum Korl_Vulkan_DrawVertexData_VertexBufferType
-    {KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_UNUSED
-    ,KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_RESOURCE
-    ,KORL_VULKAN_DRAW_VERTEX_DATA_VERTEX_BUFFER_TYPE_DEVICE_MEMORY_ALLOCATION
-} Korl_Vulkan_DrawVertexData_VertexBufferType;
-typedef struct Korl_Vulkan_DrawVertexData//@TODO: delete/deprecate
-{
-    // @TODO: I'm torn on this; do we keep placing these types of properties inside DrawVertexData, or do we move them into DrawState ? 🤔🤔🤔🤔🤔
-    // @TODO: copy-pasta of Korl_Vulkan_DrawMode!
-    Korl_Gfx_PrimitiveType      primitiveType;
-    Korl_Gfx_PolygonMode        polygonMode;
-    Korl_Gfx_CullMode           cullMode;
-    struct
-    {
-        Korl_Vulkan_DrawVertexData_VertexBufferType type;
-        u$                                          byteOffset;
-        union
-        {
-            Korl_Resource_Handle                      handleResource;
-            Korl_Vulkan_DeviceMemory_AllocationHandle handleDeviceMemoryAllocation;
-        } subType;
-    } vertexBuffer;
-    Korl_Vulkan_VertexIndex        indexCount;
-    const Korl_Vulkan_VertexIndex* indices;
-    u32                            vertexCount;
-    u8                             positionDimensions;        // only acceptable values: {2, 3}
-    const f32*                     positions;
-    u32                            positionsStride;
-    const Korl_Math_V2f32*         uvs;
-    u32                            uvsStride;
-    const Korl_Vulkan_Color4u8*    colors;
-    u32                            colorsStride;
-    u32                            instanceCount;
-    u8                             instancePositionDimensions;// only acceptable values: {2, 3}
-    const f32*                     instancePositions;
-    u32                            instancePositionsStride;
-    const u32*                     instanceUint;
-    u32                            instanceUintStride;
-} Korl_Vulkan_DrawVertexData;
 typedef struct Korl_Vulkan_CreateInfoTexture
 {
     u32 sizeX, sizeY;// @TODO: V2u32
@@ -116,18 +77,18 @@ korl_internal void                                      korl_vulkan_setSurfaceCl
 korl_internal void                                      korl_vulkan_frameEnd(void);
 korl_internal void                                      korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void                                      korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state);
-//@TODO: delete/deprecate
-korl_internal void                                      korl_vulkan_draw(const Korl_Vulkan_DrawVertexData* vertexData);
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta);
-korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, const Korl_Gfx_VertexStagingMeta* stagingMeta);
+korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 //@TODO: rename to korl_vulkan_deviceAsset_createBuffer
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
+#if 0//@TODO: unnecessary API; I was going to use this for korl_gfx_text_draw, but we can just call korl_vulkan_drawVertexBuffer for that, which honestly looks a lot cleaner
 korl_internal Korl_Gfx_DeviceBufferHandle               korl_vulkan_buffer_getDeviceBufferHandle(Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle);
+#endif
 //@TODO: rename korl_vulkan_vertexBuffer* APIs to korl_vulkan_buffer*
 korl_internal void                                      korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
 korl_internal void                                      korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);

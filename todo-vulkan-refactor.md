@@ -15,6 +15,7 @@ This time, we are going to construct a Vulkan API to just give the user direct a
     [x] draw buffered text (Korl_Gfx_Text objects)
 [ ] refactor all the garbage from korl-gfx to use new APIs
     [ ] destroy all the korl-batch* nonsense
+        [ ] KORL-ISSUE-000-000-097: interface-platform, gfx: maybe just destroy Korl_Gfx_Batch & start over, since we've gotten rid of the concept of "batching" in the platform renderer; the primitive storage struct might also benefit from being a polymorphic tagged union
     [ ] refactor Text stuff
     [ ] refactor korl-gui to use this stuff
 [ ] flesh out immediate draw calls to make them as streamlined as possible
