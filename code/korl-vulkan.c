@@ -475,8 +475,7 @@ korl_internal uint32_t _korl_vulkan_findMemoryType(uint32_t memoryTypeBits, VkMe
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     KORL_ZERO_STACK(VkPhysicalDeviceMemoryProperties, physicalDeviceMemoryProperties);
-    vkGetPhysicalDeviceMemoryProperties(
-        context->physicalDevice, &physicalDeviceMemoryProperties);
+    vkGetPhysicalDeviceMemoryProperties(context->physicalDevice, &physicalDeviceMemoryProperties);
     for(uint32_t m = 0; m < physicalDeviceMemoryProperties.memoryTypeCount; m++)
     {
         /* if this index isn't supported by the user-provided index list, 
@@ -1338,6 +1337,17 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         for(u32 e = 0; e < extensionPropertiesSize; e++)
             korl_log(INFO, "[%u]: \"%hs\"", e, extensionProperties[e].extensionName);
     }
+    /* log other important physical device characteristics */
+    {// log physical device memory properties
+        KORL_ZERO_STACK(VkPhysicalDeviceMemoryProperties, memoryProperties);
+        vkGetPhysicalDeviceMemoryProperties(context->physicalDevice, &memoryProperties);
+        korl_log(INFO, "physical device memory types:");
+        for(uint32_t t = 0; t < memoryProperties.memoryTypeCount; t++)
+            korl_log(INFO, "[%u]: propertyFlags: 0x%X, heapIndex: %u", t, memoryProperties.memoryTypes[t].propertyFlags, memoryProperties.memoryTypes[t].heapIndex);
+        korl_log(INFO, "physical device memory heaps:");
+        for(uint32_t h = 0; h < memoryProperties.memoryHeapCount; h++)
+            korl_log(INFO, "[%u]: size: %llu, flags: 0x%X", h, memoryProperties.memoryHeaps[h].size, memoryProperties.memoryHeaps[h].flags);
+    }
     /* determine how many queue families we need, which determines how many 
         VkDeviceQueueCreateInfo structs we will need to create the logical 
         device with our specifications */
@@ -1403,6 +1413,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                     ,0/*queueIndex*/, &context->queuePresent);
     /* create the device memory allocator we will require to store certain swap 
         chain dependent resources, such as the depth buffer, stencil buffer, etc. */
+    korl_log(INFO, "createSurface: creating deviceMemoryRenderResources...");
     surfaceContext->deviceMemoryRenderResources = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
                                                                                             ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                             ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -1411,6 +1422,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                             ,korl_math_megabytes(64));
     /* create device memory allocator used to store host-visible data, such as 
         staging buffers for vertex attributes, textures, etc... */
+    korl_log(INFO, "createSurface: creating deviceMemoryHostVisible...");
     surfaceContext->deviceMemoryHostVisible = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
@@ -1425,6 +1437,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         mesh manifolds, SSBOs, textures, etc...  mostly things that persist for 
         many frames and have a high cost associated with data transfers to the 
         device */
+    korl_log(INFO, "createSurface: creating deviceMemoryDeviceLocal...");
     surfaceContext->deviceMemoryDeviceLocal = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT

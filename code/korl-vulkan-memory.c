@@ -442,6 +442,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allo
         KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsDummyBuffer);
         vkGetBufferMemoryRequirements(context->device, dummyBuffer, &memoryRequirementsDummyBuffer);
         vkDestroyBuffer(context->device, dummyBuffer, context->allocator);
+        korl_log(INFO, "korl-vulkan-deviceMemory-allocator: bufferUsageFlags=0x%X memoryRequirementsDummyBuffer.memoryTypeBits=0x%X", bufferUsageFlags, memoryRequirementsDummyBuffer.memoryTypeBits);
         memoryTypeBits |= memoryRequirementsDummyBuffer.memoryTypeBits;
     }
     /* Create dummy image, query mem reqs, extract memory type bits.  See notes 
@@ -469,10 +470,11 @@ korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allo
         //imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         //imageCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
         _KORL_VULKAN_CHECK(vkCreateImage(context->device, &imageCreateInfo, context->allocator, &dummyImage));
-        KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirements);
-        vkGetImageMemoryRequirements(context->device, dummyImage, &memoryRequirements);
+        KORL_ZERO_STACK(VkMemoryRequirements, memoryRequirementsDummyImage);
+        vkGetImageMemoryRequirements(context->device, dummyImage, &memoryRequirementsDummyImage);
         vkDestroyImage(context->device, dummyImage, context->allocator);
-        memoryTypeBits |= memoryRequirements.memoryTypeBits;
+        korl_log(INFO, "korl-vulkan-deviceMemory-allocator: imageUsageFlags=0x%X memoryRequirementsDummyImage.memoryTypeBits=0x%X", imageUsageFlags, memoryRequirementsDummyImage.memoryTypeBits);
+        memoryTypeBits |= memoryRequirementsDummyImage.memoryTypeBits;
     }
     /* put additional device object memory type bit queries here 
         (don't forget to add the usage flags as a parameter)
