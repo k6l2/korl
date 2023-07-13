@@ -17,6 +17,14 @@ KORL is being built with the following tenets:
   - immediate GUI API
   - CPU & Memory metrics
 
+## Dependencies
+
+- [Vulkan SDK](https://vulkan.lunarg.com)
+
+### Windows
+
+- [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+
 ## Project Status
 
 - currently, there is only a Windows platform implementation, but I am planning to at least add WASM
