@@ -83,7 +83,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVu
 korl_internal void                                           korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat);
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
 korl_internal Korl_Vulkan_ShaderHandle                       korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader);
-korl_internal Korl_Gfx_DrawState_Material                    korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d);
+korl_internal Korl_Gfx_Material                              korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d);
 korl_internal void                                           korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Gfx_DrawState_Modes** o_meshPrimitiveDrawModes);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);

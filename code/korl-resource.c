@@ -894,10 +894,10 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.shader.handle;
 }
-korl_internal Korl_Gfx_DrawState_Material korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d)
+korl_internal Korl_Gfx_Material korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    Korl_Gfx_DrawState_Material material = korl_gfx_material_defaultLit();
+    Korl_Gfx_Material material = korl_gfx_material_defaultLit();
     if(!handleResourceScene3d)
         return material;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);

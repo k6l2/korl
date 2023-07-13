@@ -1405,7 +1405,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     Korl_Gfx_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
-    Korl_Gfx_DrawState_Material material;
+    Korl_Gfx_Material material;
     /* if the user provided a material to use with this VertexData, then we just 
         override whatever Material was provided by the SCENE3D Resource */
     if(context->subType.mesh.materialSlots->used)

@@ -98,7 +98,6 @@ typedef struct Korl_Gfx_DrawState_Scissor
     u32 width, height;
 } Korl_Gfx_DrawState_Scissor;
 typedef struct Korl_Gfx_Material Korl_Gfx_Material;
-typedef Korl_Gfx_Material Korl_Gfx_DrawState_Material;//KORL-ISSUE-000-000-160: vulkan: Korl_Gfx_DrawState_Material; likely unnecessary abstraction
 typedef struct Korl_Gfx_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
@@ -146,12 +145,12 @@ typedef struct Korl_Gfx_DrawState_Lighting
 } Korl_Gfx_DrawState_Lighting;
 typedef struct Korl_Gfx_DrawState
 {
-    const Korl_Gfx_DrawState_Modes*           modes;
+    const Korl_Gfx_DrawState_Modes*           modes;//@TODO: does this member _also_ belong in `material`?  It honestly kinda does, since this directly affects the way the geometry is rendered...
     const Korl_Gfx_DrawState_Blend*           blend;//@TODO: eliminate this member; merge this data into `material`?
     const Korl_Gfx_DrawState_SceneProperties* sceneProperties;
     const Korl_Gfx_DrawState_Model*           model;
     const Korl_Gfx_DrawState_Scissor*         scissor;
-    const Korl_Gfx_DrawState_Material*        material;
+    const Korl_Gfx_Material*                  material;
     const Korl_Gfx_DrawState_StorageBuffers*  storageBuffers;
     const Korl_Gfx_DrawState_Lighting*        lighting;
 } Korl_Gfx_DrawState;
