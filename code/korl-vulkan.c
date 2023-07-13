@@ -1442,8 +1442,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                                                                         ,VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                                                                                        //@TODO: UH OH!  Aren't we binding to image memory allocated from this device memory?!  why is our image usage flags 0 ??? search for "VK_IMAGE_USAGE_*" allocations using this allocator and add those flags here!
-                                                                                        ,/*image usage flags*/0
+                                                                                        ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                                                                                         | VK_IMAGE_USAGE_SAMPLED_BIT
                                                                                         ,korl_math_megabytes(32));
     /* initialize staging buffers collection */
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);
