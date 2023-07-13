@@ -24,7 +24,7 @@ This time, we are going to construct a Vulkan API to just give the user direct a
 [x] add support for modification of vertex attribute data for an existing "Drawable" primitive
     - for example: we create a quad (with or without vertex color attribute), draw it, then we want to change the quad's vertex colors & draw it somewhere else
 [x] KORL-ISSUE-000-000-096: interface-platform, gfx: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
-[ ] KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
+[x] KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
 [ ] KORL-ISSUE-000-000-160: vulkan: Korl_Gfx_DrawState_Material; likely unnecessary abstraction
 [ ] KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     - we _should_ be able to do this now, since korl-gfx now manages a default texture

@@ -466,11 +466,12 @@ korl_internal void korl_gfx_drawImmediate(const Korl_Gfx_Immediate* immediate, K
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateScaleTranslate(versor, scale, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = immediate->primitiveType;
-    drawMode.cullMode        = materialLocal.drawState.cullMode;
-    drawMode.polygonMode     = materialLocal.drawState.polygonMode;
-    drawMode.enableDepthTest = true;
-    drawMode.enableBlend     = isMaterialTranslucent;
+    drawMode.primitiveType    = immediate->primitiveType;
+    drawMode.cullMode         = materialLocal.drawState.cullMode;
+    drawMode.polygonMode      = materialLocal.drawState.polygonMode;
+    drawMode.enableDepthTest  = true;
+    drawMode.enableDepthWrite = true;
+    drawMode.enableBlend      = isMaterialTranslucent;
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.modes    = &drawMode;
@@ -487,10 +488,11 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
-    drawMode.cullMode        = material->drawState.cullMode;
-    drawMode.polygonMode     = material->drawState.polygonMode;
-    drawMode.enableDepthTest = true;
+    drawMode.primitiveType    = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
+    drawMode.cullMode         = material->drawState.cullMode;
+    drawMode.polygonMode      = material->drawState.polygonMode;
+    drawMode.enableDepthTest  = true;
+    drawMode.enableDepthWrite = true;
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.modes    = &drawMode;
@@ -535,11 +537,12 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP;// for separate individual quad draws, TRIANGLE_STRIP is the least amount of data we can possibly send to the renderer; if we wanted to draw _many_ quads all at once using this topology, we would need to enable a feature, and either set pipeline input state statically or dynamically (for Vulkan)
-    drawMode.cullMode        = materialLocal.drawState.cullMode;
-    drawMode.polygonMode     = materialLocal.drawState.polygonMode;
-    drawMode.enableDepthTest = enableDepthTest;
-    drawMode.enableBlend     = isMaterialTranslucent;
+    drawMode.primitiveType    = KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP;// for separate individual quad draws, TRIANGLE_STRIP is the least amount of data we can possibly send to the renderer; if we wanted to draw _many_ quads all at once using this topology, we would need to enable a feature, and either set pipeline input state statically or dynamically (for Vulkan)
+    drawMode.cullMode         = materialLocal.drawState.cullMode;
+    drawMode.polygonMode      = materialLocal.drawState.polygonMode;
+    drawMode.enableDepthTest  = enableDepthTest;
+    drawMode.enableDepthWrite = enableDepthTest;
+    drawMode.enableBlend      = isMaterialTranslucent;
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.modes    = &drawMode;
@@ -664,8 +667,9 @@ korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quat
     drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_LINES;
     drawMode.cullMode        = materialLocal.drawState.cullMode;
     drawMode.polygonMode     = materialLocal.drawState.polygonMode;
-    drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
     drawMode.enableBlend     = isMaterialTranslucent;
+    // already default:
+    // drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.modes    = &drawMode;
@@ -715,8 +719,9 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
     drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
     drawMode.cullMode        = materialLocal.drawState.cullMode;
     drawMode.polygonMode     = materialLocal.drawState.polygonMode;
-    drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
     drawMode.enableBlend     = isMaterialTranslucent;
+    // already default:
+    // drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.modes    = &drawMode;
@@ -790,11 +795,12 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
-    drawMode.cullMode        = materialOverride.drawState.cullMode;
-    drawMode.polygonMode     = materialOverride.drawState.polygonMode;
-    drawMode.enableDepthTest = enableDepthTest;
-    drawMode.enableBlend     = isMaterialTranslucent;
+    drawMode.primitiveType    = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
+    drawMode.cullMode         = materialOverride.drawState.cullMode;
+    drawMode.polygonMode      = materialOverride.drawState.polygonMode;
+    drawMode.enableDepthTest  = enableDepthTest;
+    drawMode.enableDepthWrite = enableDepthTest;
+    drawMode.enableBlend      = isMaterialTranslucent;
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;

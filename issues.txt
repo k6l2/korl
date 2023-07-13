@@ -76,7 +76,6 @@
 [ ] KORL-ISSUE-000-000-149: vulkan: HACK; uvAabb fragment shader push constant is hacky & very implementation-specific; I would much rather allow the user to be able to configure their own push constants or something
 [ ] KORL-ISSUE-000-000-150: vulkan: incomplete normals vertex attribute support
 [ ] KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
-[ ] KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
 [ ] KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
 [ ] KORL-ISSUE-000-000-158: resource: decode textures from the GLB binary chunk & upload to graphics device; on second thought, why do we even want to do this?  advantages: package 3D asset into a single file (maybe better organization?), disatvantages: can't separate assets, can't easily optimize for shared assets, have to do significantly more annoying logic in GLB resource loading to pull out only the MeshPrimitive vertex index/attribute data; maybe we should just not support this...
 [ ] KORL-ISSUE-000-000-159: resource: obtain textures from GLTF material
@@ -241,6 +240,7 @@
 [x] KORL-ISSUE-000-000-151: vulkan: get rid of instance-specific attribute bindings and just add a modifier to Korl_Vulkan_VertexAttributeDescriptor which determines if it is per-vertex or per-instance?
 [x] KORL-ISSUE-000-000-152: resource/gltf: no support yet for multiple mesh primitives
 [x] KORL-ISSUE-000-000-153: resource/gltf: no support yet for multiple meshes
+[x] KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
 [x] KORL-ISSUE-000-000-157: gfx: it doesn't make much sense to draw a "SCENE3D"; Drawable types should really be more primitive, such as "MODEL", "TEXT", "MESH"
 [x] KORL-ISSUE-000-000-162: gfx: the camera should _not_ store `target`, as this requires the user to constantly change the camera's position _and_ target when they want to just move the camera around; also, we shouldn't store `worldUpNormal` here, as this implies this is a specialized camera type, like based on pitch/yaw or something
 [x] KORL-ISSUE-000-000-164: gamepad: handle ERROR_BAD_COMMAND case (when I unplug controller?)

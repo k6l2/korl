@@ -502,11 +502,12 @@ korl_internal bool _korl_vulkan_pipeline_isMetaDataSame(_Korl_Vulkan_Pipeline p0
     /* these are POD structs, so we can just use memcmp */
     return korl_memory_compare(&p0, &p1, sizeof(p0)) == 0;
 }
+//@TODO: is _korl_vulkan_pipeline_default now just useless, since all it does it just zero out the pipeline struct?...
 korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
 {
     KORL_ZERO_STACK(_Korl_Vulkan_Pipeline, pipeline);
-    pipeline.modes.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_INVALID;// we expect the user to set the topology for every draw call, so we might as well invalidate this
-    pipeline.modes.enableDepthTest = true;
+    // this is already default
+    // pipeline.modes.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_INVALID;// we expect the user to set the topology for every draw call, so we might as well invalidate this
     return pipeline;
 }
 korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
@@ -615,8 +616,8 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    createInfoDepthStencil.depthTestEnable  = 0 != pipeline->modes.enableDepthTest ? VK_TRUE : VK_FALSE;
-    createInfoDepthStencil.depthWriteEnable = 0 != pipeline->modes.enableDepthTest ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthTestEnable  = 0 != pipeline->modes.enableDepthTest  ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthWriteEnable = 0 != pipeline->modes.enableDepthWrite ? VK_TRUE : VK_FALSE;
     createInfoDepthStencil.depthCompareOp   = _KORL_VULKAN_DEPTH_COMPARE_OP;
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

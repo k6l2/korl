@@ -37,8 +37,9 @@ typedef struct Korl_Gfx_DrawState_Modes
     Korl_Gfx_PrimitiveType primitiveType;
     Korl_Gfx_PolygonMode   polygonMode;
     Korl_Gfx_CullMode      cullMode;
-    u32                    enableBlend     : 1;
-    u32                    enableDepthTest : 1;//KORL-ISSUE-000-000-155: vulkan/gfx: separate depth test & depth write operations in draw state
+    u32                    enableBlend      : 1;
+    u32                    enableDepthTest  : 1;
+    u32                    enableDepthWrite : 1;
 } Korl_Gfx_DrawState_Modes;
 typedef enum Korl_Gfx_BlendOperation
     {KORL_GFX_BLEND_OPERATION_ADD

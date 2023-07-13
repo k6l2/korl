@@ -414,10 +414,11 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                         default:
                             korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
                         }
-                        meshPrimitiveDrawMode->polygonMode     = KORL_GFX_POLYGON_MODE_FILL;
-                        meshPrimitiveDrawMode->cullMode        = KORL_GFX_CULL_MODE_BACK;
-                        meshPrimitiveDrawMode->enableBlend     = false;
-                        meshPrimitiveDrawMode->enableDepthTest = true;
+                        meshPrimitiveDrawMode->polygonMode      = KORL_GFX_POLYGON_MODE_FILL;
+                        meshPrimitiveDrawMode->cullMode         = KORL_GFX_CULL_MODE_BACK;
+                        meshPrimitiveDrawMode->enableBlend      = false;
+                        meshPrimitiveDrawMode->enableDepthTest  = true;
+                        meshPrimitiveDrawMode->enableDepthWrite = true;
                     }
                     meshPrimitiveOffset += mesh->primitives.size;
                 }

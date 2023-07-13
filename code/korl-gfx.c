@@ -933,7 +933,6 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
     drawMode.cullMode        = material.drawState.cullMode;
     drawMode.polygonMode     = material.drawState.polygonMode;
-    drawMode.enableDepthTest = false;
     drawMode.enableBlend     = isMaterialTranslucent;
     const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
