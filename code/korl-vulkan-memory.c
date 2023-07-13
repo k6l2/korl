@@ -414,17 +414,22 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
     mcarrpush(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), arena->stbDaUnusedAllocationSlotIndices, allocationHandleUnpacked.allocationId);
     return allocation;
 }
-korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle allocatorHandle
+korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle             allocatorHandle
                                                                                             ,_Korl_Vulkan_DeviceMemory_AllocatorType type
-                                                                                            ,VkMemoryPropertyFlagBits memoryPropertyFlags
-                                                                                            ,VkBufferUsageFlags bufferUsageFlags
-                                                                                            ,VkImageUsageFlags imageUsageFlags
-                                                                                            ,VkDeviceSize bytesPerArena)
+                                                                                            ,VkMemoryPropertyFlagBits                memoryPropertyFlags
+                                                                                            ,VkBufferUsageFlags                      bufferUsageFlags
+                                                                                            ,VkImageUsageFlags                       imageUsageFlags
+                                                                                            ,VkDeviceSize                            bytesPerArena)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;// lazy hack to allow me to call this without having to pass things like VkDevice, VkAllocationCallbacks, etc...
     /** this will store the accumulation of all necessary memory types for this 
-     * allocator, which is based on the provided *UsageFlags parameters */
-    u32 memoryTypeBits = 0;
+     * allocator, which is based on the provided *UsageFlags parameters; 
+     * we initialize this value with all bits set, as we assume that _all_ 
+     * physical device memory types will be compatible with the user's required 
+     * usage flags, then we eliminate all memory type bits that are incompatible 
+     * with each object type until we have the set of all memory types that are 
+     * compatible with all requested usages */
+    u32 memoryTypeBits = KORL_U32_MAX;
     /* Create a dummy buffer using the buffer usage flags.  According to sources 
         I've read on this subject, this should allow us to allocate device 
         memory that can accomodate buffers made with any subset of these usage 
@@ -443,7 +448,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allo
         vkGetBufferMemoryRequirements(context->device, dummyBuffer, &memoryRequirementsDummyBuffer);
         vkDestroyBuffer(context->device, dummyBuffer, context->allocator);
         korl_log(INFO, "korl-vulkan-deviceMemory-allocator: bufferUsageFlags=0x%X memoryRequirementsDummyBuffer.memoryTypeBits=0x%X", bufferUsageFlags, memoryRequirementsDummyBuffer.memoryTypeBits);
-        memoryTypeBits |= memoryRequirementsDummyBuffer.memoryTypeBits;
+        memoryTypeBits &= memoryRequirementsDummyBuffer.memoryTypeBits;
     }
     /* Create dummy image, query mem reqs, extract memory type bits.  See notes 
         above regarding the same procedures for VkBuffer for details.  */
@@ -474,11 +479,12 @@ korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allo
         vkGetImageMemoryRequirements(context->device, dummyImage, &memoryRequirementsDummyImage);
         vkDestroyImage(context->device, dummyImage, context->allocator);
         korl_log(INFO, "korl-vulkan-deviceMemory-allocator: imageUsageFlags=0x%X memoryRequirementsDummyImage.memoryTypeBits=0x%X", imageUsageFlags, memoryRequirementsDummyImage.memoryTypeBits);
-        memoryTypeBits |= memoryRequirementsDummyImage.memoryTypeBits;
+        memoryTypeBits &= memoryRequirementsDummyImage.memoryTypeBits;
     }
     /* put additional device object memory type bit queries here 
         (don't forget to add the usage flags as a parameter)
         @vulkan-device-allocation-type */
+    korl_log(INFO, "korl-vulkan-deviceMemory-allocator: memoryTypeBits=0x%X", memoryTypeBits);
     KORL_ZERO_STACK(_Korl_Vulkan_DeviceMemory_Allocator, result);
     result.type                = type;
     result.allocatorHandle     = allocatorHandle;
