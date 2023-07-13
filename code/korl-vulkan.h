@@ -83,7 +83,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
 //@TODO: rename to korl_vulkan_deviceAsset_createBuffer
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
-korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData);
+korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Gfx_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);
 #if 0//@TODO: unnecessary API; I was going to use this for korl_gfx_text_draw, but we can just call korl_vulkan_drawVertexBuffer for that, which honestly looks a lot cleaner
 korl_internal Korl_Gfx_DeviceBufferHandle               korl_vulkan_buffer_getDeviceBufferHandle(Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle);

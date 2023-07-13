@@ -280,7 +280,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                     korl_memory_copy(resource->data, stbiPixels, pixelBytes);
                     stbi_image_free(stbiPixels);
                     /* pre-multiply alpha channel into all file images by default */
-                    Korl_Vulkan_Color4u8*const colorData = KORL_C_CAST(Korl_Vulkan_Color4u8*, resource->data);
+                    Korl_Gfx_Color4u8*const colorData = KORL_C_CAST(Korl_Gfx_Color4u8*, resource->data);
                     for(int i = 0; i < imageSizeX * imageSizeY; i++)
                     {
                         const f32 alpha = KORL_C_CAST(f32, colorData[i].a) / KORL_C_CAST(f32, KORL_U8_MAX);
@@ -577,7 +577,7 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     resource->subType.graphics.type = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
     /* allocate the memory for the raw decoded asset data */
-    resource->dataBytes = createInfo->sizeX * createInfo->sizeY * sizeof(Korl_Vulkan_Color4u8);
+    resource->dataBytes = createInfo->sizeX * createInfo->sizeY * sizeof(Korl_Gfx_Color4u8);
     resource->data      = korl_allocate(context->allocatorHandleRuntime, resource->dataBytes);
     korl_assert(resource->data);
     /* create the multimedia asset */

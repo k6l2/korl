@@ -1582,7 +1582,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         createInfoTexture.sizeX = 1;
         createInfoTexture.sizeY = 1;
         surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(&createInfoTexture, 0/*0 => generate new handle*/);
-        Korl_Vulkan_Color4u8 defaultTextureColor = (Korl_Vulkan_Color4u8){255, 0, 255, 255};
+        Korl_Gfx_Color4u8 defaultTextureColor = (Korl_Gfx_Color4u8){255, 0, 255, 255};
         korl_vulkan_texture_update(surfaceContext->defaultTexture, &defaultTextureColor);
     }
 #ifdef _KORL_VULKAN_LOG_REPORTS
@@ -2415,7 +2415,7 @@ korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_Allo
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation));
     arrlast(surfaceContext->stbDaDeviceLocalFreeQueue).allocationHandle = deviceAssetHandle;
 }
-korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Vulkan_Color4u8* pixelData)
+korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Gfx_Color4u8* pixelData)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;

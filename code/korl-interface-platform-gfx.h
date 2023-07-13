@@ -6,16 +6,16 @@
 /** \return \c true if the codepoint should be drawn, \c false otherwise */
 #define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, u32 codepoint, u8 codepointCodeUnits, const u8* currentCodeUnit, u8 bytesPerCodeUnit, Korl_Math_V4f32* o_currentLineColor)
 typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);
-typedef Korl_Math_V4u8 Korl_Vulkan_Color4u8;//@TODO: rename to Korl_Gfx_Color4u8
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_TRANSPARENT = {  0,   0,   0,   0};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_RED         = {255,   0,   0, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_GREEN       = {  0, 255,   0, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_BLUE        = {  0,   0, 255, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_YELLOW      = {255, 255,   0, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_CYAN        = {  0, 255, 255, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_MAGENTA     = {255,   0, 255, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_WHITE       = {255, 255, 255, 255};
-korl_global_const Korl_Vulkan_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   0, 255};
+typedef Korl_Math_V4u8 Korl_Gfx_Color4u8;
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_TRANSPARENT = {  0,   0,   0,   0};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_RED         = {255,   0,   0, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_GREEN       = {  0, 255,   0, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_BLUE        = {  0,   0, 255, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_YELLOW      = {255, 255,   0, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_CYAN        = {  0, 255, 255, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_MAGENTA     = {255,   0, 255, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_WHITE       = {255, 255, 255, 255};
+korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   0, 255};
 typedef enum Korl_Gfx_PrimitiveType
     {KORL_GFX_PRIMITIVE_TYPE_INVALID
     ,KORL_GFX_PRIMITIVE_TYPE_TRIANGLES

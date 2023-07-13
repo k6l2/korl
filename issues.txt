@@ -39,7 +39,6 @@
 [ ] KORL-ISSUE-000-000-093: log: if (!useLogFileAsync && useLogFileBig), we need to re-configure the log buffer to be "unlimited", since the log lines will not be dumped to the file until the program ends, ergo we need to guarantee that we store all log lines until this time, and a circular buffer will not accomplish this
 [ ] KORL-ISSUE-000-000-094: gfx: font outlines using new Vulkan rendering APIs are not complete
 [ ] KORL-ISSUE-000-000-095: bluetooth: maybe compare addresses instead of device names?
-[ ] KORL-ISSUE-000-000-096: interface-platform, gfx: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
 [ ] KORL-ISSUE-000-000-098: build: remove specialized configure scripts (korl-build-configure-debug/optimized/release), and use batch parameters on a single configure script instead (so we can do things like `config fast` instead of `config-fast`)
 [~] KORL-ISSUE-000-000-100: math: apparently, all of the math datatypes are UB in C++11+; yikes!; https://stackoverflow.com/a/31080901/4526664
 [ ] KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
@@ -220,6 +219,7 @@
 [-] KORL-ISSUE-000-000-084: gamepad: (low priority) XBOX controller guide button is not being captured; it is possible to use secret undocumented API to obtain this button value; see: https://forums.tigsource.com/index.php?topic=26792.msg848190#msg848190 https://github.com/DieKatzchen/GuideButtonPoller
 [x] KORL-ISSUE-000-000-087: gfx: when FOV camera is pitched up/down at steep angles, there seems to be some weird stretching/squishing distortions, even at low FOV angles ☹; I'm pretty sure this was never an issue, as this turned out to be just me incorrectly setting the camera's world-up vector in the Korl_Gfx_Camera struct
 [-] KORL-ISSUE-000-000-088: memory: currently, it is possible for general allocator to occupy page flags that lie outside the allocator's range of allocationPages; this is easily reproducible with a small allocator (64kB), 6 allocations that are 1 page or less total space, and 1 allocation that requires >= 3 pages!; will not fix; this issue is now superceded by KORL-ISSUE-000-000-133
+[x] KORL-ISSUE-000-000-096: interface-platform, gfx: get rid of all "Vulkan" identifiers here; we don't want to expose the underlying renderer implementation to the user!
 [x] KORL-ISSUE-000-000-097: interface-platform, gfx: maybe just destroy Korl_Gfx_Batch & start over, since we've gotten rid of the concept of "batching" in the platform renderer; the primitive storage struct might also benefit from being a polymorphic tagged union
 [x] KORL-ISSUE-000-000-099: windows-window: window "maximized" state is not preserved when loading a memory state; use GetWindowPlacement API to get this state from the window
 [x] KORL-ISSUE-000-000-103: vulkan: likely related to KORL-PERFORMANCE-000-000-041; refactor DrawState View & Projection to be M4f32; korl-vulkan shouldn't be concerned with how the user wants these transforms calculated

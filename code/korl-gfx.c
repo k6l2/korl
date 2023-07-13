@@ -646,7 +646,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
         createInfoBlankTexture.sizeX = 1;
         createInfoBlankTexture.sizeY = 1;
         _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
-        const Korl_Vulkan_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
+        const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
         korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
     }
 }
@@ -712,13 +712,13 @@ korl_internal void korl_gfx_flushGlyphPages(void)
             we can upload this image buffer to the graphics device for rendering */
         korl_time_probeStart(update_glyph_page_texture);
         // allocate a temp R8G8B8A8-format image buffer //
-        const u$ tempImageBufferSize = sizeof(Korl_Vulkan_Color4u8) * fontGlyphPage->dataSquareSize * fontGlyphPage->dataSquareSize;
-        Korl_Vulkan_Color4u8*const tempImageBuffer = korl_allocate(context->allocatorHandle, tempImageBufferSize);
+        const u$ tempImageBufferSize = sizeof(Korl_Gfx_Color4u8) * fontGlyphPage->dataSquareSize * fontGlyphPage->dataSquareSize;
+        Korl_Gfx_Color4u8*const tempImageBuffer = korl_allocate(context->allocatorHandle, tempImageBufferSize);
         // "expand" the stbtt font bitmap into the image buffer //
         for(u$ y = 0; y < fontGlyphPage->dataSquareSize; y++)
             for(u$ x = 0; x < fontGlyphPage->dataSquareSize; x++)
                 /* store a pure white pixel with the alpha component set to the stbtt font bitmap value */
-                tempImageBuffer[y*fontGlyphPage->dataSquareSize + x] = (Korl_Vulkan_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = _korl_gfx_fontGlyphPage_getData(fontGlyphPage)[y*fontGlyphPage->dataSquareSize + x]};
+                tempImageBuffer[y*fontGlyphPage->dataSquareSize + x] = (Korl_Gfx_Color4u8){.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = _korl_gfx_fontGlyphPage_getData(fontGlyphPage)[y*fontGlyphPage->dataSquareSize + x]};
         // upload the image buffer to graphics device texture //
         korl_assert(fontGlyphPage->resourceHandleTexture);
         korl_resource_update(fontGlyphPage->resourceHandleTexture, tempImageBuffer, tempImageBufferSize, 0/*destinationByteOffset*/);

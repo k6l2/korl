@@ -6,6 +6,7 @@
 #include "korl-vulkan.h"
 #include "utility/korl-stringPool.h"
 #include "korl-gfx.h"
+#include "korl-interface-platform-input.h"
 /** the edges of the window must have their own individual AABBs to allow mouse 
  * interactions with them (window is hovered, resize windows), and this value 
  * defines how far from the edges of each window AABB this collision region is 
@@ -52,8 +53,8 @@ typedef struct _Korl_Gui_MouseEvent
 typedef struct _Korl_Gui_KeyEvent
 {
     Korl_KeyboardCode virtualKey;
-    bool isDown;
-    bool isRepeat;
+    bool              isDown;
+    bool              isRepeat;
     _Korl_Gui_Keyboard_ModifierFlags keyboardModifierFlags;
 } _Korl_Gui_KeyEvent;
 typedef struct _Korl_Gui_CodepointEvent
@@ -156,24 +157,24 @@ typedef struct _Korl_Gui_Context
 {
     struct
     {
-        Korl_Vulkan_Color4u8   colorWindow;
-        Korl_Vulkan_Color4u8   colorWindowActive;
-        Korl_Vulkan_Color4u8   colorWindowBorder;
-        Korl_Vulkan_Color4u8   colorWindowBorderHovered;
-        Korl_Vulkan_Color4u8   colorWindowBorderResize;
-        Korl_Vulkan_Color4u8   colorWindowBorderActive;
-        Korl_Vulkan_Color4u8   colorTitleBar;
-        Korl_Vulkan_Color4u8   colorTitleBarActive;
-        Korl_Vulkan_Color4u8   colorButtonInactive;
-        Korl_Vulkan_Color4u8   colorButtonActive;
-        Korl_Vulkan_Color4u8   colorButtonPressed;
-        Korl_Vulkan_Color4u8   colorButtonWindowTitleBarIcons;
-        Korl_Vulkan_Color4u8   colorButtonWindowCloseActive;
-        Korl_Vulkan_Color4u8   colorScrollBar;
-        Korl_Vulkan_Color4u8   colorScrollBarActive;
-        Korl_Vulkan_Color4u8   colorScrollBarPressed;
-        Korl_Vulkan_Color4u8   colorText;
-        Korl_Vulkan_Color4u8   colorTextOutline;
+        Korl_Gfx_Color4u8      colorWindow;
+        Korl_Gfx_Color4u8      colorWindowActive;
+        Korl_Gfx_Color4u8      colorWindowBorder;
+        Korl_Gfx_Color4u8      colorWindowBorderHovered;
+        Korl_Gfx_Color4u8      colorWindowBorderResize;
+        Korl_Gfx_Color4u8      colorWindowBorderActive;
+        Korl_Gfx_Color4u8      colorTitleBar;
+        Korl_Gfx_Color4u8      colorTitleBarActive;
+        Korl_Gfx_Color4u8      colorButtonInactive;
+        Korl_Gfx_Color4u8      colorButtonActive;
+        Korl_Gfx_Color4u8      colorButtonPressed;
+        Korl_Gfx_Color4u8      colorButtonWindowTitleBarIcons;
+        Korl_Gfx_Color4u8      colorButtonWindowCloseActive;
+        Korl_Gfx_Color4u8      colorScrollBar;
+        Korl_Gfx_Color4u8      colorScrollBarActive;
+        Korl_Gfx_Color4u8      colorScrollBarPressed;
+        Korl_Gfx_Color4u8      colorText;
+        Korl_Gfx_Color4u8      colorTextOutline;
         f32                    textOutlinePixelSize;
         Korl_StringPool_String fontWindowText;
         f32                    windowTextPixelSizeY;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`

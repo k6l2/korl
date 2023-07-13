@@ -453,24 +453,24 @@ korl_internal void korl_gui_initialize(void)
     context->allocatorHandleStack                 = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR , L"korl-gui-stack", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     context->stringPool                           = korl_allocate(context->allocatorHandleHeap, sizeof(*context->stringPool));
     *context->stringPool                          = korl_stringPool_create(context->allocatorHandleHeap);
-    context->style.colorWindow                    = (Korl_Vulkan_Color4u8){ 16,  16,  16, 200};
-    context->style.colorWindowActive              = (Korl_Vulkan_Color4u8){ 24,  24,  24, 230};
-    context->style.colorWindowBorder              = (Korl_Vulkan_Color4u8){  0,   0,   0, 230};
-    context->style.colorWindowBorderHovered       = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
-    context->style.colorWindowBorderResize        = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
-    context->style.colorWindowBorderActive        = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
-    context->style.colorTitleBar                  = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
-    context->style.colorTitleBarActive            = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
-    context->style.colorButtonInactive            = (Korl_Vulkan_Color4u8){  0,  32,   0, 255};
-    context->style.colorButtonActive              = (Korl_Vulkan_Color4u8){ 60, 125,  50, 255};
-    context->style.colorButtonPressed             = (Korl_Vulkan_Color4u8){  0,   8,   0, 255};
-    context->style.colorButtonWindowTitleBarIcons = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
-    context->style.colorButtonWindowCloseActive   = (Korl_Vulkan_Color4u8){255,   0,   0, 255};
-    context->style.colorScrollBar                 = (Korl_Vulkan_Color4u8){  8,   8,   8, 230};
-    context->style.colorScrollBarActive           = (Korl_Vulkan_Color4u8){ 32,  32,  32, 250};
-    context->style.colorScrollBarPressed          = (Korl_Vulkan_Color4u8){  0,   0,   0, 250};
-    context->style.colorText                      = (Korl_Vulkan_Color4u8){255, 255, 255, 255};
-    context->style.colorTextOutline               = (Korl_Vulkan_Color4u8){  0,   5,   0, 255};
+    context->style.colorWindow                    = (Korl_Gfx_Color4u8){ 16,  16,  16, 200};
+    context->style.colorWindowActive              = (Korl_Gfx_Color4u8){ 24,  24,  24, 230};
+    context->style.colorWindowBorder              = (Korl_Gfx_Color4u8){  0,   0,   0, 230};
+    context->style.colorWindowBorderHovered       = (Korl_Gfx_Color4u8){  0,  32,   0, 255};
+    context->style.colorWindowBorderResize        = (Korl_Gfx_Color4u8){255, 255, 255, 255};
+    context->style.colorWindowBorderActive        = (Korl_Gfx_Color4u8){ 60, 125,  50, 255};
+    context->style.colorTitleBar                  = (Korl_Gfx_Color4u8){  0,  32,   0, 255};
+    context->style.colorTitleBarActive            = (Korl_Gfx_Color4u8){ 60, 125,  50, 255};
+    context->style.colorButtonInactive            = (Korl_Gfx_Color4u8){  0,  32,   0, 255};
+    context->style.colorButtonActive              = (Korl_Gfx_Color4u8){ 60, 125,  50, 255};
+    context->style.colorButtonPressed             = (Korl_Gfx_Color4u8){  0,   8,   0, 255};
+    context->style.colorButtonWindowTitleBarIcons = (Korl_Gfx_Color4u8){255, 255, 255, 255};
+    context->style.colorButtonWindowCloseActive   = (Korl_Gfx_Color4u8){255,   0,   0, 255};
+    context->style.colorScrollBar                 = (Korl_Gfx_Color4u8){  8,   8,   8, 230};
+    context->style.colorScrollBarActive           = (Korl_Gfx_Color4u8){ 32,  32,  32, 250};
+    context->style.colorScrollBarPressed          = (Korl_Gfx_Color4u8){  0,   0,   0, 250};
+    context->style.colorText                      = (Korl_Gfx_Color4u8){255, 255, 255, 255};
+    context->style.colorTextOutline               = (Korl_Gfx_Color4u8){  0,   5,   0, 255};
     context->style.textOutlinePixelSize           = 0.f;
     context->style.fontWindowText                 = string_newEmptyUtf16(0);
     context->style.windowTextPixelSizeY           = 20.f;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
@@ -1567,8 +1567,8 @@ korl_internal void korl_gui_frameEnd(void)
                                              && !widget->identifierHashParent 
                                              &&  widget->orderIndex == context->rootWidgetOrderIndexHighest;
             /* draw the window panel */
-            Korl_Vulkan_Color4u8 windowColor   = context->style.colorWindow;
-            Korl_Vulkan_Color4u8 titleBarColor = context->style.colorTitleBar;
+            Korl_Gfx_Color4u8 windowColor   = context->style.colorWindow;
+            Korl_Gfx_Color4u8 titleBarColor = context->style.colorTitleBar;
             if(isActiveTopLevelWindow)
             {
                 windowColor   = context->style.colorWindowActive;
@@ -1584,7 +1584,7 @@ korl_internal void korl_gui_frameEnd(void)
                 childWidgetCursorOffset = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
                 korl_time_probeStart(title_bar);
                 {/* draw the window title bar */
-                    Korl_Vulkan_Color4u8* colors;
+                    Korl_Gfx_Color4u8* colors;
                     korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.1f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY}, 0, NULL, NULL, &colors);
                     colors[0] = colors[2] = titleBarColor;// conditionally highlight the title bar color
                     colors[1] = colors[3] = context->style.colorTitleBar;// keep the bottom two vertices the default title bar color
@@ -1606,7 +1606,7 @@ korl_internal void korl_gui_frameEnd(void)
             }//window->styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR
             /* draw the window border */
             korl_time_probeStart(draw_window_border);
-            Korl_Vulkan_Color4u8 colorBorder = context->style.colorWindowBorder;
+            Korl_Gfx_Color4u8 colorBorder = context->style.colorWindowBorder;
             if(isActiveTopLevelWindow)
                 if(   context->identifierHashWindowHovered == widget->identifierHash
                    && context->mouseHoverWindowEdgeFlags == KORL_GUI_EDGE_FLAGS_NONE)
@@ -1664,8 +1664,8 @@ korl_internal void korl_gui_frameEnd(void)
                     {
                         // this is the default mesh position; no need to do anything
                     }
-                    Korl_Math_V3f32*      fanPositions;
-                    Korl_Vulkan_Color4u8* fanColors;
+                    Korl_Math_V3f32*   fanPositions;
+                    Korl_Gfx_Color4u8* fanColors;
                     korl_gfx_drawTriangleFan3d((Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, edgeHoverRadians, true), 4, NULL, &fanPositions, &fanColors);
                     fanPositions[0] = KORL_MATH_V3F32_ZERO;
                     fanPositions[1] = (Korl_Math_V3f32){triLength + 1, -triWidth};
@@ -1695,7 +1695,7 @@ korl_internal void korl_gui_frameEnd(void)
             }
             break;}
         case KORL_GUI_WIDGET_TYPE_BUTTON:{
-            Korl_Vulkan_Color4u8 colorButton = KORL_COLOR4U8_TRANSPARENT;
+            Korl_Gfx_Color4u8 colorButton = KORL_COLOR4U8_TRANSPARENT;
             switch(widget->subType.button.display)
             {
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT:{
@@ -1816,10 +1816,10 @@ korl_internal void korl_gui_frameEnd(void)
                 usedWidget->widget->size = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
             #ifdef _KORL_GUI_DEBUG_DRAW_SCROLL_AREA// just some debug test code to see whether or not the scroll area widget is being resized properly, since this widget is actually just invisible
             {
-                Korl_Vulkan_Color4u8* colors;
+                Korl_Gfx_Color4u8* colors;
                 korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, NULL, NULL, &colors);
-                colors[0] = colors[1] = colors[2] = (Korl_Vulkan_Color4u8){255,0,0,128};
-                colors[3] = widget->isHovered ? (Korl_Vulkan_Color4u8){0,0,255,128} : (Korl_Vulkan_Color4u8){0,255,0,128};
+                colors[0] = colors[1] = colors[2] = (Korl_Gfx_Color4u8){255,0,0,128};
+                colors[3] = widget->isHovered ? (Korl_Gfx_Color4u8){0,0,255,128} : (Korl_Gfx_Color4u8){0,255,0,128};
             }
             #endif
             break;}
@@ -1828,11 +1828,11 @@ korl_internal void korl_gui_frameEnd(void)
             usedWidget->transient.aabbContent.max.x += widget->size.x;
             usedWidget->transient.aabbContent.min.y -= widget->size.y;
             /* draw the slider */
-            const Korl_Vulkan_Color4u8 colorSlider = context->identifierHashWidgetMouseDown == widget->identifierHash && widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER 
-                                                     ? context->style.colorScrollBarPressed
-                                                     : widget->isHovered && widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER 
-                                                       ? context->style.colorScrollBarActive
-                                                       : context->style.colorScrollBar;
+            const Korl_Gfx_Color4u8 colorSlider = context->identifierHashWidgetMouseDown == widget->identifierHash && widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER 
+                                                  ? context->style.colorScrollBarPressed
+                                                  : widget->isHovered && widget->subType.scrollBar.mouseDownRegion == KORL_GUI_SCROLL_BAR_REGION_SLIDER 
+                                                    ? context->style.colorScrollBarActive
+                                                    : context->style.colorScrollBar;
             const Korl_Math_V2f32 sliderSize = _korl_gui_widget_scrollBar_sliderSize(widget);
             const f32 sliderOffset = widget->subType.scrollBar.axis == KORL_GUI_SCROLL_BAR_AXIS_Y
                                      ? (widget->size.y - sliderSize.y)*widget->subType.scrollBar.scrollPositionRatio
@@ -1847,7 +1847,7 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_drawRectangle3d(sliderPosition, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, sliderSize, 0, &materialSlider, NULL, NULL);
             /* draw the background region */
             const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(context->style.colorScrollBar));
-            Korl_Vulkan_Color4u8* backgroundColors;
+            Korl_Gfx_Color4u8* backgroundColors;
             korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialBackground, NULL, &backgroundColors);
             for(u8 i = 0; i < 4; i++)
                 backgroundColors[i] = KORL_COLOR4U8_WHITE;
@@ -1872,7 +1872,7 @@ korl_internal void korl_gui_frameEnd(void)
             /* draw the selection region _behind_ the text, if our cursor defines a selection */
             const Korl_Math_V2f32      cursorSize          = {2, textLineDeltaY};
             const Korl_Math_V2f32      cursorOrigin        = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
-            const Korl_Gfx_Material    cursorMaterial      = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear((Korl_Vulkan_Color4u8){0, 255, 0, 100}));
+            const Korl_Gfx_Material    cursorMaterial      = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear((Korl_Gfx_Color4u8){0, 255, 0, 100}));
             const u$                   cursorBegin         = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
                                                                           ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
             const u$                   cursorEnd           = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex

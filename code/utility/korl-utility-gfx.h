@@ -12,7 +12,7 @@ typedef struct Korl_Gfx_Immediate
     Korl_Gfx_StagingAllocation stagingAllocation;
 } Korl_Gfx_Immediate;
 korl_internal u8                 korl_gfx_indexBytes(Korl_Gfx_VertexIndexType vertexIndexType);
-korl_internal Korl_Math_V4f32    korl_gfx_color_toLinear(Korl_Vulkan_Color4u8 color);
+korl_internal Korl_Math_V4f32    korl_gfx_color_toLinear(Korl_Gfx_Color4u8 color);
 korl_internal Korl_Gfx_Material  korl_gfx_material_defaultUnlit(Korl_Math_V4f32 colorLinear4Base);
 korl_internal Korl_Gfx_Material  korl_gfx_material_defaultLit(void);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp);
@@ -45,24 +45,24 @@ korl_internal void               korl_gfx_drawable_mesh_initialize(Korl_Gfx_Draw
 //@TODO: deprecate/delete
 korl_internal void               korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Drawable meshCylinder, Korl_Math_V3f32 localStart, Korl_Math_V3f32 localEnd, f32 localRadius, const Korl_Math_M4f32*const baseTransform);
 //@TODO: deprecate/delete
-korl_internal void               korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Korl_Vulkan_Color4u8 colors[2], Korl_Memory_AllocatorHandle allocator);
+korl_internal void               korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Korl_Gfx_Color4u8 colors[2], Korl_Memory_AllocatorHandle allocator);
 //@TODO: deprecate/delete
-korl_internal void               korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Vulkan_Color4u8 color, Korl_Memory_AllocatorHandle allocator);
-korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines2d(u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines3d(u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles2d(u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles3d(u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangleFan2d(u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal Korl_Gfx_Immediate korl_gfx_immediateRectangle(Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
+korl_internal void               korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Gfx_Color4u8 color, Korl_Memory_AllocatorHandle allocator);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines2d(u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines3d(u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles2d(u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles3d(u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangleFan2d(u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal Korl_Gfx_Immediate korl_gfx_immediateRectangle(Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateAxisNormalLines(void);
 korl_internal void               korl_gfx_drawImmediate(const Korl_Gfx_Immediate* immediate, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material);
-korl_internal void               korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Vulkan_Color4u8** o_colors);
-korl_internal void               korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Vulkan_Color4u8** o_colors);
-korl_internal void               korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal void               korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal void               korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
-korl_internal void               korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Vulkan_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline);
 korl_internal void               korl_gfx_drawUtf83d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline);
 korl_internal void               korl_gfx_drawUtf162d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline);
