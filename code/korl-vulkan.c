@@ -663,15 +663,6 @@ korl_internal u$ _korl_vulkan_addPipeline(_Korl_Vulkan_Pipeline pipeline)
     }
     return pipelineIndex;
 }
-korl_internal VkIndexType _korl_vulkan_vertexIndexType(void)//@TODO: delete/deprecate
-{
-    switch(sizeof(Korl_Vulkan_VertexIndex))
-    {
-    case 2: return VK_INDEX_TYPE_UINT16;
-    case 4: return VK_INDEX_TYPE_UINT32;
-    }
-    return VK_INDEX_TYPE_MAX_ENUM;
-}
 /**
  * Set the current pipeline render state to match the provided \c pipeline 
  * parameter.  If a pipeline which matches the meta data of \c pipeline doesn't 
@@ -1106,11 +1097,6 @@ korl_internal void _korl_vulkan_frameBegin(void)
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
 korl_internal void _korl_vulkan_createSurface(void* userData);
-korl_internal Korl_Vulkan_VertexIndex korl_vulkan_safeCast_u$_to_vertexIndex(u$ x)
-{
-    korl_assert(x <= KORL_C_CAST(Korl_Vulkan_VertexIndex, ~0));
-    return KORL_C_CAST(Korl_Vulkan_VertexIndex, x);
-}
 korl_internal void korl_vulkan_construct(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;

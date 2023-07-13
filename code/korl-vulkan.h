@@ -66,7 +66,6 @@ typedef struct Korl_Vulkan_CreateInfoShader
     const void* data;
     u$          dataBytes;
 } Korl_Vulkan_CreateInfoShader;
-korl_internal Korl_Vulkan_VertexIndex                   korl_vulkan_safeCast_u$_to_vertexIndex(u$ x);
 korl_internal void                                      korl_vulkan_construct(void);
 korl_internal void                                      korl_vulkan_destroy(void);
 korl_internal void                                      korl_vulkan_createSurface(void* createSurfaceUserData, u32 sizeX, u32 sizeY);
