@@ -471,8 +471,7 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
  * physical device can satisfy the requirements, the \c memoryTypeCount is 
  * returned. 
  */
-korl_internal uint32_t _korl_vulkan_findMemoryType(
-    uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlagBits)
+korl_internal uint32_t _korl_vulkan_findMemoryType(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryPropertyFlagBits)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
     KORL_ZERO_STACK(VkPhysicalDeviceMemoryProperties, physicalDeviceMemoryProperties);
@@ -1443,6 +1442,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                                                                         ,VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                                                                                        //@TODO: UH OH!  Aren't we binding to image memory allocated from this device memory?!  why is our image usage flags 0 ??? search for "VK_IMAGE_USAGE_*" allocations using this allocator and add those flags here!
                                                                                         ,/*image usage flags*/0
                                                                                         ,korl_math_megabytes(32));
     /* initialize staging buffers collection */

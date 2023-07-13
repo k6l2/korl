@@ -207,6 +207,7 @@ korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const conte
         cameraWorldCornersFar[i] = korl_math_v3f32_add(cameraWorldCorners[i].position, korl_math_v3f32_multiplyScalar(cameraWorldCorners[i].direction, cameraWorldCorners[i].segmentDistance));
     }
     korl_shared_const u32 LINE_COUNT = 12/*box wireframe edge count*/;
+    #if 0//@TODO: use new draw APIs
     Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, LINE_COUNT);
     u8 lineIndex = 0;
     for(u8 i = 0; i < korl_arraySize(cameraWorldCorners); i++)
@@ -221,6 +222,7 @@ korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const conte
     }
     korl_assert(lineIndex == LINE_COUNT);
     korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+    #endif
 }
 korl_internal void korl_gfx_drawable_mesh_initialize(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName)
 {
@@ -265,6 +267,7 @@ korl_internal void korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Dra
 }
 korl_internal void korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Korl_Vulkan_Color4u8 colors[2], Korl_Memory_AllocatorHandle allocator)
 {
+    #if 0//@TODO: use new draw APIs
     Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, 1);
     Korl_Math_V3f32*const linePositions = KORL_C_CAST(Korl_Math_V3f32*, batch->_vertexPositions);
     linePositions[0] = points[0];
@@ -272,9 +275,11 @@ korl_internal void korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Ko
     batch->_vertexColors[0] = colors[0];
     batch->_vertexColors[1] = colors[1];
     korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+    #endif
 }
 korl_internal void korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Vulkan_Color4u8 color, Korl_Memory_AllocatorHandle allocator)
 {
+    #if 0//@TODO: use new draw APIs
     Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, 12);
     u32 currentLine = 0;
     /* bottom face */
@@ -329,6 +334,7 @@ korl_internal void korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_
                          ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
                          ,3, color);
     korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
+    #endif
 }
 korl_internal Korl_Gfx_Immediate _korl_gfx_immediate2d(Korl_Gfx_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Vulkan_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
