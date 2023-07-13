@@ -1417,8 +1417,6 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     surfaceContext->deviceMemoryRenderResources = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
                                                                                             ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                             ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-                                                                                            ,/*bufferUsageFlags*/0
-                                                                                            ,/*imageUsageFlags*/VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                                                                                             ,korl_math_megabytes(64));
     /* create device memory allocator used to store host-visible data, such as 
         staging buffers for vertex attributes, textures, etc... */
@@ -1427,11 +1425,6 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
                                                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT// KORL-PERFORMANCE-000-000-034: vulkan: we could potentially get more performance here by removing HOST_COHERENT & manually calling vkFlushMappedMemoryRanges & vkInvalidateMappedMemoryRanges on bulk memory ranges; timings necessary
-                                                                                        ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                                                                                         | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT// KORL-PERFORMANCE-000-000-033: vulkan: potentially better device performance by removing these *_BUFFER bits, then adding a device-local vertex data pool to which we transfer all vertex data to
-                                                                                         | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-                                                                                         | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                                                                                        ,/*image usage flags*/0
                                                                                         ,korl_math_megabytes(32));
     /* create a device memory allocator used to store device-local data, such as 
         mesh manifolds, SSBOs, textures, etc...  mostly things that persist for 
@@ -1441,9 +1434,6 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     surfaceContext->deviceMemoryDeviceLocal = _korl_vulkan_deviceMemory_allocator_create(context->allocatorHandle
                                                                                         ,_KORL_VULKAN_DEVICE_MEMORY_ALLOCATOR_TYPE_GENERAL
                                                                                         ,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-                                                                                        ,VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                                                                                        ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                                                                                         | VK_IMAGE_USAGE_SAMPLED_BIT
                                                                                         ,korl_math_megabytes(32));
     /* initialize staging buffers collection */
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaStagingBuffers, 4);

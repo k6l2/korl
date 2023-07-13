@@ -44,14 +44,11 @@ typedef enum _Korl_Vulkan_DeviceMemory_AllocatorType
 } _Korl_Vulkan_DeviceMemory_AllocatorType;
 typedef struct _Korl_Vulkan_DeviceMemory_Allocator
 {
-    _Korl_Vulkan_DeviceMemory_AllocatorType type;
-    Korl_Memory_AllocatorHandle allocatorHandle;// manages the dynamic array of Arenas, and the dynamic array of Allocations within each Arena
-    /** passed as the first parameter to \c _korl_vulkan_findMemoryType */
-    u32 memoryTypeBits;
-    /** passed as the second parameter to \c _korl_vulkan_findMemoryType */
-    VkMemoryPropertyFlags memoryPropertyFlags;
-    VkDeviceSize bytesPerArena;
-    struct _Korl_Vulkan_DeviceMemory_Arena* stbDaArenas;
+    _Korl_Vulkan_DeviceMemory_AllocatorType       type;
+    Korl_Memory_AllocatorHandle                   allocatorHandle;// manages the dynamic array of Arenas, and the dynamic array of Allocations within each Arena
+    VkMemoryPropertyFlags                         memoryPropertyFlags;/** passed as the second parameter to \c _korl_vulkan_findMemoryType */
+    VkDeviceSize                                  bytesPerArena;
+    struct _Korl_Vulkan_DeviceMemory_Arena*       stbDaArenas;
     struct _Korl_Vulkan_DeviceMemory_Alloctation* stbDaShallowFreedAllocations;// these are allocations we have "freed", which allows us to create more allocations which can occupy the same device memory locations, but the Vulkan device objects have _not_ been destroyed yet
 } _Korl_Vulkan_DeviceMemory_Allocator;
 typedef enum _Korl_Vulkan_DeviceMemory_Allocation_Type
@@ -101,12 +98,10 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
 #define _korl_vulkan_deviceMemory_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation)                                                     _korl_vulkan_deviceMemory_allocator_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation, __FILEW__, __LINE__)
 #define _korl_vulkan_deviceMemory_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, requiredHandle, out_allocation)                                                 _korl_vulkan_deviceMemory_allocator_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, requiredHandle, out_allocation, __FILEW__, __LINE__)
 #define _korl_vulkan_deviceMemory_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, requiredHandle, out_allocation) _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, requiredHandle, out_allocation, __FILEW__, __LINE__)
-korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle allocatorHandle
+korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle             allocatorHandle
                                                                                             ,_Korl_Vulkan_DeviceMemory_AllocatorType type
-                                                                                            ,VkMemoryPropertyFlagBits memoryPropertyFlags
-                                                                                            ,VkBufferUsageFlags bufferUsageFlags
-                                                                                            ,VkImageUsageFlags imageUsageFlags
-                                                                                            ,VkDeviceSize bytesPerArena);
+                                                                                            ,VkMemoryPropertyFlagBits                memoryPropertyFlags
+                                                                                            ,VkDeviceSize                            bytesPerArena);
 korl_internal void _korl_vulkan_deviceMemory_allocator_destroy(_Korl_Vulkan_DeviceMemory_Allocator* allocator);
 //KORL-ISSUE-000-000-023: add support for memory allocators to defragment pages
 korl_internal void _korl_vulkan_deviceMemory_allocator_clear(_Korl_Vulkan_DeviceMemory_Allocator* allocator);
