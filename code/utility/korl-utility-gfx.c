@@ -142,8 +142,9 @@ korl_internal void korl_gfx_camera_orthoSetOriginAnchor(Korl_Gfx_Camera*const co
         break;}
     }
 }
-korl_internal Korl_Math_M4f32 korl_gfx_camera_projection(const Korl_Gfx_Camera*const context, Korl_Math_V2u32 surfaceSize)
+korl_internal Korl_Math_M4f32 korl_gfx_camera_projection(const Korl_Gfx_Camera*const context)
 {
+    const Korl_Math_V2u32 surfaceSize = korl_gfx_getSurfaceSize();
     switch(context->type)
     {
     case KORL_GFX_CAMERA_TYPE_PERSPECTIVE:{
@@ -187,8 +188,10 @@ korl_internal Korl_Math_M4f32 korl_gfx_camera_view(const Korl_Gfx_Camera*const c
     const Korl_Math_V3f32 cameraTarget = korl_math_v3f32_add(context->position, context->normalForward);
     return korl_math_m4f32_lookAt(&context->position, &cameraTarget, &context->normalUp);
 }
-korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const context, Korl_Math_V2u32 surfaceSize, Korl_Memory_AllocatorHandle allocator)
+korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const context, const Korl_Gfx_Material* material)
 {
+    /* calculate the world-space rays for each corner of the render surface */
+    const Korl_Math_V2u32 surfaceSize = korl_gfx_getSurfaceSize();
     Korl_Gfx_ResultRay3d cameraWorldCorners[4];
     /* camera coordinates in window-space are CCW, starting from the lower-left:
         {lower-left, lower-right, upper-right, upper-left} */
@@ -206,23 +209,22 @@ korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const conte
         /* compute the world-space positions of the far-plane eye ray intersections */
         cameraWorldCornersFar[i] = korl_math_v3f32_add(cameraWorldCorners[i].position, korl_math_v3f32_multiplyScalar(cameraWorldCorners[i].direction, cameraWorldCorners[i].segmentDistance));
     }
-    korl_shared_const u32 LINE_COUNT = 12/*box wireframe edge count*/;
-    #if 0//@TODO: use new draw APIs
-    Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, LINE_COUNT);
-    u8 lineIndex = 0;
+    /* draw the frustum by composing a set of 3 world-space staple-shaped lines per corner */
+    Korl_Math_V3f32* positions;
+    korl_gfx_drawLines3d(KORL_MATH_V3F32_ZERO, KORL_MATH_QUATERNION_IDENTITY, 3 * korl_arraySize(cameraWorldCorners), material, &positions, NULL);
     for(u8 i = 0; i < korl_arraySize(cameraWorldCorners); i++)
     {
         const u$ iNext = (i + 1) % korl_arraySize(cameraWorldCorners);
         /*line for the near-plane quad face*/
-        korl_gfx_batchSetLine(batch, lineIndex++, cameraWorldCorners[i].position.elements, cameraWorldCorners[iNext].position.elements, korl_arraySize(cameraWorldCorners[i].position.elements), KORL_COLOR4U8_WHITE);
+        positions[2 * (3 * i + 0) + 0] = cameraWorldCorners[i].position;
+        positions[2 * (3 * i + 0) + 1] = cameraWorldCorners[iNext].position;
         /*line for the far-plane quad face*/
-        korl_gfx_batchSetLine(batch, lineIndex++, cameraWorldCornersFar[i].elements, cameraWorldCornersFar[iNext].elements, korl_arraySize(cameraWorldCornersFar[iNext].elements), KORL_COLOR4U8_WHITE);
+        positions[2 * (3 * i + 1) + 0] = cameraWorldCornersFar[i];
+        positions[2 * (3 * i + 1) + 1] = cameraWorldCornersFar[iNext];
         /*line connecting the near-plane to the far-plane on the current corner*/
-        korl_gfx_batchSetLine(batch, lineIndex++, cameraWorldCorners[i].position.elements, cameraWorldCornersFar[i].elements, korl_arraySize(cameraWorldCorners[i].position.elements), KORL_COLOR4U8_WHITE);
+        positions[2 * (3 * i + 2) + 0] = cameraWorldCorners[i].position;
+        positions[2 * (3 * i + 2) + 1] = cameraWorldCornersFar[i];
     }
-    korl_assert(lineIndex == LINE_COUNT);
-    korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
-    #endif
 }
 korl_internal void korl_gfx_drawable_mesh_initialize(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName)
 {
@@ -550,54 +552,13 @@ korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_
 }
 korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
-    /* configure the renderer draw state */
-    Korl_Gfx_Material materialLocal;
-    if(material)
-        materialLocal = *material;
-    else
-        materialLocal = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    const bool isMaterialTranslucent = materialLocal.properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
-    model.transform = korl_math_makeM4f32_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_LINES;
-    drawMode.cullMode        = materialLocal.drawState.cullMode;
-    drawMode.polygonMode     = materialLocal.drawState.polygonMode;
-    drawMode.enableBlend     = isMaterialTranslucent;
-    // already default:
-    // drawMode.enableDepthTest = false;// if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway
-    const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
-    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.modes    = &drawMode;
-    drawState.model    = &model;
-    drawState.material = &materialLocal;
-    drawState.blend    = &blend;
-    korl_gfx_setDrawState(&drawState);
-    /* allocate staging memory & issue draw command */
-    KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
-    u32 byteOffsetBuffer = 0;
-    stagingMeta.vertexCount = 2 * lineCount;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
-    byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
-    if(o_colors)
-    {
-        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer = byteOffsetBuffer;
-        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride       = sizeof(Korl_Gfx_Color4u8);
-        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;
-        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-        stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].vectorSize       = 4;
-        byteOffsetBuffer += stagingMeta.vertexCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride;
-    }
-    Korl_Gfx_StagingAllocation stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
-    korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
-    /* at this point, we leave it to the user who called us to populate the vertex data with the desired values */
-    *o_positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    if(o_colors)
-        *o_colors = KORL_C_CAST(Korl_Gfx_Color4u8*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
+    const Korl_Gfx_Immediate immediate = korl_gfx_immediateLines2d(lineCount, o_positions, o_colors);
+    korl_gfx_drawImmediate(&immediate, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, KORL_MATH_V3F32_ONE, material);
+}
+korl_internal void korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+{
+    const Korl_Gfx_Immediate immediate = korl_gfx_immediateLines3d(lineCount, o_positions, o_colors);
+    korl_gfx_drawImmediate(&immediate, position, versor, KORL_MATH_V3F32_ONE, material);
 }
 korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {

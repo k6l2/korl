@@ -1328,7 +1328,7 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_window
                                   ,.direction = {korl_math_f32_nan(), korl_math_f32_nan(), korl_math_f32_nan()}};
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view                  = korl_gfx_camera_view(context);
-    const Korl_Math_M4f32 projection            = korl_gfx_camera_projection(context, gfxContext->surfaceSize);
+    const Korl_Math_M4f32 projection            = korl_gfx_camera_projection(context);
     const Korl_Math_M4f32 viewProjection        = korl_math_m4f32_multiply(&projection, &view);
     const Korl_Math_M4f32 viewProjectionInverse = korl_math_m4f32_invert(&viewProjection);
     if(korl_math_f32_isNan(viewProjectionInverse.r0c0))
@@ -1371,7 +1371,7 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldT
     _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view       = korl_gfx_camera_view(context);
-    const Korl_Math_M4f32 projection = korl_gfx_camera_projection(context, gfxContext->surfaceSize);
+    const Korl_Math_M4f32 projection = korl_gfx_camera_projection(context);
     //KORL-ISSUE-000-000-101: gfx: ASSUMPTION: viewport is the size of the entire window; if we ever want to handle separate viewport clip regions per-camera, we will have to modify this
     const Korl_Math_Aabb2f32 viewport     = {.min={0,0}
                                             ,.max={KORL_C_CAST(f32, gfxContext->surfaceSize.x)
@@ -1392,6 +1392,10 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldT
     const Korl_Math_V2f32 result = { ((ndcSpacePoint.x + 1.f) / 2.f) * viewportSize.x + viewport.min.x
                                    , ((ndcSpacePoint.y + 1.f) / 2.f) * viewportSize.y + viewport.min.y };
     return result;
+}
+korl_internal KORL_FUNCTION_korl_gfx_getSurfaceSize(korl_gfx_getSurfaceSize)
+{
+    return _korl_gfx_context->surfaceSize;
 }
 korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor)
 {

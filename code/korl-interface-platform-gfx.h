@@ -355,6 +355,7 @@ typedef struct Korl_Gfx_StagingAllocation
  * camera's clip space. This does NOT mean that \c non-{NaN,NaN} values are on 
  * the screen!*/
 #define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)                    Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
+#define KORL_FUNCTION_korl_gfx_getSurfaceSize(name)                          Korl_Math_V2u32            name(void)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                       name(u8 red, u8 green, u8 blue)
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(const Korl_Gfx_Drawable*const context)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
