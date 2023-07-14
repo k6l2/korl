@@ -236,106 +236,6 @@ korl_internal void korl_gfx_drawable_mesh_initialize(Korl_Gfx_Drawable*const con
     context->subType.mesh.rawUtf8Scene3dMeshName[utf8MeshName.size] = '\0';
     context->subType.mesh.rawUtf8Scene3dMeshNameSize = korl_checkCast_u$_to_u8(utf8MeshName.size);
 }
-korl_internal void korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Drawable meshCylinder, Korl_Math_V3f32 localStart, Korl_Math_V3f32 localEnd, f32 localRadius, const Korl_Math_M4f32*const baseTransform)
-{
-    /* transform start & end points from local=>base */
-    const Korl_Math_V3f32 baseStart = korl_math_m4f32_multiplyV3f32(baseTransform, localStart);
-    const Korl_Math_V3f32 baseEnd   = korl_math_m4f32_multiplyV3f32(baseTransform, localEnd);
-    /* compute the scaled base-space geometry of the arrow itself */
-    Korl_Math_V3f32 startToEnd = korl_math_v3f32_subtract(baseEnd, baseStart);
-    const f32 length = korl_math_v3f32_magnitude(&startToEnd);
-    startToEnd = korl_math_v3f32_normalKnownMagnitude(startToEnd, length);
-    korl_shared_const f32 PROPORTION_TIP_LENGTH = 0.2f;
-    const f32   lengthCylinder = length * (1.f - PROPORTION_TIP_LENGTH);
-    const f32   lengthCone     = length * PROPORTION_TIP_LENGTH;
-    korl_shared_const f32 PROPORTION_CYLINDER_RADIUS = 0.3f;
-    meshCylinder._model.position = korl_math_v3f32_add(baseStart, korl_math_v3f32_multiplyScalar(startToEnd, lengthCylinder / 2.f));
-    meshCylinder._model.scale.xy = korl_math_v2f32_multiplyScalar(KORL_MATH_V2F32_ONE, localRadius * PROPORTION_CYLINDER_RADIUS);
-    meshCylinder._model.scale.z  = lengthCylinder;
-    meshCone._model.position = korl_math_v3f32_add(baseStart, korl_math_v3f32_multiplyScalar(startToEnd, lengthCylinder + lengthCone / 2));
-    meshCone._model.scale.xy = korl_math_v2f32_multiplyScalar(KORL_MATH_V2F32_ONE, localRadius);
-    meshCone._model.scale.z  = lengthCone;
-    /* find axis & angle of rotation (quaternion) to rotate the arrow in the 
-        direction of `startToEnd` */
-    Korl_Math_Quaternion quatDesired = korl_math_quaternion_fromAxisRadians(korl_math_v3f32_cross(KORL_MATH_V3F32_Z, startToEnd)
-                                                                           ,korl_math_v3f32_radiansBetween(KORL_MATH_V3F32_Z, startToEnd)
-                                                                           ,false);
-    meshCylinder._model.rotation = quatDesired;
-    meshCone._model.rotation     = quatDesired;
-    korl_gfx_draw(&meshCylinder);
-    korl_gfx_draw(&meshCone);
-}
-korl_internal void korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Korl_Gfx_Color4u8 colors[2], Korl_Memory_AllocatorHandle allocator)
-{
-    #if 0//@TODO: use new draw APIs
-    Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, 1);
-    Korl_Math_V3f32*const linePositions = KORL_C_CAST(Korl_Math_V3f32*, batch->_vertexPositions);
-    linePositions[0] = points[0];
-    linePositions[1] = points[1];
-    batch->_vertexColors[0] = colors[0];
-    batch->_vertexColors[1] = colors[1];
-    korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
-    #endif
-}
-korl_internal void korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Gfx_Color4u8 color, Korl_Memory_AllocatorHandle allocator)
-{
-    #if 0//@TODO: use new draw APIs
-    Korl_Gfx_Batch*const batch = korl_gfx_createBatchLines(allocator, 12);
-    u32 currentLine = 0;
-    /* bottom face */
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->min.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->min.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->min.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->min.z}.elements
-                         ,3, color);
-    /* top face */
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->max.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->max.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->max.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->max.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
-                         ,3, color);
-    /* connections between the top/bottom faces */
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->min.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->min.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->min.x, aabb->max.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batchSetLine(batch, currentLine++
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->min.z}.elements
-                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){aabb->max.x, aabb->max.y, aabb->max.z}.elements
-                         ,3, color);
-    korl_gfx_batch(batch, KORL_GFX_BATCH_FLAGS_NONE);
-    #endif
-}
 korl_internal Korl_Gfx_Immediate _korl_gfx_immediate2d(Korl_Gfx_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     KORL_ZERO_STACK(Korl_Gfx_Immediate, result);
@@ -461,7 +361,6 @@ korl_internal void korl_gfx_drawImmediate(const Korl_Gfx_Immediate* immediate, K
         materialLocal = *material;
     else
         materialLocal = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     const bool isMaterialTranslucent = materialLocal.properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateScaleTranslate(versor, scale, position);
@@ -484,7 +383,6 @@ korl_internal void korl_gfx_drawImmediate(const Korl_Gfx_Immediate* immediate, K
 korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material)
 {
     /* configure the renderer draw state */
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
@@ -532,7 +430,6 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
         materialLocal = *material;
     else
         materialLocal = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     const bool isMaterialTranslucent = materialLocal.properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
@@ -659,7 +556,6 @@ korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quat
         materialLocal = *material;
     else
         materialLocal = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     const bool isMaterialTranslucent = materialLocal.properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
@@ -711,7 +607,6 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
         materialLocal = *material;
     else
         materialLocal = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     const bool isMaterialTranslucent = materialLocal.properties.factorColorBase.w < 1.f;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
@@ -789,7 +684,6 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     }
     /* configure the renderer draw state */
     const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     materialOverride.maps.resourceHandleTextureBase = fontResources.resourceHandleTexture;
     const bool isMaterialTranslucent = true/*_all_ text drawn this way _must_ be translucent*/;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);

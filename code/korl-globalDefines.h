@@ -19,7 +19,7 @@
         #define alignof            _Alignof
         #define alignas(byteCount) __declspec(align(byteCount))
     #endif
-#endif// defined(_MSC_VER)
+#endif// defined(__cplusplus)
 #include <stdlib.h>// needed for __FILEW__, etc...
 /** disambiguations of the \c static key word to improve project 
  * searchability */
@@ -231,6 +231,11 @@ typedef struct acu16
     #else
         #define KORL_EXPORT __declspec(dllexport)
     #endif
+#else
+    #error "compiler not supported"
+#endif
+#if defined(_MSC_VER)
+    #define KORL_DEPRECATED() __declspec(deprecated)
 #else
     #error "compiler not supported"
 #endif

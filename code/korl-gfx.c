@@ -926,7 +926,6 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     }
     /* configure the renderer draw state */
     Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     material.maps.resourceHandleTextureBase = fontGlyphPage->resourceHandleTexture;
     const bool isMaterialTranslucent = true/*_all_ text drawn this way _must_ be translucent*/;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
@@ -1412,7 +1411,6 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         material = context->subType.mesh.materialSlots[0].material;
     else
         material = korl_resource_scene3d_getMaterial(context->subType.mesh.resourceHandleScene3d);
-    // KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.model    = &model;
     drawState.material = &material;

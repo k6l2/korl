@@ -42,12 +42,6 @@ korl_internal Korl_Math_M4f32    korl_gfx_camera_projection(const Korl_Gfx_Camer
 korl_internal Korl_Math_M4f32    korl_gfx_camera_view(const Korl_Gfx_Camera*const context);
 korl_internal void               korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const context, Korl_Math_V2u32 surfaceSize, Korl_Memory_AllocatorHandle allocator);
 korl_internal void               korl_gfx_drawable_mesh_initialize(Korl_Gfx_Drawable*const context, Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName);
-//@TODO: deprecate/delete
-korl_internal void               korl_gfx_draw3dArrow(Korl_Gfx_Drawable meshCone, Korl_Gfx_Drawable meshCylinder, Korl_Math_V3f32 localStart, Korl_Math_V3f32 localEnd, f32 localRadius, const Korl_Math_M4f32*const baseTransform);
-//@TODO: deprecate/delete
-korl_internal void               korl_gfx_draw3dLine(const Korl_Math_V3f32 points[2], const Korl_Gfx_Color4u8 colors[2], Korl_Memory_AllocatorHandle allocator);
-//@TODO: deprecate/delete
-korl_internal void               korl_gfx_drawAabb3(const Korl_Math_Aabb3f32*const aabb, Korl_Gfx_Color4u8 color, Korl_Memory_AllocatorHandle allocator);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines2d(u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateLines3d(u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Immediate korl_gfx_immediateTriangles2d(u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
