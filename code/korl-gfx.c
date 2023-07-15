@@ -588,13 +588,12 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_string_copyUtf16(utf16AssetNameFont.data, (au16){assetNameFontBufferSize, _korl_gfx_fontCache_getFontAssetName(fontCache)}));
         /* initialize render device memory allocations */
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
-        createInfoTexture.sizeX = glyphPage->dataSquareSize;
-        createInfoTexture.sizeY = glyphPage->dataSquareSize;
+        createInfoTexture.size = (Korl_Math_V2u32){glyphPage->dataSquareSize, glyphPage->dataSquareSize};
         glyphPage->resourceHandleTexture = korl_resource_createTexture(&createInfoTexture);
-        KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfo);
+        KORL_ZERO_STACK(Korl_Vulkan_CreateInfoBuffer, createInfo);
         createInfo.usageFlags = KORL_VULKAN_BUFFER_USAGE_FLAG_STORAGE;
         createInfo.bytes      = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
-        glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_createVertexBuffer(&createInfo);
+        glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_createBuffer(&createInfo);
         /**/
         korl_time_probeStop(create_font_cache);
     }
@@ -634,8 +633,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
     if(!_korl_gfx_context->blankTexture)
     {
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoBlankTexture);
-        createInfoBlankTexture.sizeX = 1;
-        createInfoBlankTexture.sizeY = 1;
+        createInfoBlankTexture.size = KORL_MATH_V2U32_ONE;
         _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
         const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
         korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
@@ -731,7 +729,7 @@ korl_internal void korl_gfx_flushGlyphPages(void)
 }
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
 {
-    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoVertexBuffer, createInfoBufferText);
+    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoBuffer, createInfoBufferText);
     createInfoBufferText.bytes      = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
     createInfoBufferText.usageFlags =   KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX
                                       | KORL_VULKAN_BUFFER_USAGE_FLAG_INDEX;
@@ -744,7 +742,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->assetNameFontRawUtf16Size       = korl_checkCast_u$_to_u32(utf16AssetNameFont.size);
     result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
     result->modelScale                      = KORL_MATH_V3F32_ONE;
-    result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);
+    result->resourceHandleBufferText        = korl_resource_createBuffer(&createInfoBufferText);
     // @TODO: maybe create a separate global buffer that holds _KORL_GFX_TRI_QUAD_INDICES permanently, and create a vulkan API that allows us to pass multiple 
     // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
     result->vertexStagingMeta.indexCount = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);

@@ -203,11 +203,13 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
     {
         _Korl_Vulkan_DeviceMemory_AllocationHandleUnpacked requiredHandleUnpacked = _korl_vulkan_deviceMemory_allocationHandle_unpack(requiredHandle);
         /* create arenas until we have enough to satisfy the required handle */
-        while(requiredHandleUnpacked.arenaIndex >= arrlenu(allocator->stbDaArenas))
+        if(requiredHandleUnpacked.arenaIndex >= arrlenu(allocator->stbDaArenas))
         {
+            // KORL-ISSUE-000-000-172: vulkan-memory: using this technique, we cannot know ahead of time what the memoryTypeBits of arenas that existed in arenas _before_ this requiredHandle's arenaIndex; this should be okay for now _if_ we are reallocating DeviceMemory_Allocations from a memory state in arenaIndex order; otherwise, if this assert fires; we can either (1) make sure we reallocate allocations in ascending arenaIndex order somehow, or (2) call a new kind of korl-vulkan API which can save the meta data of korl-vulkan-memory allocators, and call a new API which restores the memory arenas when we load a memory state
+            // KORL-ISSUE-000-000-173: vulkan-memory: it is _possible_ (although I'm unsure how likely, if at all, this condition will ever manifest) that this technique of korl-vulkan-memory arena restoration from a memory state will result in incompatibilities between DeviceMemory allocations, _especially_ when I think about how memory requirements change so drastically between differing systems; if this assert fires, I will likely need to look into this
+            korl_assert(requiredHandleUnpacked.arenaIndex == arrlenu(allocator->stbDaArenas));
             _Korl_Vulkan_DeviceMemory_Arena newArena = 
                 _korl_vulkan_deviceMemory_arena_create(allocator->allocatorHandle, allocator->bytesPerArena
-                                                      //@TODO: hazard! we are _potentially_ creating arenas with the same memoryTypeBits without actually knowing what memoryTypeBits they actually need!
                                                       ,memoryRequirements.memoryTypeBits, allocator->memoryPropertyFlags);
             mcarrpush(KORL_STB_DS_MC_CAST(allocator->allocatorHandle), allocator->stbDaArenas, newArena);
         }

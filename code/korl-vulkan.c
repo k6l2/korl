@@ -501,14 +501,6 @@ korl_internal bool _korl_vulkan_pipeline_isMetaDataSame(_Korl_Vulkan_Pipeline p0
     /* these are POD structs, so we can just use memcmp */
     return korl_memory_compare(&p0, &p1, sizeof(p0)) == 0;
 }
-//@TODO: is _korl_vulkan_pipeline_default now just useless, since all it does it just zero out the pipeline struct?...
-korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
-{
-    KORL_ZERO_STACK(_Korl_Vulkan_Pipeline, pipeline);
-    // this is already default
-    // pipeline.modes.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_INVALID;// we expect the user to set the topology for every draw call, so we might as well invalidate this
-    return pipeline;
-}
 korl_internal VkBlendOp _korl_vulkan_blendOperation_to_vulkan(Korl_Gfx_BlendOperation blendOp)
 {
     switch(blendOp)
@@ -1084,14 +1076,14 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.pushConstants.fragment.uvAabb      = (Korl_Math_V4f32){0,0,1,1};
     surfaceContext->drawState.uboSceneProperties.m4f32View       = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pipelineConfigurationCache         = _korl_vulkan_pipeline_default();
+    surfaceContext->drawState.pipelineConfigurationCache         = KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_Pipeline);
     surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
     surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).properties;
     surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;
     // setting the current pipeline index to be out of bounds effectively sets 
-    //  the pipeline produced from _korl_vulkan_pipeline_default to be used
+    //  the default nullified pipeline to be used
     surfaceContext->drawState.currentPipeline = KORL_U$_MAX;//KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
 }
 /** This API is platform-specific, and thus must be defined within the code base 
@@ -1583,8 +1575,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     /* create default texture */
     {
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
-        createInfoTexture.sizeX = 1;
-        createInfoTexture.sizeY = 1;
+        createInfoTexture.size = KORL_MATH_V2U32_ONE;
         surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(&createInfoTexture, 0/*0 => generate new handle*/);
         Korl_Gfx_Color4u8 defaultTextureColor = (Korl_Gfx_Color4u8){255, 0, 255, 255};
         korl_vulkan_texture_update(surfaceContext->defaultTexture, &defaultTextureColor);
@@ -2375,13 +2366,13 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     return _korl_vulkan_deviceMemory_allocateTexture(&surfaceContext->deviceMemoryDeviceLocal
-                                                    ,createInfo->sizeX, createInfo->sizeY
+                                                    ,createInfo->size.x, createInfo->size.y
                                                     ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT 
                                                      | VK_IMAGE_USAGE_SAMPLED_BIT
                                                     ,requiredHandle
                                                     ,NULL/*out_allocation*/);
 }
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createVertexBuffer(const Korl_Vulkan_CreateInfoVertexBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Vulkan_CreateInfoBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* determine the buffer usage flags based on the buffer's attribute descriptors */
@@ -2494,18 +2485,7 @@ korl_internal Korl_Math_V2u32 korl_vulkan_texture_getSize(const Korl_Vulkan_Devi
     return (Korl_Math_V2u32){.x = deviceMemoryAllocation->subType.texture.sizeX
                             ,.y = deviceMemoryAllocation->subType.texture.sizeY};
 }
-#if 0//@TODO: unnecessary API; I was going to use this for korl_gfx_text_draw, but we can just call korl_vulkan_drawVertexBuffer for that, which honestly looks a lot cleaner
-korl_internal Korl_Gfx_DeviceBufferHandle korl_vulkan_buffer_getDeviceBufferHandle(Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle)
-{
-    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_DeviceMemory_Alloctation*const deviceMemoryAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, deviceMemoryAllocationHandle);
-    if(!deviceMemoryAllocation)
-        return NULL;
-    korl_assert(deviceMemoryAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
-    return deviceMemoryAllocation->subType.buffer.vulkanBuffer;
-}
-#endif
-korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes)
+korl_internal void korl_vulkan_buffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -2540,7 +2520,7 @@ korl_internal void korl_vulkan_vertexBuffer_resize(Korl_Vulkan_DeviceMemory_Allo
     korl_vulkan_deviceAsset_destroy(*in_out_bufferHandle);
     *in_out_bufferHandle = resizedAllocationHandle;
 }
-korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset)
+korl_internal void korl_vulkan_buffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -2563,7 +2543,7 @@ korl_internal void korl_vulkan_vertexBuffer_update(Korl_Vulkan_DeviceMemory_Allo
                    ,deviceMemoryAllocation->subType.buffer.vulkanBuffer
                    ,korl_arraySize(copyRegions), copyRegions);
 }
-korl_internal void* korl_vulkan_vertexBuffer_getStagingBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, u$ bytes, u$ bufferByteOffset)
+korl_internal void* korl_vulkan_buffer_getStagingBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, u$ bytes, u$ bufferByteOffset)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;

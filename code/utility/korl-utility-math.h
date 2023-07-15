@@ -15,6 +15,7 @@ typedef union Korl_Math_V2u32
     u32 elements[2];
 } Korl_Math_V2u32;
 const Korl_Math_V2u32 KORL_MATH_V2U32_ZERO = {0, 0};
+const Korl_Math_V2u32 KORL_MATH_V2U32_ONE  = {1, 1};
 typedef union Korl_Math_V2i32
 {
     struct { i32 x, y; };

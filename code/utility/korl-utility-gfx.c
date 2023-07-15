@@ -508,7 +508,7 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     /* allocate staging memory & issue draw command */
     KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
     u32 byteOffsetBuffer = 0;
-    stagingMeta.indexCount            = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);// @TODO: is there a way to just bake this into korl-text.vert?
+    stagingMeta.indexCount            = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
     stagingMeta.indexType             = KORL_GFX_VERTEX_INDEX_TYPE_U16;
     stagingMeta.indexByteOffsetBuffer = byteOffsetBuffer;
     byteOffsetBuffer += stagingMeta.indexCount * sizeof(*KORL_GFX_TRI_QUAD_INDICES);
