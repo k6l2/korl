@@ -101,16 +101,15 @@ typedef struct _Korl_Vulkan_Pipeline
     /* ---------------------------------------------------------------------- */
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself: */
-    Korl_Gfx_DrawState_Modes modes;
-    Korl_Gfx_DrawState_Blend blend;
-    VkShaderModule           shaderVertex;
-    VkShaderModule           shaderFragment;
+    Korl_Gfx_Material_Modes materialModes;
+    VkShaderModule          shaderVertex;
+    VkShaderModule          shaderFragment;
     struct
     {
         //note: `binding` & `input` values are implicit; those are just the index into this array!
         VkFormat          format;// VK_FORMAT_UNDEFINED => attribute binding unused by this pipeline
-        u32               byteOffset;// per-vertex byte offset; _not_ the byte offset into the buffer where this attribute data resides or anything like that
-        u32               byteStride;
+        u32               byteOffset;
+        u32               byteStride;// aka per-(vertex|instance) byte offset
         VkVertexInputRate inputRate;
     } vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
 } _Korl_Vulkan_Pipeline;

@@ -134,7 +134,7 @@ korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u
  * \param o_vertexPositions REQUIRED;
  * Pointer to the array where the vertex data will be stored.  Caller must 
  * supply an array of >= `korl_math_generateMeshSphereVertexCount(...)` 
- * elements!  Output vertices are a list of right-handed triangles.
+ * elements!
  * \param o_vertexTextureNormals OPTIONAL;
  * Vertex textureNormals are generated using a cylindrical projection.
  */

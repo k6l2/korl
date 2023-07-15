@@ -17,15 +17,6 @@
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_gfx_context.stringPool))
 #define _KORL_GFX_DEBUG_LOG_GLYPH_PAGE_BITMAPS 0
-/* Since we expect that all KORL renderer code requires right-handed 
-    triangle normals (counter-clockwise vertex winding), all tri quads have 
-    the following formation:
-    [3]-[2]
-     | \ | 
-    [0]-[1] */
-korl_global_const u16 _KORL_GFX_TRI_QUAD_INDICES[] = 
-    { 0, 1, 3
-    , 1, 2, 3 };
 korl_global_const u8 _KORL_GFX_POSITION_DIMENSIONS = 3;// for now, we will always store 3D position data
 typedef struct _Korl_Gfx_FontGlyphBakedCharacterBoundingBox
 {
@@ -648,6 +639,8 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
         _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
         const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
         korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
+        //@TODO: HACK; If we don't invoke a load of the default lit material here, some crazy memory invalidation happens when korl-resource attempts to decode a GLTF asset
+        korl_gfx_material_defaultLit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE);
     }
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
@@ -754,8 +747,8 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->resourceHandleBufferText        = korl_resource_createVertexBuffer(&createInfoBufferText);
     // @TODO: maybe create a separate global buffer that holds _KORL_GFX_TRI_QUAD_INDICES permanently, and create a vulkan API that allows us to pass multiple 
     // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
-    result->vertexStagingMeta.indexCount = korl_arraySize(_KORL_GFX_TRI_QUAD_INDICES);
-    result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*_KORL_GFX_TRI_QUAD_INDICES) == sizeof(u16));
+    result->vertexStagingMeta.indexCount = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
+    result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*KORL_GFX_TRI_QUAD_INDICES) == sizeof(u16));
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = offsetof(_Korl_Gfx_FontGlyphInstance, position);
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(_Korl_Gfx_FontGlyphInstance);
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
@@ -917,28 +910,19 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
         for all subsequent text line draw calls @korl-gfx-text-defer-index-buffer */
     const u$ glyphInstanceBufferSize = context->totalVisibleGlyphs * sizeof(_Korl_Gfx_FontGlyphInstance);
     {
-        const u32 indexBufferBytes   = sizeof(_KORL_GFX_TRI_QUAD_INDICES);
+        const u32 indexBufferBytes   = sizeof(KORL_GFX_TRI_QUAD_INDICES);
         const u$  currentBufferBytes = korl_resource_getByteSize(context->resourceHandleBufferText);
         if(currentBufferBytes < glyphInstanceBufferSize + indexBufferBytes)
             korl_resource_resize(context->resourceHandleBufferText, glyphInstanceBufferSize + indexBufferBytes);
-        korl_resource_update(context->resourceHandleBufferText, _KORL_GFX_TRI_QUAD_INDICES, sizeof(_KORL_GFX_TRI_QUAD_INDICES), glyphInstanceBufferSize);
+        korl_resource_update(context->resourceHandleBufferText, KORL_GFX_TRI_QUAD_INDICES, sizeof(KORL_GFX_TRI_QUAD_INDICES), glyphInstanceBufferSize);
         // context->vertexStagingMeta.indexByteOffsetBuffer = glyphInstanceBufferSize;//can't do this yet, since this is relative to the buffer offset byte we choose per line!
     }
     /* configure the renderer draw state */
-    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
     material.maps.resourceHandleTextureBase = fontGlyphPage->resourceHandleTexture;
-    const bool isMaterialTranslucent = true/*_all_ text drawn this way _must_ be translucent*/;//@TODO: give material a "BLEND_MODE" property so we know if it's opaque/maskedTransparency/translucent
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Modes, drawMode);
-    drawMode.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES;
-    drawMode.cullMode        = material.drawState.cullMode;
-    drawMode.polygonMode     = material.drawState.polygonMode;
-    drawMode.enableBlend     = isMaterialTranslucent;
-    const Korl_Gfx_DrawState_Blend blend = KORL_GFX_BLEND_ALPHA;
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = fontGlyphPage->resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.modes          = &drawMode;
-    drawState.blend          = &blend;
     drawState.storageBuffers = &storageBuffers;
     korl_gfx_setDrawState(&drawState);
     /* now we can iterate over each text line and conditionally draw them using line-specific draw state */
@@ -1408,16 +1392,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     Korl_Gfx_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
     KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
     model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
-    Korl_Gfx_Material material;
-    /* if the user provided a material to use with this VertexData, then we just 
-        override whatever Material was provided by the SCENE3D Resource */
-    if(context->subType.mesh.materialSlots->used)
-        material = context->subType.mesh.materialSlots[0].material;
-    else
-        material = korl_resource_scene3d_getMaterial(context->subType.mesh.resourceHandleScene3d);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.model    = &model;
-    drawState.material = &material;
+    drawState.model = &model;
     if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
     {
         korl_memory_zero(&lighting, sizeof(lighting));
@@ -1431,19 +1407,19 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
                                     ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
     u32                                       meshPrimitiveCount       = 0;
     Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
+    //@TODO: make these arrays const
     Korl_Gfx_VertexStagingMeta*               meshPrimitiveVertexMetas = NULL;
-    Korl_Gfx_DrawState_Modes*                 meshPrimitiveDrawModes   = NULL;
+    Korl_Gfx_Material*                        meshMaterials            = NULL;
     korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
                                          ,&meshPrimitiveCount
                                          ,&meshPrimitiveBuffer
                                          ,&meshPrimitiveVertexMetas
-                                         ,&meshPrimitiveDrawModes);
+                                         ,&meshMaterials);
     for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
     {
-        KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateMeshPrimitive);
-        drawStateMeshPrimitive.modes = meshPrimitiveDrawModes + mp;
-        korl_vulkan_setDrawState(&drawStateMeshPrimitive);
-        // @TODO: each mesh primitive is actually associated with a respective material, so we need to obtain & use materials in this loop!
+        drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
+        drawState.material = meshMaterials + mp;
+        korl_vulkan_setDrawState(&drawState);
         korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, 0, meshPrimitiveVertexMetas + mp);
     }
 }

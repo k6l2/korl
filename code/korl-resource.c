@@ -61,7 +61,7 @@ typedef struct _Korl_Resource
                     Korl_Codec_Gltf*                          gltf;
                     Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer;// used to store _all_ vertex/index data for _all_ MeshPrimitives; must be freed when this Resource is destroyed
                     Korl_Gfx_VertexStagingMeta*               meshPrimitiveVertexMeta;// an array with enough elements to store all glTF MeshPrimitives; stored in "transient" memory
-                    Korl_Gfx_DrawState_Modes*                 meshPrimitiveDrawModes;// an array with enough elements to store all glTF MeshPrimitives; stored in "transient" memory
+                    Korl_Gfx_Material*                        meshPrimitiveMaterials;// an array with enough elements to store all glTF MeshPrimitives; stored in "transient" memory
                 } scene3d;
             } subType;
         } graphics;
@@ -136,11 +136,11 @@ korl_internal void _korl_resource_unload(_Korl_Resource*const resource, const _K
             break;}
         case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
             korl_vulkan_deviceAsset_destroy(resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer);
-            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes);
+            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials);
             korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta);
             korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.gltf);
             resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer     = 0;
-            resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes  = NULL;
+            resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  = NULL;
             resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta = NULL;
             resource->subType.graphics.subType.scene3d.gltf                    = NULL;
             break;}
@@ -315,7 +315,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                         Korl_Codec_Gltf_Mesh*const mesh = meshes + m;
                         meshPrimitivesTotal += mesh->primitives.size;
                     }
-                    resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes  = korl_allocate(context->allocatorHandleTransient, meshPrimitivesTotal * sizeof(*resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes));
+                    resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  = korl_allocate(context->allocatorHandleTransient, meshPrimitivesTotal * sizeof(*resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials));
                     resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta = korl_allocate(context->allocatorHandleTransient, meshPrimitivesTotal * sizeof(*resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta));
                 }
                 /* creation of the mesh primitive's vertex buffer; chances are good that there is a lot more data in the GLB's 
@@ -335,7 +335,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                     for(u32 mp = 0; mp < mesh->primitives.size; mp++)
                     {
                         const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive           = meshPrimitives + mp;
-                        Korl_Gfx_DrawState_Modes*const             meshPrimitiveDrawMode   = resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes  + meshPrimitiveOffset + mp;
+                        Korl_Gfx_Material*const                    meshPrimitiveMaterial   = resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  + meshPrimitiveOffset + mp;
                         Korl_Gfx_VertexStagingMeta*const           meshPrimitiveVertexMeta = resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta + meshPrimitiveOffset + mp;
                         /* transcode vertex index meta data */
                         if(meshPrimitive->indices >= 0)
@@ -407,18 +407,16 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             createInfoBuffer.usageFlags |= KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX;
                         }
                         /* transcode mesh primitive draw mode */
+                        *meshPrimitiveMaterial = korl_gfx_material_defaultLit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID
+                                                                             ,  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE
+                                                                              | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST);
                         switch(meshPrimitive->mode)
                         {
-                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES: meshPrimitiveDrawMode->primitiveType = KORL_GFX_PRIMITIVE_TYPE_TRIANGLES; break;
-                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES    : meshPrimitiveDrawMode->primitiveType = KORL_GFX_PRIMITIVE_TYPE_LINES;     break;
+                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES: meshPrimitiveMaterial->modes.primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES; break;
+                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES    : meshPrimitiveMaterial->modes.primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES;     break;
                         default:
                             korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
                         }
-                        meshPrimitiveDrawMode->polygonMode      = KORL_GFX_POLYGON_MODE_FILL;
-                        meshPrimitiveDrawMode->cullMode         = KORL_GFX_CULL_MODE_BACK;
-                        meshPrimitiveDrawMode->enableBlend      = false;
-                        meshPrimitiveDrawMode->enableDepthTest  = true;
-                        meshPrimitiveDrawMode->enableDepthWrite = true;
                     }
                     meshPrimitiveOffset += mesh->primitives.size;
                 }
@@ -894,26 +892,7 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.shader.handle;
 }
-korl_internal Korl_Gfx_Material korl_resource_scene3d_getMaterial(Korl_Resource_Handle handleResourceScene3d)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    Korl_Gfx_Material material = korl_gfx_material_defaultLit();
-    if(!handleResourceScene3d)
-        return material;
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
-    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceScene3d);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D);
-    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
-        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
-    if(!resource->subType.graphics.subType.scene3d.gltf)
-        return material;
-    //KORL-ISSUE-000-000-159: resource: obtain textures from GLTF material
-    return material;
-}
-korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Gfx_DrawState_Modes** o_meshPrimitiveDrawModes)
+korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Gfx_Material** o_meshMaterials)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     if(!handleResourceScene3d)
@@ -954,7 +933,7 @@ korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle ha
     *o_meshPrimitiveCount       = mesh->primitives.size;
     *o_meshPrimitiveBuffer      = resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer;
     *o_meshPrimitiveVertexMetas = resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta + meshPrimitiveOffset;
-    *o_meshPrimitiveDrawModes   = resource->subType.graphics.subType.scene3d.meshPrimitiveDrawModes  + meshPrimitiveOffset;
+    *o_meshMaterials            = resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  + meshPrimitiveOffset;
     return;
     returnNothing:
         *o_meshPrimitiveCount  = 0;

@@ -509,6 +509,42 @@ korl_internal _Korl_Vulkan_Pipeline _korl_vulkan_pipeline_default(void)
     // pipeline.modes.primitiveType   = KORL_GFX_PRIMITIVE_TYPE_INVALID;// we expect the user to set the topology for every draw call, so we might as well invalidate this
     return pipeline;
 }
+korl_internal VkBlendOp _korl_vulkan_blendOperation_to_vulkan(Korl_Gfx_BlendOperation blendOp)
+{
+    switch(blendOp)
+    {
+    case(KORL_GFX_BLEND_OPERATION_ADD):              return VK_BLEND_OP_ADD;
+    case(KORL_GFX_BLEND_OPERATION_SUBTRACT):         return VK_BLEND_OP_SUBTRACT;
+    case(KORL_GFX_BLEND_OPERATION_REVERSE_SUBTRACT): return VK_BLEND_OP_REVERSE_SUBTRACT;
+    case(KORL_GFX_BLEND_OPERATION_MIN):              return VK_BLEND_OP_MIN;
+    case(KORL_GFX_BLEND_OPERATION_MAX):              return VK_BLEND_OP_MAX;
+    }
+    korl_log(ERROR, "Unsupported blend operation: %d", blendOp);
+    return 0;
+}
+korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Gfx_BlendFactor blendFactor)
+{
+    switch(blendFactor)
+    {
+    case(KORL_GFX_BLEND_FACTOR_ZERO):                     return VK_BLEND_FACTOR_ZERO;
+    case(KORL_GFX_BLEND_FACTOR_ONE):                      return VK_BLEND_FACTOR_ONE;
+    case(KORL_GFX_BLEND_FACTOR_SRC_COLOR):                return VK_BLEND_FACTOR_SRC_COLOR;
+    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR):      return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    case(KORL_GFX_BLEND_FACTOR_DST_COLOR):                return VK_BLEND_FACTOR_DST_COLOR;
+    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR):      return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+    case(KORL_GFX_BLEND_FACTOR_SRC_ALPHA):                return VK_BLEND_FACTOR_SRC_ALPHA;
+    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA):      return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    case(KORL_GFX_BLEND_FACTOR_DST_ALPHA):                return VK_BLEND_FACTOR_DST_ALPHA;
+    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA):      return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+    case(KORL_GFX_BLEND_FACTOR_CONSTANT_COLOR):           return VK_BLEND_FACTOR_CONSTANT_COLOR;
+    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR): return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+    case(KORL_GFX_BLEND_FACTOR_CONSTANT_ALPHA):           return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA): return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+    case(KORL_GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE):       return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+    }
+    korl_log(ERROR, "Unsupported blend factor: %d", blendFactor);
+    return 0;
+}
 korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
@@ -541,14 +577,14 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoVertexInput.pVertexAttributeDescriptions    = vertexAttributes;
     KORL_ZERO_STACK(VkPipelineInputAssemblyStateCreateInfo, createInfoInputAssembly);
     createInfoInputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    switch(pipeline->modes.primitiveType)
+    switch(pipeline->materialModes.primitiveType)
     {
-    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLES     : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  break;
-    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP: createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; break;
-    case KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN  : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;   break;
-    case KORL_GFX_PRIMITIVE_TYPE_LINES         : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;      break;
-    case KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP    : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;     break;
-    case KORL_GFX_PRIMITIVE_TYPE_INVALID       : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;       break;
+    case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES     : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  break;
+    case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP: createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; break;
+    case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN  : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;   break;
+    case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES         : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;      break;
+    case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINE_STRIP    : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;     break;
+    case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID       : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;       break;
     }
     VkViewport viewPort;
     viewPort.x        = 0.f;
@@ -567,15 +603,15 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     KORL_ZERO_STACK(VkPipelineRasterizationStateCreateInfo, createInfoRasterizer);
     createInfoRasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     createInfoRasterizer.lineWidth   = 1.f;
-    switch(pipeline->modes.polygonMode)
+    switch(pipeline->materialModes.polygonMode)
     {
-    case KORL_GFX_POLYGON_MODE_FILL: createInfoRasterizer.polygonMode = VK_POLYGON_MODE_FILL; break;
-    case KORL_GFX_POLYGON_MODE_LINE: createInfoRasterizer.polygonMode = VK_POLYGON_MODE_LINE; break;
+    case KORL_GFX_MATERIAL_POLYGON_MODE_FILL: createInfoRasterizer.polygonMode = VK_POLYGON_MODE_FILL; break;
+    case KORL_GFX_MATERIAL_POLYGON_MODE_LINE: createInfoRasterizer.polygonMode = VK_POLYGON_MODE_LINE; break;
     }
-    switch(pipeline->modes.cullMode)
+    switch(pipeline->materialModes.cullMode)
     {
-    case KORL_GFX_CULL_MODE_NONE: createInfoRasterizer.cullMode = VK_CULL_MODE_NONE;     break;
-    case KORL_GFX_CULL_MODE_BACK: createInfoRasterizer.cullMode = VK_CULL_MODE_BACK_BIT; break;
+    case KORL_GFX_MATERIAL_CULL_MODE_NONE: createInfoRasterizer.cullMode = VK_CULL_MODE_NONE;     break;
+    case KORL_GFX_MATERIAL_CULL_MODE_BACK: createInfoRasterizer.cullMode = VK_CULL_MODE_BACK_BIT; break;
     }
     //createInfoRasterizer.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;//right-handed triangles! (default)
     KORL_ZERO_STACK(VkPipelineMultisampleStateCreateInfo, createInfoMultisample);
@@ -586,13 +622,13 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     // enable alpha blending
     KORL_ZERO_STACK(VkPipelineColorBlendAttachmentState, colorBlendAttachment);
     colorBlendAttachment.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable         = 0 != pipeline->modes.enableBlend;
-    colorBlendAttachment.colorBlendOp        = pipeline->blend.color.operation;
-    colorBlendAttachment.srcColorBlendFactor = pipeline->blend.color.factorSource;
-    colorBlendAttachment.dstColorBlendFactor = pipeline->blend.color.factorTarget;
-    colorBlendAttachment.alphaBlendOp        = pipeline->blend.alpha.operation;
-    colorBlendAttachment.srcAlphaBlendFactor = pipeline->blend.alpha.factorSource;
-    colorBlendAttachment.dstAlphaBlendFactor = pipeline->blend.alpha.factorTarget;
+    colorBlendAttachment.blendEnable         = (pipeline->materialModes.flags & KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND) ? VK_TRUE : VK_FALSE;
+    colorBlendAttachment.colorBlendOp        = _korl_vulkan_blendOperation_to_vulkan(pipeline->materialModes.blend.color.operation);
+    colorBlendAttachment.srcColorBlendFactor = _korl_vulkan_blendFactor_to_vulkan(pipeline->materialModes.blend.color.factorSource);
+    colorBlendAttachment.dstColorBlendFactor = _korl_vulkan_blendFactor_to_vulkan(pipeline->materialModes.blend.color.factorTarget);
+    colorBlendAttachment.alphaBlendOp        = _korl_vulkan_blendOperation_to_vulkan(pipeline->materialModes.blend.alpha.operation);
+    colorBlendAttachment.srcAlphaBlendFactor = _korl_vulkan_blendFactor_to_vulkan(pipeline->materialModes.blend.alpha.factorSource);
+    colorBlendAttachment.dstAlphaBlendFactor = _korl_vulkan_blendFactor_to_vulkan(pipeline->materialModes.blend.alpha.factorTarget);
     KORL_ZERO_STACK(VkPipelineColorBlendStateCreateInfo, createInfoColorBlend);
     createInfoColorBlend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     createInfoColorBlend.attachmentCount = 1;
@@ -615,8 +651,8 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoShaderStages[1].pName  = "main";
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    createInfoDepthStencil.depthTestEnable  = 0 != pipeline->modes.enableDepthTest  ? VK_TRUE : VK_FALSE;
-    createInfoDepthStencil.depthWriteEnable = 0 != pipeline->modes.enableDepthWrite ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthTestEnable  = (pipeline->materialModes.flags & KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST ) ? VK_TRUE : VK_FALSE;
+    createInfoDepthStencil.depthWriteEnable = (pipeline->materialModes.flags & KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE) ? VK_TRUE : VK_FALSE;
     createInfoDepthStencil.depthCompareOp   = _KORL_VULKAN_DEPTH_COMPARE_OP;
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -693,42 +729,6 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
     /* then, actually change to a new pipeline for the next batch */
     korl_assert(newPipelineIndex < arrlenu(context->stbDaPipelines));//sanity check!
     surfaceContext->drawState.currentPipeline = newPipelineIndex;
-}
-korl_internal VkBlendOp _korl_vulkan_blendOperation_to_vulkan(Korl_Gfx_BlendOperation blendOp)
-{
-    switch(blendOp)
-    {
-    case(KORL_GFX_BLEND_OPERATION_ADD):              return VK_BLEND_OP_ADD;
-    case(KORL_GFX_BLEND_OPERATION_SUBTRACT):         return VK_BLEND_OP_SUBTRACT;
-    case(KORL_GFX_BLEND_OPERATION_REVERSE_SUBTRACT): return VK_BLEND_OP_REVERSE_SUBTRACT;
-    case(KORL_GFX_BLEND_OPERATION_MIN):              return VK_BLEND_OP_MIN;
-    case(KORL_GFX_BLEND_OPERATION_MAX):              return VK_BLEND_OP_MAX;
-    }
-    korl_log(ERROR, "Unsupported blend operation: %d", blendOp);
-    return 0;
-}
-korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Gfx_BlendFactor blendFactor)
-{
-    switch(blendFactor)
-    {
-    case(KORL_GFX_BLEND_FACTOR_ZERO):                     return VK_BLEND_FACTOR_ZERO;
-    case(KORL_GFX_BLEND_FACTOR_ONE):                      return VK_BLEND_FACTOR_ONE;
-    case(KORL_GFX_BLEND_FACTOR_SRC_COLOR):                return VK_BLEND_FACTOR_SRC_COLOR;
-    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR):      return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-    case(KORL_GFX_BLEND_FACTOR_DST_COLOR):                return VK_BLEND_FACTOR_DST_COLOR;
-    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR):      return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-    case(KORL_GFX_BLEND_FACTOR_SRC_ALPHA):                return VK_BLEND_FACTOR_SRC_ALPHA;
-    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA):      return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    case(KORL_GFX_BLEND_FACTOR_DST_ALPHA):                return VK_BLEND_FACTOR_DST_ALPHA;
-    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA):      return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-    case(KORL_GFX_BLEND_FACTOR_CONSTANT_COLOR):           return VK_BLEND_FACTOR_CONSTANT_COLOR;
-    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR): return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-    case(KORL_GFX_BLEND_FACTOR_CONSTANT_ALPHA):           return VK_BLEND_FACTOR_CONSTANT_ALPHA;
-    case(KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA): return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
-    case(KORL_GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE):       return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-    }
-    korl_log(ERROR, "Unsupported blend factor: %d", blendFactor);
-    return 0;
 }
 korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDeviceSize alignmentRequired, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
 {
@@ -1086,7 +1086,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache         = _korl_vulkan_pipeline_default();
     surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).properties;
+    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).properties;
     surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;
@@ -1837,10 +1837,6 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
     /* all we have to do is configure the pipeline config cache here, as the 
         actual vulkan pipeline will be created & bound when we call draw */
     _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
-    if(state->modes)
-        pipelineCache->modes = *state->modes;
-    if(state->blend)
-        pipelineCache->blend = *state->blend;
     if(state->sceneProperties)
     {
         surfaceContext->drawState.uboSceneProperties.m4f32Projection = state->sceneProperties->projection;
@@ -1859,6 +1855,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
     }
     if(state->material)
     {
+        pipelineCache->materialModes                    = state->material->modes;
         surfaceContext->drawState.uboMaterialProperties = state->material->properties;
         if(state->material->maps.resourceHandleTextureBase)
         {

@@ -28,5 +28,5 @@ This time, we are going to construct a Vulkan API to just give the user direct a
 [x] KORL-ISSUE-000-000-160: vulkan: Korl_Gfx_DrawState_Material; likely unnecessary abstraction
 [~] KORL-ISSUE-000-000-156: gfx: if a texture is not present, default to a 1x1 "default" texture (base & specular => white, emissive => black); this would allow the user to choose which textures to provide to a lit material without having to use a different shader/pipeline
     - we _should_ be able to do this now, since korl-gfx now manages a default texture
-[ ] ensure usability/versatility of the new rendering APIs by integrating this branch with a more fleshed out project, such as the `farm` project
 [ ] finish @TODOs
+[ ] ensure usability/versatility of the new rendering APIs by integrating this branch with a more fleshed out project, such as the `farm` project

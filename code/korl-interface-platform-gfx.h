@@ -16,72 +16,6 @@ korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_CYAN        = {  0, 255, 255, 
 korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_MAGENTA     = {255,   0, 255, 255};
 korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_WHITE       = {255, 255, 255, 255};
 korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   0, 255};
-typedef enum Korl_Gfx_PrimitiveType
-    {KORL_GFX_PRIMITIVE_TYPE_INVALID
-    ,KORL_GFX_PRIMITIVE_TYPE_TRIANGLES
-    ,KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_STRIP
-    ,KORL_GFX_PRIMITIVE_TYPE_TRIANGLE_FAN
-    ,KORL_GFX_PRIMITIVE_TYPE_LINES
-    ,KORL_GFX_PRIMITIVE_TYPE_LINE_STRIP
-} Korl_Gfx_PrimitiveType;
-typedef enum Korl_Gfx_PolygonMode
-    {KORL_GFX_POLYGON_MODE_FILL
-    ,KORL_GFX_POLYGON_MODE_LINE
-} Korl_Gfx_PolygonMode;
-typedef enum Korl_Gfx_CullMode
-    {KORL_GFX_CULL_MODE_NONE
-    ,KORL_GFX_CULL_MODE_BACK
-} Korl_Gfx_CullMode;
-typedef struct Korl_Gfx_DrawState_Modes
-{
-    Korl_Gfx_PrimitiveType primitiveType;
-    Korl_Gfx_PolygonMode   polygonMode;
-    Korl_Gfx_CullMode      cullMode;
-    u32                    enableBlend      : 1;
-    u32                    enableDepthTest  : 1;
-    u32                    enableDepthWrite : 1;
-} Korl_Gfx_DrawState_Modes;
-typedef enum Korl_Gfx_BlendOperation
-    {KORL_GFX_BLEND_OPERATION_ADD
-    ,KORL_GFX_BLEND_OPERATION_SUBTRACT
-    ,KORL_GFX_BLEND_OPERATION_REVERSE_SUBTRACT
-    ,KORL_GFX_BLEND_OPERATION_MIN
-    ,KORL_GFX_BLEND_OPERATION_MAX
-} Korl_Gfx_BlendOperation;
-typedef enum Korl_Gfx_BlendFactor
-    {KORL_GFX_BLEND_FACTOR_ZERO
-    ,KORL_GFX_BLEND_FACTOR_ONE
-    ,KORL_GFX_BLEND_FACTOR_SRC_COLOR
-    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR
-    ,KORL_GFX_BLEND_FACTOR_DST_COLOR
-    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR
-    ,KORL_GFX_BLEND_FACTOR_SRC_ALPHA
-    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
-    ,KORL_GFX_BLEND_FACTOR_DST_ALPHA
-    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA
-    ,KORL_GFX_BLEND_FACTOR_CONSTANT_COLOR
-    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR
-    ,KORL_GFX_BLEND_FACTOR_CONSTANT_ALPHA
-    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA
-    ,KORL_GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE
-} Korl_Gfx_BlendFactor;
-typedef struct Korl_Gfx_DrawState_Blend
-{
-    struct
-    {
-        Korl_Gfx_BlendOperation operation;
-        Korl_Gfx_BlendFactor    factorSource;
-        Korl_Gfx_BlendFactor    factorTarget;
-    } color, alpha;
-} Korl_Gfx_DrawState_Blend;
-korl_global_const Korl_Gfx_DrawState_Blend KORL_GFX_BLEND_ALPHA               = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_SRC_ALPHA, KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA}
-                                                                                ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ZERO}};
-korl_global_const Korl_Gfx_DrawState_Blend KORL_GFX_BLEND_ALPHA_PREMULTIPLIED = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA}
-                                                                                ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ZERO}};
-korl_global_const Korl_Gfx_DrawState_Blend KORL_GFX_BLEND_ADD                 = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_SRC_ALPHA, KORL_GFX_BLEND_FACTOR_ONE}
-                                                                                ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE}};
-korl_global_const Korl_Gfx_DrawState_Blend KORL_GFX_BLEND_ADD_PREMULTIPLIED   = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE}
-                                                                                ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE}};
 typedef struct Korl_Gfx_DrawState_SceneProperties
 {
     Korl_Math_M4f32 view, projection;
@@ -145,12 +79,10 @@ typedef struct Korl_Gfx_DrawState_Lighting
 } Korl_Gfx_DrawState_Lighting;
 typedef struct Korl_Gfx_DrawState
 {
-    const Korl_Gfx_DrawState_Modes*           modes;//@TODO: does this member _also_ belong in `material`?  It honestly kinda does, since this directly affects the way the geometry is rendered...
-    const Korl_Gfx_DrawState_Blend*           blend;//@TODO: eliminate this member; merge this data into `material`?
+    const Korl_Gfx_Material*                  material;
     const Korl_Gfx_DrawState_SceneProperties* sceneProperties;
     const Korl_Gfx_DrawState_Model*           model;
     const Korl_Gfx_DrawState_Scissor*         scissor;
-    const Korl_Gfx_Material*                  material;
     const Korl_Gfx_DrawState_StorageBuffers*  storageBuffers;
     const Korl_Gfx_DrawState_Lighting*        lighting;
 } Korl_Gfx_DrawState;
@@ -197,12 +129,79 @@ typedef struct Korl_Gfx_Camera
         } orthographic;
     } subCamera;
 } Korl_Gfx_Camera;
-typedef struct Korl_Gfx_Material_DrawState
+typedef enum Korl_Gfx_Material_PrimitiveType
+    {KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID
+    ,KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES
+    ,KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP
+    ,KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN
+    ,KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES
+    ,KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINE_STRIP
+} Korl_Gfx_Material_PrimitiveType;
+typedef enum Korl_Gfx_Material_PolygonMode
+    {KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+    ,KORL_GFX_MATERIAL_POLYGON_MODE_LINE
+} Korl_Gfx_Material_PolygonMode;
+typedef enum Korl_Gfx_Material_CullMode
+    {KORL_GFX_MATERIAL_CULL_MODE_NONE
+    ,KORL_GFX_MATERIAL_CULL_MODE_BACK
+} Korl_Gfx_Material_CullMode;
+typedef enum Korl_Gfx_BlendOperation
+    {KORL_GFX_BLEND_OPERATION_ADD
+    ,KORL_GFX_BLEND_OPERATION_SUBTRACT
+    ,KORL_GFX_BLEND_OPERATION_REVERSE_SUBTRACT
+    ,KORL_GFX_BLEND_OPERATION_MIN
+    ,KORL_GFX_BLEND_OPERATION_MAX
+} Korl_Gfx_BlendOperation;
+typedef enum Korl_Gfx_BlendFactor
+    {KORL_GFX_BLEND_FACTOR_ZERO
+    ,KORL_GFX_BLEND_FACTOR_ONE
+    ,KORL_GFX_BLEND_FACTOR_SRC_COLOR
+    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_COLOR
+    ,KORL_GFX_BLEND_FACTOR_DST_COLOR
+    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_COLOR
+    ,KORL_GFX_BLEND_FACTOR_SRC_ALPHA
+    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+    ,KORL_GFX_BLEND_FACTOR_DST_ALPHA
+    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_DST_ALPHA
+    ,KORL_GFX_BLEND_FACTOR_CONSTANT_COLOR
+    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR
+    ,KORL_GFX_BLEND_FACTOR_CONSTANT_ALPHA
+    ,KORL_GFX_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA
+    ,KORL_GFX_BLEND_FACTOR_SRC_ALPHA_SATURATE
+} Korl_Gfx_BlendFactor;
+typedef struct Korl_Gfx_Material_Blend
 {
-    Korl_Gfx_PolygonMode polygonMode;
-    Korl_Gfx_CullMode    cullMode;
-    // @TODO: alphaMode, blendMode
-} Korl_Gfx_Material_DrawState;
+    struct
+    {
+        Korl_Gfx_BlendOperation operation;
+        Korl_Gfx_BlendFactor    factorSource;
+        Korl_Gfx_BlendFactor    factorTarget;
+    } color, alpha;
+} Korl_Gfx_Material_Blend;
+korl_global_const Korl_Gfx_Material_Blend KORL_GFX_BLEND_ALPHA               = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_SRC_ALPHA, KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA}
+                                                                               ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ZERO}};
+korl_global_const Korl_Gfx_Material_Blend KORL_GFX_BLEND_ALPHA_PREMULTIPLIED = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA}
+                                                                               ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ZERO}};
+korl_global_const Korl_Gfx_Material_Blend KORL_GFX_BLEND_ADD                 = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_SRC_ALPHA, KORL_GFX_BLEND_FACTOR_ONE}
+                                                                               ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE}};
+korl_global_const Korl_Gfx_Material_Blend KORL_GFX_BLEND_ADD_PREMULTIPLIED   = {.color = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE}
+                                                                               ,.alpha = {KORL_GFX_BLEND_OPERATION_ADD, KORL_GFX_BLEND_FACTOR_ONE      , KORL_GFX_BLEND_FACTOR_ONE}};
+enum
+    {KORL_GFX_MATERIAL_MODE_FLAGS_NONE              = 0
+    ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND       = 1 << 0
+    ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST  = 1 << 1
+    ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE = 1 << 2
+    ,KORL_GFX_MATERIAL_MODE_FLAGS_ALL               = KORL_U32_MAX
+};
+typedef u32 Korl_Gfx_Material_Mode_Flags;
+typedef struct Korl_Gfx_Material_Modes
+{
+    Korl_Gfx_Material_PrimitiveType primitiveType;
+    Korl_Gfx_Material_PolygonMode   polygonMode;
+    Korl_Gfx_Material_CullMode      cullMode;
+    Korl_Gfx_Material_Blend         blend;
+    Korl_Gfx_Material_Mode_Flags    flags;
+} Korl_Gfx_Material_Modes;
 /** \note: this struct is padded for GLSL compatibility */
 typedef struct Korl_Gfx_Material_Properties
 {
@@ -226,8 +225,8 @@ typedef struct Korl_Gfx_Material_Shaders
 } Korl_Gfx_Material_Shaders;
 typedef struct Korl_Gfx_Material
 {
-    Korl_Gfx_Material_DrawState  drawState;
-    Korl_Gfx_Material_Properties properties;
+    Korl_Gfx_Material_Modes      modes;
+    Korl_Gfx_Material_Properties properties;//@TODO: rename to "shaderProperties"|"fragmentShaderUniform"|"shaderUniform"?  It would make things more explicitly clear that this data is being directly sent to some shader stage(s) as uniform data
     Korl_Gfx_Material_Maps       maps;
     Korl_Gfx_Material_Shaders    shaders;
 } Korl_Gfx_Material;// korl-utility-gfx has APIs to obtain "default" materials
@@ -253,7 +252,7 @@ typedef struct Korl_Gfx_Drawable
         struct
         {
             Korl_Resource_Handle           resourceHandleScene3d;
-            Korl_Gfx_Drawable_MaterialSlot materialSlots[1];
+            Korl_Gfx_Drawable_MaterialSlot materialSlots[1];//@TODO: delete this member & refactor how material overrides work for MESH Drawables
             u8                             rawUtf8Scene3dMeshName[32];//KORL-ISSUE-000-000-163: gfx: we should be able to refactor korl-resource such that we can obtain a ResourceHandle to a "child" MESH resource of a SCENE3D resource, removing the need to have to store the mesh name string of the mesh we're trying to use
             u8                             rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
         } mesh;
