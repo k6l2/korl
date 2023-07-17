@@ -1497,55 +1497,6 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _KORL_VULKAN_CHECK(
         vkCreatePipelineLayout(context->device, &createInfoPipelineLayout, context->allocator
                               ,&context->pipelineLayout));
-    /* load required built-in shader assets */
-    Korl_AssetCache_AssetData assetShaderVertex2d;
-    Korl_AssetCache_AssetData assetShaderVertex2dUv;
-    Korl_AssetCache_AssetData assetShaderVertex2dColor;
-    Korl_AssetCache_AssetData assetShaderVertex3d;
-    Korl_AssetCache_AssetData assetShaderVertex3dColor;
-    Korl_AssetCache_AssetData assetShaderVertex3dUv;
-    Korl_AssetCache_AssetData assetShaderVertexText;
-    Korl_AssetCache_AssetData assetShaderFragmentColor;
-    Korl_AssetCache_AssetData assetShaderFragmentColorTexture;
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2d));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d-color.vert.spv"     , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2dColor));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-2d-uv.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex2dUv));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d.vert.spv"           , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3d));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-color.vert.spv"     , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dColor));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-3d-uv.vert.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertex3dUv));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-text.vert.spv"         , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderVertexText));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color.frag.spv"        , KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColor));
-    korl_assert(KORL_ASSETCACHE_GET_RESULT_LOADED == korl_assetCache_get(L"build/shaders/korl-color-texture.frag.spv", KORL_ASSETCACHE_GET_FLAGS_NONE, &assetShaderFragmentColorTexture));
-    /* create shader modules */
-    KORL_ZERO_STACK(VkShaderModuleCreateInfo, createInfoShader);
-    createInfoShader.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfoShader.codeSize = assetShaderVertex2d.dataBytes;
-    createInfoShader.pCode    = assetShaderVertex2d.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2d));
-    createInfoShader.codeSize = assetShaderVertex2dColor.dataBytes;
-    createInfoShader.pCode    = assetShaderVertex2dColor.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2dColor));
-    createInfoShader.codeSize = assetShaderVertex2dUv.dataBytes;
-    createInfoShader.pCode    = assetShaderVertex2dUv.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex2dUv));
-    createInfoShader.codeSize = assetShaderVertex3d.dataBytes;
-    createInfoShader.pCode    = assetShaderVertex3d.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex3d));
-    createInfoShader.codeSize = assetShaderVertex3dColor.dataBytes;
-    createInfoShader.pCode    = assetShaderVertex3dColor.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex3dColor));
-    createInfoShader.codeSize = assetShaderVertex3dUv.dataBytes;
-    createInfoShader.pCode    = assetShaderVertex3dUv.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertex3dUv));
-    createInfoShader.codeSize = assetShaderVertexText.dataBytes;
-    createInfoShader.pCode    = assetShaderVertexText.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderVertexText));
-    createInfoShader.codeSize = assetShaderFragmentColor.dataBytes;
-    createInfoShader.pCode    = assetShaderFragmentColor.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderFragmentColor));
-    createInfoShader.codeSize = assetShaderFragmentColorTexture.dataBytes;
-    createInfoShader.pCode    = assetShaderFragmentColorTexture.data;
-    _KORL_VULKAN_CHECK(vkCreateShaderModule(context->device, &createInfoShader, context->allocator, &context->shaderFragmentColorTexture));
     /* create command pool for graphics queue family */
     KORL_ZERO_STACK(VkCommandPoolCreateInfo, createInfoCommandPool);
     createInfoCommandPool.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1630,15 +1581,6 @@ korl_internal void korl_vulkan_destroySurface(void)
     for(u$ d = 0; d < korl_arraySize(context->descriptorSetLayouts); d++)
         vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayouts[d], context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertex2d, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertex2dColor, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertex2dUv, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertex3d, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertex3dColor, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertex3dUv, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderVertexText, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderFragmentColor, context->allocator);
-    vkDestroyShaderModule(context->device, context->shaderFragmentColorTexture, context->allocator);
     vkDestroyDevice(context->device, context->allocator);
 }
 korl_internal Korl_Math_V2u32 korl_vulkan_getSurfaceSize(void)
@@ -1850,8 +1792,14 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
             surfaceContext->drawState.materialMaps.specular = surfaceContext->defaultTexture;
         if(!(surfaceContext->drawState.materialMaps.emissive = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureEmissive)))
             surfaceContext->drawState.materialMaps.emissive = surfaceContext->defaultTexture;
-        surfaceContext->drawState.transientShaderHandleVertex   = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderVertex);
-        surfaceContext->drawState.transientShaderHandleFragment = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderFragment);
+        const Korl_Vulkan_ShaderHandle shaderHandleVertex   = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderVertex);
+        const Korl_Vulkan_ShaderHandle shaderHandleFragment = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderFragment);
+        surfaceContext->drawState.pipelineConfigurationCache.shaderVertex = shaderHandleVertex 
+                                                                            ? context->stbDaShaders[shaderHandleVertex - 1].shaderModule 
+                                                                            : VK_NULL_HANDLE;
+        surfaceContext->drawState.pipelineConfigurationCache.shaderFragment = shaderHandleFragment 
+                                                                              ? context->stbDaShaders[shaderHandleFragment - 1].shaderModule 
+                                                                              : VK_NULL_HANDLE;
     }
     if(state->storageBuffers)
         surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
@@ -1967,50 +1915,6 @@ korl_internal void _korl_vulkan_flushPipelineState(const Korl_Gfx_VertexStagingM
         case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE: pipelineCache->vertexAttributes[i].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; break;
         }
     }
-    /* determine which shader modules this pipeline should use */
-    // KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx; when the hard-coded context->shaders are removed from korl-vulkan, we can assert that the pipelineCache _must_ be configured with valid shaders
-    if(surfaceContext->drawState.transientShaderHandleVertex)
-    {
-        const u$ shaderIndex = surfaceContext->drawState.transientShaderHandleVertex - 1;
-        korl_assert(shaderIndex < arrlenu(context->stbDaShaders));
-        pipelineCache->shaderVertex = context->stbDaShaders[shaderIndex].shaderModule;
-    }
-    else if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].format != VK_FORMAT_UNDEFINED
-            && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].format     != VK_FORMAT_UNDEFINED
-            && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE
-            && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].inputRate     == VK_VERTEX_INPUT_RATE_INSTANCE)
-        pipelineCache->shaderVertex = context->shaderVertexText;
-    else if(pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].format == VK_FORMAT_R32G32_SFLOAT)
-        if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format == VK_FORMAT_UNDEFINED
-           && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format != VK_FORMAT_UNDEFINED)
-            pipelineCache->shaderVertex = context->shaderVertex2dColor;
-        else if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format != VK_FORMAT_UNDEFINED
-                && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format == VK_FORMAT_UNDEFINED)
-            pipelineCache->shaderVertex = context->shaderVertex2dUv;
-        else
-            pipelineCache->shaderVertex = context->shaderVertex2d;
-    else if(pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].format == VK_FORMAT_R32G32B32_SFLOAT)
-        if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format == VK_FORMAT_UNDEFINED
-           && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format != VK_FORMAT_UNDEFINED)
-            pipelineCache->shaderVertex = context->shaderVertex3dUv;
-        else if(   pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].format != VK_FORMAT_UNDEFINED
-                && pipelineCache->vertexAttributes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].format == VK_FORMAT_UNDEFINED)
-            pipelineCache->shaderVertex = context->shaderVertex3dColor;
-        else
-            pipelineCache->shaderVertex = context->shaderVertex3d;
-    if(surfaceContext->drawState.transientShaderHandleFragment)
-    {
-        const u$ shaderIndex = surfaceContext->drawState.transientShaderHandleFragment - 1;
-        korl_assert(shaderIndex < arrlenu(context->stbDaShaders));
-        pipelineCache->shaderFragment = context->stbDaShaders[shaderIndex].shaderModule;
-    }
-    else if(surfaceContext->drawState.materialMaps.base)
-        pipelineCache->shaderFragment = context->shaderFragmentColorTexture;
-    else
-        pipelineCache->shaderFragment = context->shaderFragmentColor;
-    /* reset the transient shader handles, requiring the user to re-set them via setDrawState for future draw calls */
-    surfaceContext->drawState.transientShaderHandleVertex   = 0;
-    surfaceContext->drawState.transientShaderHandleFragment = 0;
     /* now we can actually configure the pipeline */
     const u$ pipelinePrevious = surfaceContext->drawState.currentPipeline;
     _korl_vulkan_setPipelineMetaData(surfaceContext->drawState.pipelineConfigurationCache);
@@ -2292,6 +2196,12 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     /* it is possible for the graphics command buffer to be not available for 
         this frame (such as a minimized window); do nothing if that happens */
     if(!surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics)
+        return;
+    /* if the drawState is not currently configured with valid shader handles, 
+        just skip this draw call since we can't possibly build a pipeline 
+        without shader programs */
+    if(   surfaceContext->drawState.pipelineConfigurationCache.shaderVertex   == VK_NULL_HANDLE
+       || surfaceContext->drawState.pipelineConfigurationCache.shaderFragment == VK_NULL_HANDLE)
         return;
     _korl_vulkan_flushPipelineState(stagingMeta);// calls vkCmdBindPipeline
     _korl_vulkan_flushDescriptors();// calls vkUpdateDescriptorSets & vkCmdBindDescriptorSets

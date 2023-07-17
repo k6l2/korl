@@ -384,6 +384,10 @@ korl_internal void korl_gfx_immediate_draw(const Korl_Gfx_Immediate* immediate, 
     }
     else
         materialLocal = korl_gfx_material_defaultUnlit(immediate->primitiveType, immediate->materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    if(!materialLocal.shaders.resourceHandleShaderVertex)
+        materialLocal.shaders.resourceHandleShaderVertex = korl_gfx_getBuiltInShaderVertex(&immediate->vertexStagingMeta);
+    if(!materialLocal.shaders.resourceHandleShaderFragment)
+        materialLocal.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialLocal);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateScaleTranslate(versor, scale, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
@@ -496,6 +500,10 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     /* configure the renderer draw state */
     const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
     materialOverride.maps.resourceHandleTextureBase = fontResources.resourceHandleTexture;
+    if(!materialOverride.shaders.resourceHandleShaderVertex)
+        materialOverride.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    if(!materialOverride.shaders.resourceHandleShaderFragment)
+        materialOverride.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialOverride);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);

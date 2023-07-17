@@ -165,16 +165,6 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
     VkQueue queueGraphics;
     VkQueue queuePresent;
-    // KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx
-    VkShaderModule shaderVertex2d;
-    VkShaderModule shaderVertex2dColor;
-    VkShaderModule shaderVertex2dUv;
-    VkShaderModule shaderVertex3d;
-    VkShaderModule shaderVertex3dColor;
-    VkShaderModule shaderVertex3dUv;
-    VkShaderModule shaderVertexText;
-    VkShaderModule shaderFragmentColor;
-    VkShaderModule shaderFragmentColorTexture;
     _Korl_Vulkan_Shader*      stbDaShaders;
     _Korl_Vulkan_ShaderTrash* stbDaShaderTrash;
     _Korl_Vulkan_Pipeline*    stbDaPipelines;
@@ -232,10 +222,8 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
      * If this value is >= \c arrlenu(context->stbDaPipelines) , that 
      * means there is no valid render state. 
      */
-    u$                       currentPipeline;
-    _Korl_Vulkan_Pipeline    pipelineConfigurationCache;
-    Korl_Vulkan_ShaderHandle transientShaderHandleVertex;
-    Korl_Vulkan_ShaderHandle transientShaderHandleFragment;
+    u$                    currentPipeline;
+    _Korl_Vulkan_Pipeline pipelineConfigurationCache;
     /** ----- dynamic uniform state (push constants, descriptors, etc...) ----- */
     Korl_Gfx_DrawState_PushConstantData pushConstantData;
     VkRect2D                            scissor;

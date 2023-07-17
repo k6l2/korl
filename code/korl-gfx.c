@@ -104,6 +104,17 @@ typedef struct _Korl_Gfx_Context
     Korl_Gfx_Camera             currentCameraState;
     f32                         seconds;// passed to the renderer as UBO data to allow shader animations; passed when a Camera is used
     Korl_Resource_Handle        blankTexture;// a 1x1 texture whose color channels are fully-saturated; can be used as a "default" material map texture
+    Korl_Resource_Handle        resourceShaderKorlVertex2d;
+    Korl_Resource_Handle        resourceShaderKorlVertex2dColor;
+    Korl_Resource_Handle        resourceShaderKorlVertex2dUv;
+    Korl_Resource_Handle        resourceShaderKorlVertex3d;
+    Korl_Resource_Handle        resourceShaderKorlVertex3dColor;
+    Korl_Resource_Handle        resourceShaderKorlVertex3dUv;
+    Korl_Resource_Handle        resourceShaderKorlVertexLit;
+    Korl_Resource_Handle        resourceShaderKorlVertexText;
+    Korl_Resource_Handle        resourceShaderKorlFragmentColor;
+    Korl_Resource_Handle        resourceShaderKorlFragmentColorTexture;
+    Korl_Resource_Handle        resourceShaderKorlFragmentLit;
     KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, KORL_VULKAN_MAX_LIGHTS);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
 } _Korl_Gfx_Context;
 typedef struct _Korl_Gfx_Text_Line
@@ -637,8 +648,18 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
         _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
         const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
         korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
-        //@TODO: HACK; If we don't invoke a load of the default lit material here, some crazy memory invalidation happens when korl-resource attempts to decode a GLTF asset
-        korl_gfx_material_defaultLit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE);
+        /* initiate loading of all built-in shaders */
+        _korl_gfx_context->resourceShaderKorlVertex2d             = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-2d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertex2dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-2d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertex2dUv           = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-2d-uv.vert.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertex3d             = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-3d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertex3dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-3d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertex3dUv           = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-3d-uv.vert.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertexLit            = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlVertexText           = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"         ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlFragmentColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-color.frag.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlFragmentColorTexture = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-color-texture.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        _korl_gfx_context->resourceShaderKorlFragmentLit          = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
     }
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
@@ -917,12 +938,14 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     }
     /* configure the renderer draw state */
     Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    material.maps.resourceHandleTextureBase = fontGlyphPage->resourceHandleTexture;
+    material.maps.resourceHandleTextureBase       = fontGlyphPage->resourceHandleTexture;
+    material.shaders.resourceHandleShaderVertex   = _korl_gfx_context->resourceShaderKorlVertexText;
+    material.shaders.resourceHandleShaderFragment = _korl_gfx_context->resourceShaderKorlFragmentColorTexture;
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = fontGlyphPage->resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.storageBuffers = &storageBuffers;
-    korl_gfx_setDrawState(&drawState);
+    korl_vulkan_setDrawState(&drawState);
     /* now we can iterate over each text line and conditionally draw them using line-specific draw state */
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
     Korl_Math_M4f32*const pushConstantModelM4f32 = KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex);
@@ -1443,6 +1466,35 @@ korl_internal KORL_FUNCTION_korl_gfx_stagingAllocate(korl_gfx_stagingAllocate)
 korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingAllocation)
 {
     korl_vulkan_drawStagingAllocation(stagingAllocation, stagingMeta);
+}
+korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)
+{
+    if(vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize == 2)
+        if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
+           && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+            return _korl_gfx_context->resourceShaderKorlVertex2dColor;
+        else if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
+                && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+            return _korl_gfx_context->resourceShaderKorlVertex2dUv;
+        else
+            return _korl_gfx_context->resourceShaderKorlVertex2d;
+    else if(vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize == 3)
+        if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
+           && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+            return _korl_gfx_context->resourceShaderKorlVertex3dColor;
+        else if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
+                && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+            return _korl_gfx_context->resourceShaderKorlVertex3dUv;
+        else
+            return _korl_gfx_context->resourceShaderKorlVertex3d;
+    korl_log(ERROR, "unsupported built-in vertex shader configuration");
+    return 0;
+}
+korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(korl_gfx_getBuiltInShaderFragment)
+{
+    if(material->maps.resourceHandleTextureBase)
+        return _korl_gfx_context->resourceShaderKorlFragmentColorTexture;
+    return _korl_gfx_context->resourceShaderKorlFragmentColor;
 }
 korl_internal KORL_FUNCTION_korl_gfx_light_use(korl_gfx_light_use)
 {
