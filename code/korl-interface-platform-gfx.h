@@ -204,7 +204,7 @@ typedef struct Korl_Gfx_Material_Modes
     Korl_Gfx_Material_Mode_Flags    flags;
 } Korl_Gfx_Material_Modes;
 /** \note: this struct is padded for GLSL compatibility */
-typedef struct Korl_Gfx_Material_Properties
+typedef struct Korl_Gfx_Material_FragmentShaderUniform
 {
     Korl_Math_V4f32 factorColorBase;
     Korl_Math_V3f32 factorColorEmissive;
@@ -212,7 +212,7 @@ typedef struct Korl_Gfx_Material_Properties
     Korl_Math_V4f32 factorColorSpecular;
     f32             shininess;
     f32             _padding_1[3];
-} Korl_Gfx_Material_Properties;
+} Korl_Gfx_Material_FragmentShaderUniform;
 typedef struct Korl_Gfx_Material_Maps
 {
     Korl_Resource_Handle resourceHandleTextureBase;
@@ -226,10 +226,10 @@ typedef struct Korl_Gfx_Material_Shaders
 } Korl_Gfx_Material_Shaders;
 typedef struct Korl_Gfx_Material
 {
-    Korl_Gfx_Material_Modes      modes;
-    Korl_Gfx_Material_Properties properties;//@TODO: rename to "shaderProperties"|"fragmentShaderUniform"|"shaderUniform"?  It would make things more explicitly clear that this data is being directly sent to some shader stage(s) as uniform data
-    Korl_Gfx_Material_Maps       maps;
-    Korl_Gfx_Material_Shaders    shaders;
+    Korl_Gfx_Material_Modes                 modes;
+    Korl_Gfx_Material_FragmentShaderUniform fragmentShaderUniform;
+    Korl_Gfx_Material_Maps                  maps;
+    Korl_Gfx_Material_Shaders               shaders;
 } Korl_Gfx_Material;// korl-utility-gfx has APIs to obtain "default" materials
 typedef struct Korl_Gfx_Drawable_MaterialSlot
 {
@@ -301,7 +301,7 @@ typedef enum Korl_Gfx_VertexAttributeBinding
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_NORMAL
-    ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT//@TODO: rename this (and the corresponding constant in korl.glsl) to something generic, like "EXTRA_0" or something, since we can no longer expect this attribute to _just_ be used as text glyph indices
+    ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0
     ,KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT// keep last!
 } Korl_Gfx_VertexAttributeBinding;
 typedef enum Korl_Gfx_VertexAttributeElementType

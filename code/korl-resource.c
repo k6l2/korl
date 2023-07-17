@@ -890,7 +890,7 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.shader.handle;
 }
-korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, Korl_Gfx_Material** o_meshMaterials)
+korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, const Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, const Korl_Gfx_Material** o_meshMaterials)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     if(!handleResourceScene3d)

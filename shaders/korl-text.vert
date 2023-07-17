@@ -23,14 +23,14 @@ layout(set     = KORL_DESCRIPTOR_SET_STORAGE
     GlyphVertex glyphVertices[];
 };
 layout(location = KORL_VERTEX_INPUT_POSITION) in vec2 instanceAttributeGlyphPosition;
-layout(location = KORL_VERTEX_INPUT_UINT)     in uint instanceAttributeGlyphIndex;
+layout(location = KORL_VERTEX_INPUT_EXTRA_0)  in uint instanceAttributeGlyphIndex;
 layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
 layout(location = KORL_FRAGMENT_INPUT_UV)    out vec2 fragmentUv;
 void main()
 {
-    const uint glyphMeshVertexIndex = 4*instanceAttributeGlyphIndex + gl_VertexIndex;
-    const GlyphVertex glyphVertex   = glyphVertices[glyphMeshVertexIndex];
-    const vec2 modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
+    const uint        glyphMeshVertexIndex = 4 * instanceAttributeGlyphIndex + gl_VertexIndex;
+    const GlyphVertex glyphVertex          = glyphVertices[glyphMeshVertexIndex];
+    const vec2        modelPosition2d      = instanceAttributeGlyphPosition + glyphVertex.position2d_uv.xy;
     gl_Position   = sceneProperties.projection * sceneProperties.view * pushConstants.model * vec4(modelPosition2d, 0.0, 1.0);
     fragmentColor = vec4(1.0);
     fragmentUv    = glyphVertex.position2d_uv.zw;

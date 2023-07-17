@@ -773,11 +773,11 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = VK_VERTEX_INPUT_RATE_INSTANCE;
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
-    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteOffsetBuffer = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
-    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteStride       = sizeof(_Korl_Gfx_FontGlyphInstance);
-    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
-    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].inputRate        = VK_VERTEX_INPUT_RATE_INSTANCE;
-    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].vectorSize       = 1;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = offsetof(_Korl_Gfx_FontGlyphInstance, meshIndex);
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride       = sizeof(_Korl_Gfx_FontGlyphInstance);
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = VK_VERTEX_INPUT_RATE_INSTANCE;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize       = 1;
     mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
     korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
@@ -958,8 +958,8 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
             break;
         if(modelTranslation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
         {
-            material.properties.factorColorBase = line->color;
-            *pushConstantModelM4f32             = korl_math_makeM4f32_rotateScaleTranslate(context->modelRotate, context->modelScale, modelTranslation);
+            material.fragmentShaderUniform.factorColorBase = line->color;
+            *pushConstantModelM4f32                        = korl_math_makeM4f32_rotateScaleTranslate(context->modelRotate, context->modelScale, modelTranslation);
             KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateLine);
             drawStateLine.material         = &material;
             drawStateLine.pushConstantData = &pushConstantData;
@@ -1429,9 +1429,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
                                     ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
     u32                                       meshPrimitiveCount       = 0;
     Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
-    //@TODO: make these arrays const
-    Korl_Gfx_VertexStagingMeta*               meshPrimitiveVertexMetas = NULL;
-    Korl_Gfx_Material*                        meshMaterials            = NULL;
+    const Korl_Gfx_VertexStagingMeta*         meshPrimitiveVertexMetas = NULL;
+    const Korl_Gfx_Material*                  meshMaterials            = NULL;
     korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
                                          ,&meshPrimitiveCount
                                          ,&meshPrimitiveBuffer

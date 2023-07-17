@@ -1077,7 +1077,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache         = KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_Pipeline);
     surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).properties;
+    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).fragmentShaderUniform;
     surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;
@@ -1780,7 +1780,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
     if(state->material)
     {
         pipelineCache->materialModes                    = state->material->modes;
-        surfaceContext->drawState.uboMaterialProperties = state->material->properties;
+        surfaceContext->drawState.uboMaterialProperties = state->material->fragmentShaderUniform;
         if(state->material->maps.resourceHandleTextureBase)
         {
             if(!(surfaceContext->drawState.materialMaps.base = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureBase)))
@@ -2047,7 +2047,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
     {
         {
             /* stage the UBO */
-            Korl_Gfx_Material_Properties*const stagingMemoryUboMaterial = 
+            Korl_Gfx_Material_FragmentShaderUniform*const stagingMemoryUboMaterial = 
                 _korl_vulkan_getDescriptorStagingPool(sizeof(*stagingMemoryUboMaterial), &bufferStaging, &byteOffsetStagingBuffer);
             *stagingMemoryUboMaterial = surfaceContext->drawState.uboMaterialProperties;
             /* prepare a descriptor set write with the staged UBO */

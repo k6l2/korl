@@ -25,10 +25,10 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(Korl_Gfx_Material
                                                               ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
                                                               ,.blend         = KORL_GFX_BLEND_ALPHA
                                                               ,.flags         = flags}
-                                                    ,.properties = {.factorColorBase     = colorLinear4Base
-                                                                   ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
-                                                                   ,.factorColorSpecular = KORL_MATH_V4F32_ONE
-                                                                   ,.shininess           = 0}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = colorLinear4Base
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 0}
                                                     ,.maps = {.resourceHandleTextureBase     = 0
                                                              ,.resourceHandleTextureSpecular = 0
                                                              ,.resourceHandleTextureEmissive = 0}
@@ -42,10 +42,10 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(Korl_Gfx_Material_P
                                                               ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
                                                               ,.blend         = KORL_GFX_BLEND_ALPHA
                                                               ,.flags         = flags}
-                                                    ,.properties = {.factorColorBase     = KORL_MATH_V4F32_ONE
-                                                                   ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
-                                                                   ,.factorColorSpecular = KORL_MATH_V4F32_ONE
-                                                                   ,.shininess           = 32}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 32}
                                                     ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
                                                              ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
                                                              ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
@@ -527,12 +527,12 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
     stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
     byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteOffsetBuffer = byteOffsetBuffer;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteStride       = sizeof(u32);
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].vectorSize       = 1;
-    byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT].byteStride;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = byteOffsetBuffer;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride       = sizeof(u32);
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize       = 1;
+    byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride;
     Korl_Gfx_StagingAllocation stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
     korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
     /* generate the text vertex data */
@@ -545,14 +545,14 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
                                   ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
                                                                           ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
                                   ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
-                                  ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT    ].byteOffsetBuffer));
+                                  ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0    ].byteOffsetBuffer));
         break;
     case 16:
         korl_gfx_font_generateUtf16(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}
                                    ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
                                                                            ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
                                    ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
-                                   ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UINT    ].byteOffsetBuffer));
+                                   ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0    ].byteOffsetBuffer));
         break;
     }
 }

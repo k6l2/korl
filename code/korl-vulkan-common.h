@@ -60,7 +60,7 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*Korl_Gfx_Material_Properties*/
+     ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*Korl_Gfx_Material_FragmentShaderUniform*/
     ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_BASE
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
      ,.descriptorCount = 1
@@ -228,8 +228,8 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     Korl_Gfx_DrawState_PushConstantData pushConstantData;
     VkRect2D                            scissor;
     /** ----- descriptor state ----- */
-    _Korl_Vulkan_Uniform_SceneProperties uboSceneProperties;
-    Korl_Gfx_Material_Properties         uboMaterialProperties;
+    _Korl_Vulkan_Uniform_SceneProperties    uboSceneProperties;
+    Korl_Gfx_Material_FragmentShaderUniform uboMaterialProperties;
     KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, lights, KORL_VULKAN_MAX_LIGHTS);
     struct
     {
