@@ -73,6 +73,15 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
      ,.descriptorCount = 1
      ,.stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::materialMaps::emissive*/};
+enum
+    {_KORL_VULKAN_PUSH_CONSTANT_RANGE_VERTEX
+    ,_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT
+};
+korl_global_const VkPushConstantRange _KORL_VULKAN_PUSH_CONSTANT_RANGES[] = 
+    /* here, we split this minimum limit between desired shader stages; 
+        using this pre-defined set of push constant ranges allows us to continue using a single pipeline layout, while allowing the user to potentially use these ranges however they like for their shaders */
+    {{.stageFlags = VK_SHADER_STAGE_VERTEX_BIT  , .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, vertex  ), .size = sizeof((Korl_Gfx_DrawState_PushConstantData){0}.vertex)}
+    ,{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, fragment), .size = sizeof((Korl_Gfx_DrawState_PushConstantData){0}.fragment)}};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -131,8 +140,8 @@ typedef struct _Korl_Vulkan_Context
      * of a pointer, and the code which uses this member should be refactored 
      * appropriately when I decide to use a custom host memory allocator.
      */
-    VkAllocationCallbacks* allocator;
-    VkInstance instance;
+    VkAllocationCallbacks*      allocator;
+    VkInstance                  instance;
     /* instance extension function pointers */
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR      vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
@@ -140,14 +149,14 @@ typedef struct _Korl_Vulkan_Context
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
 #if KORL_DEBUG
     PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
-    VkDebugUtilsMessengerEXT debugMessenger;
+    VkDebugUtilsMessengerEXT            debugMessenger;
 #endif// KORL_DEBUG
     //KORL-ISSUE-000-000-014: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
     /* for now we're just going to have a single window with Vulkan rendering, 
         so we only have to make one device, ergo we only need one global 
         instance of these variables */
     VkPhysicalDevice physicalDevice;
-    VkDevice device;
+    VkDevice         device;
     /* we save this data member because once we query for this meta data in the 
         device creation routines, we basically never have to query for it again 
         (unless we need to create a device again for some reason), and this data 
@@ -211,19 +220,6 @@ typedef struct _Korl_Vulkan_Uniform_SceneProperties
 /* Ensure _Korl_Vulkan_Uniform_SceneProperties member alignment here: */
 KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_SceneProperties, m4f32Projection) % 16) == 0);
 KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_SceneProperties, m4f32View      ) % 16) == 0);
-typedef struct _Korl_Vulkan_DrawPushConstants
-{
-    struct
-    {
-        Korl_Math_M4f32 m4f32Model;
-    } vertex;
-    struct
-    {
-        //KORL-ISSUE-000-000-149: vulkan: HACK; uvAabb fragment shader push constant is hacky & very implementation-specific; I would much rather allow the user to be able to configure their own push constants or something
-        Korl_Math_V4f32 uvAabb;// {x,y} => min, {z,w} => max; default = {0,0,1,1}
-    } fragment;
-} _Korl_Vulkan_DrawPushConstants;
-KORL_STATIC_ASSERT(sizeof(_Korl_Vulkan_DrawPushConstants) <= 128);// vulkan spec 42.1 table 53; minimum limit for VkPhysicalDeviceLimits::maxPushConstantsSize
 /** 
  * the contents of this struct are expected to be nullified at the end of each 
  * call to \c frameBegin() 
@@ -240,9 +236,9 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     _Korl_Vulkan_Pipeline    pipelineConfigurationCache;
     Korl_Vulkan_ShaderHandle transientShaderHandleVertex;
     Korl_Vulkan_ShaderHandle transientShaderHandleFragment;
-    /** ----- dynamic uniform state (push constants, etc...) ----- */
-    _Korl_Vulkan_DrawPushConstants pushConstants;
-    VkRect2D                       scissor;
+    /** ----- dynamic uniform state (push constants, descriptors, etc...) ----- */
+    Korl_Gfx_DrawState_PushConstantData pushConstantData;
+    VkRect2D                            scissor;
     /** ----- descriptor state ----- */
     _Korl_Vulkan_Uniform_SceneProperties uboSceneProperties;
     Korl_Gfx_Material_Properties         uboMaterialProperties;

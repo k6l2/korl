@@ -21,11 +21,12 @@ typedef struct Korl_Gfx_DrawState_SceneProperties
     Korl_Math_M4f32 view, projection;
     f32             seconds;
 } Korl_Gfx_DrawState_SceneProperties;
-typedef struct Korl_Gfx_DrawState_Model
+typedef struct Korl_Gfx_DrawState_PushConstantData
 {
-    Korl_Math_M4f32    transform;
-    Korl_Math_Aabb2f32 uvAabb;//@TODO: this was a hack; get rid of this?
-} Korl_Gfx_DrawState_Model;
+    u8 vertex  [64];// enough bytes to upload a 4x4 f32 model matrix
+    u8 fragment[64];
+} Korl_Gfx_DrawState_PushConstantData;
+KORL_STATIC_ASSERT(sizeof(Korl_Gfx_DrawState_PushConstantData) <= 128);// vulkan spec 42.1 table 53; minimum limit for VkPhysicalDeviceLimits::maxPushConstantsSize
 typedef struct Korl_Gfx_DrawState_Scissor
 {
     u32 x, y;
@@ -79,12 +80,12 @@ typedef struct Korl_Gfx_DrawState_Lighting
 } Korl_Gfx_DrawState_Lighting;
 typedef struct Korl_Gfx_DrawState
 {
-    const Korl_Gfx_Material*                  material;
-    const Korl_Gfx_DrawState_SceneProperties* sceneProperties;
-    const Korl_Gfx_DrawState_Model*           model;
-    const Korl_Gfx_DrawState_Scissor*         scissor;
-    const Korl_Gfx_DrawState_StorageBuffers*  storageBuffers;
-    const Korl_Gfx_DrawState_Lighting*        lighting;
+    const Korl_Gfx_Material*                   material;
+    const Korl_Gfx_DrawState_SceneProperties*  sceneProperties;
+    const Korl_Gfx_DrawState_PushConstantData* pushConstantData;
+    const Korl_Gfx_DrawState_Scissor*          scissor;
+    const Korl_Gfx_DrawState_StorageBuffers*   storageBuffers;
+    const Korl_Gfx_DrawState_Lighting*         lighting;
 } Korl_Gfx_DrawState;
 typedef enum Korl_Gfx_Camera_Type
     {KORL_GFX_CAMERA_TYPE_PERSPECTIVE

@@ -384,11 +384,11 @@ korl_internal void korl_gfx_immediate_draw(const Korl_Gfx_Immediate* immediate, 
     }
     else
         materialLocal = korl_gfx_material_defaultUnlit(immediate->primitiveType, immediate->materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
-    model.transform = korl_math_makeM4f32_rotateScaleTranslate(versor, scale, position);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
+    *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateScaleTranslate(versor, scale, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.model    = &model;
-    drawState.material = &materialLocal;
+    drawState.pushConstantData = &pushConstantData;
+    drawState.material         = &materialLocal;
     korl_gfx_setDrawState(&drawState);
     korl_gfx_drawStagingAllocation(&immediate->stagingAllocation, &immediate->vertexStagingMeta);
 }
@@ -496,14 +496,14 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     /* configure the renderer draw state */
     const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
     materialOverride.maps.resourceHandleTextureBase = fontResources.resourceHandleTexture;
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
-    model.transform = korl_math_makeM4f32_rotateTranslate(versor, position);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
+    *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.model          = &model;
-    drawState.material       = &materialOverride;
-    drawState.storageBuffers = &storageBuffers;
+    drawState.pushConstantData = &pushConstantData;
+    drawState.material         = &materialOverride;
+    drawState.storageBuffers   = &storageBuffers;
     korl_gfx_setDrawState(&drawState);
     /* allocate staging memory & issue draw command */
     KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);

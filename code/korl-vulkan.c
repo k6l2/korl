@@ -1072,8 +1072,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     scissorDefault.extent = surfaceContext->swapChainImageExtent;
     korl_memory_zero(&surfaceContext->drawState    , sizeof(surfaceContext->drawState));
     korl_memory_zero(&surfaceContext->drawStateLast, sizeof(surfaceContext->drawStateLast));
-    surfaceContext->drawState.pushConstants.vertex.m4f32Model    = KORL_MATH_M4F32_IDENTITY;
-    surfaceContext->drawState.pushConstants.fragment.uvAabb      = (Korl_Math_V4f32){0,0,1,1};
+    surfaceContext->drawState.pushConstantData                   = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState_PushConstantData);
     surfaceContext->drawState.uboSceneProperties.m4f32View       = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache         = KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_Pipeline);
@@ -1229,8 +1228,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     /* enumerate & choose a physical device */
     KORL_ZERO_STACK(u32, physicalDeviceCount);
     _KORL_VULKAN_CHECK(
-        vkEnumeratePhysicalDevices(context->instance, &physicalDeviceCount, 
-                                   NULL/*pPhysicalDevices; NULL->return the count in param 2*/));
+        vkEnumeratePhysicalDevices(context->instance, &physicalDeviceCount
+                                  ,NULL/*pPhysicalDevices; NULL->return the count in param 2*/));
     // we need at least one physical device compatible with Vulkan
     korl_assert(physicalDeviceCount > 0);
     VkPhysicalDevice physicalDevices[16];
@@ -1488,18 +1487,13 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
                                                       ,&context->descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_MATERIAL]));
     }
     /* create pipeline layout */
-    KORL_ZERO_STACK_ARRAY(VkPushConstantRange, pushConstantRange, 2);
-    pushConstantRange[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    pushConstantRange[0].size       = sizeof(surfaceContext->drawState.pushConstants.vertex);
-    pushConstantRange[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange[1].offset     = sizeof(surfaceContext->drawState.pushConstants.vertex);
-    pushConstantRange[1].size       = sizeof(surfaceContext->drawState.pushConstants.fragment);
+    // NOTE: at this point, in the future, we could potentially check `devicePropertiesBest.limits.maxPushConstantsSize` to determine how many bytes we can reserve for PushConstants, but at the moment that is not necessary; this would require refactoring korl-vulkan & korl-gfx PushConstant APIs, such that korl-gfx users need to query for this data, etc.; unnecessary work at the moment, and in the foreseeable future
     KORL_ZERO_STACK(VkPipelineLayoutCreateInfo, createInfoPipelineLayout);
     createInfoPipelineLayout.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     createInfoPipelineLayout.setLayoutCount         = korl_arraySize(context->descriptorSetLayouts);
     createInfoPipelineLayout.pSetLayouts            = context->descriptorSetLayouts;
-    createInfoPipelineLayout.pushConstantRangeCount = korl_arraySize(pushConstantRange);
-    createInfoPipelineLayout.pPushConstantRanges    = pushConstantRange;
+    createInfoPipelineLayout.pushConstantRangeCount = korl_arraySize(_KORL_VULKAN_PUSH_CONSTANT_RANGES);
+    createInfoPipelineLayout.pPushConstantRanges    = _KORL_VULKAN_PUSH_CONSTANT_RANGES;
     _KORL_VULKAN_CHECK(
         vkCreatePipelineLayout(context->device, &createInfoPipelineLayout, context->allocator
                               ,&context->pipelineLayout));
@@ -1834,11 +1828,8 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
         surfaceContext->drawState.uboSceneProperties.m4f32View       = state->sceneProperties->view;
         surfaceContext->drawState.uboSceneProperties.seconds         = state->sceneProperties->seconds;
     }
-    if(state->model)
-    {
-        surfaceContext->drawState.pushConstants.vertex.m4f32Model = state->model->transform;
-        surfaceContext->drawState.pushConstants.fragment.uvAabb   = (Korl_Math_V4f32){.xy = state->model->uvAabb.min, .zw = state->model->uvAabb.max};
-    }
+    if(state->pushConstantData)
+        surfaceContext->drawState.pushConstantData = *state->pushConstantData;
     if(state->scissor)
     {
         surfaceContext->drawState.scissor.offset = (VkOffset2D){.x     = state->scissor->x    , .y      = state->scissor->y};
@@ -2307,12 +2298,14 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     /* compose the draw commands */
     vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
                       ,VK_SHADER_STAGE_VERTEX_BIT
-                      ,/*offset*/0, sizeof(surfaceContext->drawState.pushConstants.vertex)
-                      ,&surfaceContext->drawState.pushConstants.vertex);
+                      ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_VERTEX].offset
+                      ,sizeof(surfaceContext->drawState.pushConstantData.vertex)
+                      ,&surfaceContext->drawState.pushConstantData.vertex);
     vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
                       ,VK_SHADER_STAGE_FRAGMENT_BIT
-                      ,/*offset*/sizeof(surfaceContext->drawState.pushConstants.vertex), sizeof(surfaceContext->drawState.pushConstants.fragment)
-                      ,&surfaceContext->drawState.pushConstants.fragment);
+                      ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT].offset
+                      ,sizeof(surfaceContext->drawState.pushConstantData.fragment)
+                      ,&surfaceContext->drawState.pushConstantData.fragment);
     vkCmdSetScissor(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                    ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
     VkBuffer     vertexBuffers          [KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];

@@ -924,7 +924,8 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     drawState.storageBuffers = &storageBuffers;
     korl_gfx_setDrawState(&drawState);
     /* now we can iterate over each text line and conditionally draw them using line-specific draw state */
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
+    Korl_Math_M4f32*const pushConstantModelM4f32 = KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex);
     Korl_Math_V3f32 modelTranslation = context->modelTranslate;
     modelTranslation.y -= fontCache->fontAscent;// start the text such that the translation XY position defines the location _directly_ above _all_ the text
     u$ currentVisibleGlyphOffset = 0;// used to determine the byte (transform required) offset into the Text object's text buffer resource
@@ -935,10 +936,10 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
         if(modelTranslation.y <= visibleRegion.max.y + korl_math_f32_positive(fontCache->fontDescent))
         {
             material.properties.factorColorBase = line->color;
-            model.transform                     = korl_math_makeM4f32_rotateScaleTranslate(context->modelRotate, context->modelScale, modelTranslation);
+            *pushConstantModelM4f32             = korl_math_makeM4f32_rotateScaleTranslate(context->modelRotate, context->modelScale, modelTranslation);
             KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateLine);
-            drawStateLine.material = &material;
-            drawStateLine.model    = &model;
+            drawStateLine.material         = &material;
+            drawStateLine.pushConstantData = &pushConstantData;
             korl_vulkan_setDrawState(&drawStateLine);
             const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_FontGlyphInstance);
             context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
@@ -1388,10 +1389,10 @@ korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor)
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
     Korl_Gfx_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_Model, model);
-    model.transform = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
+    *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.model = &model;
+    drawState.pushConstantData = &pushConstantData;
     if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
     {
         korl_memory_zero(&lighting, sizeof(lighting));
