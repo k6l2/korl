@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-gfx.h"
+// @TODO: merge this into/with `Korl_Gfx_Drawable`
 /** Use APIs that return a Korl_Gfx_Immediate when you want to compose a mesh 
  * primitive and use it to draw the same thing multiple times, as this will 
  * allow you to draw the same mesh primitive without having to build & upload it 

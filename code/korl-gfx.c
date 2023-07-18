@@ -764,7 +764,6 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
     result->modelScale                      = KORL_MATH_V3F32_ONE;
     result->resourceHandleBufferText        = korl_resource_createBuffer(&createInfoBufferText);
-    // @TODO: maybe create a separate global buffer that holds _KORL_GFX_TRI_QUAD_INDICES permanently, and create a vulkan API that allows us to pass multiple 
     // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
     result->vertexStagingMeta.indexCount = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
     result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*KORL_GFX_TRI_QUAD_INDICES) == sizeof(u16));
@@ -977,114 +976,84 @@ korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text*
 {
     return context->_modelAabb;
 }
-korl_internal KORL_FUNCTION_korl_gfx_font_getUtf8Metrics(korl_gfx_font_getUtf8Metrics)
+korl_internal void _korl_gfx_font_getUtfMetrics_common(_Korl_Gfx_FontCache*const fontCache, u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Math_Aabb2f32* aabb, Korl_Gfx_Font_TextMetrics* textMetrics)
+{
+    const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepoint);
+    if(!bakedGlyph->isEmpty)
+    {
+        /* instead of generating an AABB that is shrink-wrapped to the actual 
+            rendered glyphs, let's generate the AABB with respect to the font's 
+            height metrics; so we only really care about the glyph's graphical 
+            AABB on the X-axis; why? because I am finding that in a lot of cases 
+            the user code cares more about visual alignment of rendered text, 
+            and this is a lot easier to achieve API-wise when we are calculating 
+            text AABBs relatvie to font metrics */
+        const f32 x0 = textBaselineCursor->x;
+        const f32 y0 = textBaselineCursor->y + fontCache->fontAscent;
+        const f32 x1 = x0 + bakedGlyph->bbox.offsetX + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
+        const f32 y1 = textBaselineCursor->y + fontCache->fontDescent;
+        /* at this point, we know that this is a valid visible glyph */
+        aabb->min = korl_math_v2f32_min(aabb->min, (Korl_Math_V2f32){x0, y1});
+        aabb->max = korl_math_v2f32_max(aabb->max, (Korl_Math_V2f32){x1, y0});
+        textMetrics->visibleGlyphCount++;
+    }
+    if(textBaselineCursor->x > 0.f)
+    {
+        const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
+                                                         ,*glyphIndexPrevious
+                                                         ,bakedGlyph->glyphIndex);
+        *glyphIndexPrevious    = bakedGlyph->glyphIndex;
+        textBaselineCursor->x += fontCache->fontScale*kernAdvance;
+    }
+    else
+        *glyphIndexPrevious = -1;
+    textBaselineCursor->x += bakedGlyph->advanceX;
+    if(codepoint == L'\n')
+    {
+        textBaselineCursor->x  = 0.f;
+        textBaselineCursor->y -= lineDeltaY;
+    }
+}
+korl_internal Korl_Gfx_Font_TextMetrics _korl_gfx_font_getUtfMetrics(acu16 utf16AssetNameFont, f32 textPixelHeight, const void* utfTextData, u$ utfTextSize, u8 utfEncoding)
 {
     Korl_Math_Aabb2f32 aabb = KORL_MATH_AABB2F32_EMPTY;
     KORL_ZERO_STACK(Korl_Gfx_Font_TextMetrics, textMetrics);
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
     if(!fontCache)
         return textMetrics;// silently return nothing if font is not loaded
-    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    const f32       lineDeltaY         = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
-    int glyphIndexPrevious = -1;
-    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
-    for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
-       ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
-       ; korl_string_codepointIteratorUtf8_next(&codepointIt))
+    int             glyphIndexPrevious = -1;
+    switch(utfEncoding)
     {
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
-        if(!bakedGlyph->isEmpty)
-        {
-            /* instead of generating an AABB that is shrink-wrapped to the actual 
-                rendered glyphs, let's generate the AABB with respect to the font's 
-                height metrics; so we only really care about the glyph's graphical 
-                AABB on the X-axis; why? because I am finding that in a lot of cases 
-                the user code cares more about visual alignment of rendered text, 
-                and this is a lot easier to achieve API-wise when we are calculating 
-                text AABBs relatvie to font metrics */
-            const f32 x0 = textBaselineCursor.x;
-            const f32 y0 = textBaselineCursor.y + fontCache->fontAscent;
-            const f32 x1 = x0 + bakedGlyph->bbox.offsetX + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
-            const f32 y1 = textBaselineCursor.y + fontCache->fontDescent;
-            /* at this point, we know that this is a valid visible glyph */
-            aabb.min = korl_math_v2f32_min(aabb.min, (Korl_Math_V2f32){x0, y1});
-            aabb.max = korl_math_v2f32_max(aabb.max, (Korl_Math_V2f32){x1, y0});
-            textMetrics.visibleGlyphCount++;
-        }
-        if(textBaselineCursor.x > 0.f)
-        {
-            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
-                                                             ,glyphIndexPrevious
-                                                             ,bakedGlyph->glyphIndex);
-            glyphIndexPrevious    = bakedGlyph->glyphIndex;
-            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
-        }
-        else
-            glyphIndexPrevious = -1;
-        textBaselineCursor.x += bakedGlyph->advanceX;
-        if(codepointIt._codepoint == L'\n')
-        {
-            textBaselineCursor.x  = 0.f;
-            textBaselineCursor.y -= lineDeltaY;
-        }
+    case 8:
+        //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+        for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utfTextData, utfTextSize)
+           ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
+           ; korl_string_codepointIteratorUtf8_next(&codepointIt))
+            _korl_gfx_font_getUtfMetrics_common(fontCache, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
+        break;
+    case 16:
+        //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+        for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utfTextData, utfTextSize)
+           ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
+           ; korl_string_codepointIteratorUtf16_next(&codepointIt))
+            _korl_gfx_font_getUtfMetrics_common(fontCache, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
+        break;
+    default:
+        korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
+        break;
     }
     textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
     return textMetrics;
 }
+korl_internal KORL_FUNCTION_korl_gfx_font_getUtf8Metrics(korl_gfx_font_getUtf8Metrics)
+{
+    return _korl_gfx_font_getUtfMetrics(utf16AssetNameFont, textPixelHeight, utf8Text.data, utf8Text.size, 8);
+}
 korl_internal KORL_FUNCTION_korl_gfx_font_getUtf16Metrics(korl_gfx_font_getUtf16Metrics)
 {
-    //@TODO: huge copy-pasta of KORL_FUNCTION_korl_gfx_font_getUtf8Metrics; can we generalize this?
-    Korl_Math_Aabb2f32 aabb = KORL_MATH_AABB2F32_EMPTY;
-    KORL_ZERO_STACK(Korl_Gfx_Font_TextMetrics, textMetrics);
-    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
-    if(!fontCache)
-        return textMetrics;// silently return nothing if font is not loaded
-    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
-    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
-    int glyphIndexPrevious = -1;
-    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
-    for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utf16Text.data, utf16Text.size)
-       ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
-       ; korl_string_codepointIteratorUtf16_next(&codepointIt))
-    {
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
-        if(!bakedGlyph->isEmpty)
-        {
-            /* instead of generating an AABB that is shrink-wrapped to the actual 
-                rendered glyphs, let's generate the AABB with respect to the font's 
-                height metrics; so we only really care about the glyph's graphical 
-                AABB on the X-axis; why? because I am finding that in a lot of cases 
-                the user code cares more about visual alignment of rendered text, 
-                and this is a lot easier to achieve API-wise when we are calculating 
-                text AABBs relatvie to font metrics */
-            const f32 x0 = textBaselineCursor.x;
-            const f32 y0 = textBaselineCursor.y + fontCache->fontAscent;
-            const f32 x1 = x0 + bakedGlyph->bbox.offsetX + (bakedGlyph->bbox.x1 - bakedGlyph->bbox.x0);
-            const f32 y1 = textBaselineCursor.y + fontCache->fontDescent;
-            /* at this point, we know that this is a valid visible glyph */
-            aabb.min = korl_math_v2f32_min(aabb.min, (Korl_Math_V2f32){x0, y1});
-            aabb.max = korl_math_v2f32_max(aabb.max, (Korl_Math_V2f32){x1, y0});
-            textMetrics.visibleGlyphCount++;
-        }
-        if(textBaselineCursor.x > 0.f)
-        {
-            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
-                                                             ,glyphIndexPrevious
-                                                             ,bakedGlyph->glyphIndex);
-            glyphIndexPrevious    = bakedGlyph->glyphIndex;
-            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
-        }
-        else
-            glyphIndexPrevious = -1;
-        textBaselineCursor.x += bakedGlyph->advanceX;
-        if(codepointIt._codepoint == L'\n')
-        {
-            textBaselineCursor.x  = 0.f;
-            textBaselineCursor.y -= lineDeltaY;
-        }
-    }
-    textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
-    return textMetrics;
+    return _korl_gfx_font_getUtfMetrics(utf16AssetNameFont, textPixelHeight, utf16Text.data, utf16Text.size, 16);
 }
 korl_internal KORL_FUNCTION_korl_gfx_font_getMetrics(korl_gfx_font_getMetrics)
 {
@@ -1109,90 +1078,71 @@ korl_internal KORL_FUNCTION_korl_gfx_font_getResources(korl_gfx_font_getResource
     resources.resourceHandleTexture               = fontGlyphPage->resourceHandleTexture;
     return resources;
 }
-korl_internal KORL_FUNCTION_korl_gfx_font_generateUtf8(korl_gfx_font_generateUtf8)
+korl_internal void _korl_gfx_font_generateUtf_common(_Korl_Gfx_FontCache*const fontCache, u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Gfx_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
 {
-    _Korl_Gfx_Context*const context = _korl_gfx_context;
+    const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepoint);
+    if(!bakedGlyph->isEmpty)
+    {
+        o_glyphInstancePositions[textMetrics->visibleGlyphCount] = korl_math_v2f32_add(*textBaselineCursor, instancePositionOffset);
+        o_glyphInstanceIndices  [textMetrics->visibleGlyphCount] = bakedGlyph->bakeOrder;
+        textMetrics->visibleGlyphCount++;
+    }
+    if(textBaselineCursor->x > 0.f)
+    {
+        const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
+                                                         ,*glyphIndexPrevious
+                                                         ,bakedGlyph->glyphIndex);
+        *glyphIndexPrevious    = bakedGlyph->glyphIndex;
+        textBaselineCursor->x += fontCache->fontScale*kernAdvance;
+    }
+    else
+        *glyphIndexPrevious = -1;
+    textBaselineCursor->x += bakedGlyph->advanceX;
+    if(codepoint == L'\n')
+    {
+        textBaselineCursor->x  = 0.f;
+        textBaselineCursor->y -= lineDeltaY;
+    }
+}
+korl_internal void _korl_gfx_font_generateUtf(acu16 utf16AssetNameFont, f32 textPixelHeight, const void* utfText, u$ utfTextSize, u8 utfEncoding, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+{
+    _Korl_Gfx_Context*const   context   = _korl_gfx_context;
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
     if(!fontCache)
         return;
     _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
-    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
-    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
-    int glyphIndexPrevious  = -1;
-    u32 currentVisibleGlyph =  0;
-    //@TODO: there's a lot of copy-pasta between here & korl_gfx_font_getTextMetrics, not to mention the fact that we are looping over utf8Text twice & obtaining the FontCache like 4 times in order to draw text once
-    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
-    for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
-       ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
-       ; korl_string_codepointIteratorUtf8_next(&codepointIt))
+    const f32                     lineDeltaY    = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    Korl_Math_V2f32 textBaselineCursor  = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
+    int             glyphIndexPrevious  = -1;
+    KORL_ZERO_STACK(Korl_Gfx_Font_TextMetrics, textMetrics);
+    switch(utfEncoding)
     {
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
-        if(!bakedGlyph->isEmpty)
-        {
-            o_glyphInstancePositions[currentVisibleGlyph] = korl_math_v2f32_add(textBaselineCursor, instancePositionOffset);
-            o_glyphInstanceIndices  [currentVisibleGlyph] = bakedGlyph->bakeOrder;
-            currentVisibleGlyph++;
-        }
-        if(textBaselineCursor.x > 0.f)
-        {
-            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
-                                                             ,glyphIndexPrevious
-                                                             ,bakedGlyph->glyphIndex);
-            glyphIndexPrevious    = bakedGlyph->glyphIndex;
-            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
-        }
-        else
-            glyphIndexPrevious = -1;
-        textBaselineCursor.x += bakedGlyph->advanceX;
-        if(codepointIt._codepoint == L'\n')
-        {
-            textBaselineCursor.x  = 0.f;
-            textBaselineCursor.y -= lineDeltaY;
-        }
+    case 8:
+        //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+        for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utfText, utfTextSize)
+           ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
+           ; korl_string_codepointIteratorUtf8_next(&codepointIt))
+            _korl_gfx_font_generateUtf_common(fontCache, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+        break;
+    case 16:
+        //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
+        for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utfText, utfTextSize)
+           ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
+           ; korl_string_codepointIteratorUtf16_next(&codepointIt))
+            _korl_gfx_font_generateUtf_common(fontCache, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+        break;
+    default:
+        korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
+        break;
     }
+}
+korl_internal KORL_FUNCTION_korl_gfx_font_generateUtf8(korl_gfx_font_generateUtf8)
+{
+    _korl_gfx_font_generateUtf(utf16AssetNameFont, textPixelHeight, utf8Text.data, utf8Text.size, 8, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
 }
 korl_internal KORL_FUNCTION_korl_gfx_font_generateUtf16(korl_gfx_font_generateUtf16)
 {
-    //@TODO: huge copy-pasta of KORL_FUNCTION_korl_gfx_font_generateUtf8; can we generalize this?
-    _Korl_Gfx_Context*const context = _korl_gfx_context;
-    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
-    if(!fontCache)
-        return;
-    _Korl_Gfx_FontGlyphPage*const fontGlyphPage = _korl_gfx_fontCache_getGlyphPage(fontCache);
-    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
-    Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontCache->fontAscent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
-    int glyphIndexPrevious  = -1;
-    u32 currentVisibleGlyph =  0;
-    //@TODO: there's a lot of copy-pasta between here & korl_gfx_font_getTextMetrics, not to mention the fact that we are looping over utf8Text twice & obtaining the FontCache like 4 times in order to draw text once
-    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
-    for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utf16Text.data, utf16Text.size)
-       ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
-       ; korl_string_codepointIteratorUtf16_next(&codepointIt))
-    {
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
-        if(!bakedGlyph->isEmpty)
-        {
-            o_glyphInstancePositions[currentVisibleGlyph] = korl_math_v2f32_add(textBaselineCursor, instancePositionOffset);
-            o_glyphInstanceIndices  [currentVisibleGlyph] = bakedGlyph->bakeOrder;
-            currentVisibleGlyph++;
-        }
-        if(textBaselineCursor.x > 0.f)
-        {
-            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
-                                                             ,glyphIndexPrevious
-                                                             ,bakedGlyph->glyphIndex);
-            glyphIndexPrevious    = bakedGlyph->glyphIndex;
-            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
-        }
-        else
-            glyphIndexPrevious = -1;
-        textBaselineCursor.x += bakedGlyph->advanceX;
-        if(codepointIt._codepoint == L'\n')
-        {
-            textBaselineCursor.x  = 0.f;
-            textBaselineCursor.y -= lineDeltaY;
-        }
-    }
+    _korl_gfx_font_generateUtf(utf16AssetNameFont, textPixelHeight, utf16Text.data, utf16Text.size, 16, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
 }
 korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
 {
@@ -1200,9 +1150,9 @@ korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16Asse
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
     if(!fontCache)
         return KORL_MATH_V2F32_ZERO;// silently return 0 if font is not loaded
-    const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
+    const f32       lineDeltaY         = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     Korl_Math_V2f32 textBaselineCursor = KORL_MATH_V2F32_ZERO;
-    int glyphIndexPrevious = -1;
+    int             glyphIndexPrevious = -1;
     //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
     for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
        ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
