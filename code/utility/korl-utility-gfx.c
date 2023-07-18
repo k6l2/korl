@@ -236,8 +236,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediate2d(Korl_Gfx_Material_Primitiv
 {
     KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
     result.type            = KORL_GFX_DRAWABLE_TYPE_IMMEDIATE;
-    result._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
-    result._model.scale    = KORL_MATH_V3F32_ONE;
+    result.transform       = korl_math_transform3d_identity();
     result.subType.immediate.primitiveType = primitiveType;
     u32 byteOffsetBuffer = 0;
     result.subType.immediate.vertexStagingMeta.vertexCount = vertexCount;
@@ -277,8 +276,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediate3d(Korl_Gfx_Material_Primitiv
 {
     KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
     result.type            = KORL_GFX_DRAWABLE_TYPE_IMMEDIATE;
-    result._model.rotation = KORL_MATH_QUATERNION_IDENTITY;
-    result._model.scale    = KORL_MATH_V3F32_ONE;
+    result.transform       = korl_math_transform3d_identity();
     result.subType.immediate.primitiveType     = primitiveType;
     result.subType.immediate.materialModeFlags =   KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
                                | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
@@ -370,8 +368,7 @@ korl_internal Korl_Gfx_Drawable korl_gfx_mesh(Korl_Resource_Handle resourceHandl
 {
     KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
     result.type                               = KORL_GFX_DRAWABLE_TYPE_MESH;
-    result._model.rotation                    = KORL_MATH_QUATERNION_IDENTITY;
-    result._model.scale                       = KORL_MATH_V3F32_ONE;
+    result.transform                          = korl_math_transform3d_identity();
     result.subType.mesh.resourceHandleScene3d = resourceHandleScene3d;
     korl_assert(utf8MeshName.size < korl_arraySize(result.subType.mesh.rawUtf8Scene3dMeshName));
     korl_memory_copy(result.subType.mesh.rawUtf8Scene3dMeshName, utf8MeshName.data, utf8MeshName.size);
@@ -385,8 +382,7 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
     Korl_Math_V3f32* positions;
     Korl_Math_V2f32* uvs       = NULL;
     Korl_Gfx_Drawable immediate = korl_gfx_immediateTriangles3d(korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments) / 3), &positions, NULL);
-    immediate._model.position = position;
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), generateUvs ? uvs : NULL, sizeof(*uvs));
     korl_gfx_draw(&immediate, material, 1);
 }
@@ -397,8 +393,7 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
     Korl_Math_V2f32* positions;
     Korl_Math_V2f32* uvs       = NULL;
     Korl_Gfx_Drawable immediate = korl_gfx_immediateRectangle(anchorRatio, size, &positions, o_colors, generateUvs ? &uvs : NULL);
-    immediate._model.position = position;
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_gfx_draw(&immediate, material, 1);
     if(materialOutline)
     {
@@ -406,8 +401,7 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
         Korl_Gfx_Drawable immediateOutline = outlineThickness == 0 
                                              ? korl_gfx_immediateLineStrip2d    (     korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1 , &outlinePositions, NULL)
                                              : korl_gfx_immediateTriangleStrip2d(2 * (korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1), &outlinePositions, NULL, NULL);
-        immediateOutline._model.position = position;
-        immediateOutline._model.rotation = versor;
+        immediateOutline.transform = korl_math_transform3d_rotateTranslate(versor, position);
         const Korl_Math_V2f32 centerOfMass = korl_math_v2f32_subtract(korl_math_v2f32_multiplyScalar(size, 0.5f), korl_math_v2f32_multiply(anchorRatio, size));
         for(u32 v = 0; v < korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1; v++)
         {
@@ -439,38 +433,33 @@ korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_
 korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLines2d(lineCount, o_positions, o_colors);
-    immediate._model.position = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position};
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLines3d(lineCount, o_positions, o_colors);
-    immediate._model.position = position;
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateTriangles2d(triangleCount, o_positions, o_colors);
-    immediate._model.position = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position};
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 3);
     Korl_Gfx_Drawable immediate = _korl_gfx_immediate2d(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors, NULL);
-    immediate._model.position = KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position};
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 3);
     Korl_Gfx_Drawable immediate = _korl_gfx_immediate3d(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors);
-    immediate._model.position = position;
-    immediate._model.rotation = versor;
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, bool enableDepthTest)
@@ -574,8 +563,6 @@ korl_internal void korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quat
 korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize)
 {
     Korl_Gfx_Drawable mesh = korl_gfx_mesh(resourceHandleScene3d, utf8MeshName);
-    mesh._model.position = position;
-    mesh._model.rotation = versor;
-    mesh._model.scale    = scale;
+    mesh.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
     korl_gfx_draw(&mesh, materials, materialsSize);
 }

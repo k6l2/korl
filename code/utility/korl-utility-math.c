@@ -1143,6 +1143,63 @@ korl_internal void korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f32*const aabb, 
         KORL_MATH_ASSIGN_CLAMP_MIN(aabb->max.elements[i], point.elements[i]);
     }
 }
+korl_internal Korl_Math_Transform3d korl_math_transform3d_identity(void)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Transform3d){._m4f32          = KORL_MATH_M4F32_IDENTITY
+                                                        ,._versor         = KORL_MATH_QUATERNION_IDENTITY
+                                                        ,._position       = KORL_MATH_V3F32_ZERO
+                                                        ,._scale          = KORL_MATH_V3F32_ONE
+                                                        ,._m4f32IsUpdated = true};
+}
+korl_internal Korl_Math_Transform3d korl_math_transform3d_rotateTranslate(Korl_Math_Quaternion versor, Korl_Math_V3f32 position)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Transform3d){._m4f32          = korl_math_makeM4f32_rotateTranslate(versor, position)
+                                                        ,._versor         = versor
+                                                        ,._position       = position
+                                                        ,._scale          = KORL_MATH_V3F32_ONE
+                                                        ,._m4f32IsUpdated = true};
+}
+korl_internal Korl_Math_Transform3d korl_math_transform3d_rotateScaleTranslate(Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, Korl_Math_V3f32 position)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Math_Transform3d){._m4f32          = korl_math_makeM4f32_rotateScaleTranslate(versor, scale, position)
+                                                        ,._versor         = versor
+                                                        ,._position       = position
+                                                        ,._scale          = scale
+                                                        ,._m4f32IsUpdated = true};
+}
+korl_internal void korl_math_transform3d_setPosition(Korl_Math_Transform3d* context, Korl_Math_V3f32 position)
+{
+    KORL_STATIC_ASSERT(korl_arraySize(position.elements) == korl_arraySize(context->_position.elements));
+    for(u8 i = 0; context->_m4f32IsUpdated && i < korl_arraySize(context->_position.elements); i++)
+        if(context->_position.elements[i] != position.elements[i])
+            context->_m4f32IsUpdated = false;
+    context->_position = position;
+}
+korl_internal void korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor)
+{
+    KORL_STATIC_ASSERT(korl_arraySize(versor.elements) == korl_arraySize(context->_versor.elements));
+    for(u8 i = 0; context->_m4f32IsUpdated && i < korl_arraySize(context->_versor.elements); i++)
+        if(context->_versor.elements[i] != versor.elements[i])
+            context->_m4f32IsUpdated = false;
+    context->_versor = versor;
+}
+korl_internal void korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale)
+{
+    KORL_STATIC_ASSERT(korl_arraySize(scale.elements) == korl_arraySize(context->_scale.elements));
+    for(u8 i = 0; context->_m4f32IsUpdated && i < korl_arraySize(context->_scale.elements); i++)
+        if(context->_scale.elements[i] != scale.elements[i])
+            context->_m4f32IsUpdated = false;
+    context->_scale = scale;
+}
+korl_internal Korl_Math_M4f32 korl_math_transform3d_m4f32(Korl_Math_Transform3d* context)
+{
+    if(!context->_m4f32IsUpdated)
+    {
+        context->_m4f32 = korl_math_makeM4f32_rotateScaleTranslate(context->_versor, context->_scale, context->_position);
+        context->_m4f32IsUpdated = true;
+    }
+    return context->_m4f32;
+}
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar)
 {

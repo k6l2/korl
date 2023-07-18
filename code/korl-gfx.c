@@ -1364,7 +1364,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     if(materials)
         korl_assert(materialsSize);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
-    *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
+    *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_transform3d_m4f32(&context->transform);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.pushConstantData = &pushConstantData;
     korl_gfx_setDrawState(&drawState);

@@ -319,12 +319,7 @@ typedef enum Korl_Gfx_Drawable_Type
 typedef struct Korl_Gfx_Drawable
 {
     Korl_Gfx_Drawable_Type type;
-    struct
-    {
-        Korl_Math_V3f32      position;
-        Korl_Math_V3f32      scale;
-        Korl_Math_Quaternion rotation;
-    } _model;
+    Korl_Math_Transform3d  transform;
     union
     {
         struct
@@ -359,7 +354,7 @@ typedef struct Korl_Gfx_Drawable
 #define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)                    Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_FUNCTION_korl_gfx_getSurfaceSize(name)                          Korl_Math_V2u32            name(void)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                       name(u8 red, u8 green, u8 blue)
-#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(const Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
+#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
 #define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)
 #define KORL_FUNCTION_korl_gfx_setDrawState(name)                            void                       name(const Korl_Gfx_DrawState* drawState)

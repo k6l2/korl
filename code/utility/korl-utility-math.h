@@ -110,7 +110,17 @@ typedef struct Korl_Math_Rng_WichmannHill
 {
     u16 seed[3];
 } Korl_Math_Rng_WichmannHill;
-//@TODO: create a Korl_Math_Transform3d, which has the capability of privately managing translation/scale/rotation, and lazy-generating/caching a transformation matrix for the user at-will via a "public" API
+/** Users of this struct are _highly_ advised to use the associated APIs to 
+ * modify/access \c Korl_Math_Transform3d data, as one of the primary 
+ * functionalities is lazy transform matrix calculations. */
+typedef struct Korl_Math_Transform3d
+{
+    Korl_Math_M4f32      _m4f32;
+    Korl_Math_Quaternion _versor;
+    Korl_Math_V3f32      _position;
+    Korl_Math_V3f32      _scale;
+    bool                 _m4f32IsUpdated;
+} Korl_Math_Transform3d;
 korl_internal inline u64 korl_math_kilobytes(u64 x);
 korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);
@@ -288,6 +298,14 @@ korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_union(Korl_Math_Aabb3f32 aab
 korl_internal bool               korl_math_aabb3f32_areIntersecting(Korl_Math_Aabb3f32 aabbA, Korl_Math_Aabb3f32 aabbB);
 korl_internal void               korl_math_aabb3f32_addPoint(Korl_Math_Aabb3f32*const aabb, f32* point3d);
 korl_internal void               korl_math_aabb3f32_addPointV3(Korl_Math_Aabb3f32*const aabb, Korl_Math_V3f32 point);
+/* Korl_Math_Transform3d ******************************************************/
+korl_internal Korl_Math_Transform3d korl_math_transform3d_identity(void);
+korl_internal Korl_Math_Transform3d korl_math_transform3d_rotateTranslate(Korl_Math_Quaternion versor, Korl_Math_V3f32 position);
+korl_internal Korl_Math_Transform3d korl_math_transform3d_rotateScaleTranslate(Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, Korl_Math_V3f32 position);
+korl_internal void                  korl_math_transform3d_setPosition(Korl_Math_Transform3d* context, Korl_Math_V3f32 position);
+korl_internal void                  korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor);
+korl_internal void                  korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale);
+korl_internal Korl_Math_M4f32       korl_math_transform3d_m4f32(Korl_Math_Transform3d* context);
 /* C++ API ********************************************************************/
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);

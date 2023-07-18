@@ -1754,12 +1754,12 @@ korl_internal void korl_gui_frameEnd(void)
                 const f32               smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 const Korl_Gfx_Material material     = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
                 Korl_Gfx_Drawable iconPiece = korl_gfx_immediateRectangle((Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize}, NULL, NULL, NULL);
-                iconPiece._model.position = (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
-                                                             ,widget->position.y - smallestSize/2.f
-                                                             ,z};
-                iconPiece._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z,  KORL_PI32*0.25f, true);
+                korl_math_transform3d_setPosition(&iconPiece.transform, (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
+                                                                                         ,widget->position.y - smallestSize/2.f
+                                                                                         ,z});
+                korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z,  KORL_PI32*0.25f, true));
                 korl_gfx_draw(&iconPiece, &material, 1);
-                iconPiece._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, -KORL_PI32*0.25f, true);
+                korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, -KORL_PI32*0.25f, true));
                 korl_gfx_draw(&iconPiece, &material, 1);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
@@ -1769,10 +1769,10 @@ korl_internal void korl_gui_frameEnd(void)
                 const f32                smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 const Korl_Gfx_Material  material     = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
                 Korl_Gfx_Drawable iconPiece = korl_gfx_immediateRectangle((Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize}, NULL, NULL, NULL);
-                iconPiece._model.position = (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
-                                                             ,widget->position.y - smallestSize/2.f
-                                                             ,z};
-                iconPiece._model.rotation = korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, widget->subType.button.specialButtonAlternateDisplay ? KORL_PI32/2 : 0, true);
+                korl_math_transform3d_setPosition(&iconPiece.transform, (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
+                                                                                         ,widget->position.y - smallestSize/2.f
+                                                                                         ,z});
+                korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, widget->subType.button.specialButtonAlternateDisplay ? KORL_PI32/2 : 0, true));
                 korl_gfx_draw(&iconPiece, &material, 1);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
