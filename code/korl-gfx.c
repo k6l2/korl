@@ -1361,37 +1361,65 @@ korl_internal KORL_FUNCTION_korl_gfx_setClearColor(korl_gfx_setClearColor)
 }
 korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 {
-    Korl_Gfx_DrawState_Lighting lighting;// leave uninitialized unless we need to flush light data
+    if(materials)
+        korl_assert(materialsSize);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateScaleTranslate(context->_model.rotation, context->_model.scale, context->_model.position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.pushConstantData = &pushConstantData;
-    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
+    korl_gfx_setDrawState(&drawState);
+    switch(context->type)
     {
-        korl_memory_zero(&lighting, sizeof(lighting));
-        lighting.lightsCount = KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights);
-        lighting.lights      = _korl_gfx_context->pendingLights;
-        drawState.lighting = &lighting;
-        _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
-    }
-    korl_vulkan_setDrawState(&drawState);
-    const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
-                                    ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
-    u32                                       meshPrimitiveCount       = 0;
-    Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
-    const Korl_Gfx_VertexStagingMeta*         meshPrimitiveVertexMetas = NULL;
-    const Korl_Gfx_Material*                  meshMaterials            = NULL;
-    korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
-                                         ,&meshPrimitiveCount
-                                         ,&meshPrimitiveBuffer
-                                         ,&meshPrimitiveVertexMetas
-                                         ,&meshMaterials);
-    for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
-    {
+    case KORL_GFX_DRAWABLE_TYPE_IMMEDIATE:{
+        /* configure the renderer draw state */
+        Korl_Gfx_Material materialLocal;
+        if(materials)
+        {
+            korl_assert(materialsSize == 1);
+            materialLocal                      = materials[0];
+            materialLocal.modes.primitiveType  = context->subType.immediate.primitiveType;
+            materialLocal.modes.flags         |= context->subType.immediate.materialModeFlags;
+        }
+        else
+            materialLocal = korl_gfx_material_defaultUnlit(context->subType.immediate.primitiveType, context->subType.immediate.materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+        if(!materialLocal.shaders.resourceHandleShaderVertex)
+            materialLocal.shaders.resourceHandleShaderVertex = korl_gfx_getBuiltInShaderVertex(&context->subType.immediate.vertexStagingMeta);
+        if(!materialLocal.shaders.resourceHandleShaderFragment)
+            materialLocal.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialLocal);
         drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
-        drawState.material = meshMaterials + mp;
+        drawState.material = &materialLocal;
         korl_vulkan_setDrawState(&drawState);
-        korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, 0, meshPrimitiveVertexMetas + mp);
+        korl_gfx_drawStagingAllocation(&context->subType.immediate.stagingAllocation, &context->subType.immediate.vertexStagingMeta);
+        break;}
+    case KORL_GFX_DRAWABLE_TYPE_MESH:{
+        const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
+                                        ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
+        u32                                       meshPrimitiveCount       = 0;
+        Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
+        const Korl_Gfx_VertexStagingMeta*         meshPrimitiveVertexMetas = NULL;
+        const Korl_Gfx_Material*                  meshMaterials            = NULL;
+        korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
+                                             ,&meshPrimitiveCount
+                                             ,&meshPrimitiveBuffer
+                                             ,&meshPrimitiveVertexMetas
+                                             ,&meshMaterials);
+        Korl_Gfx_Material materialLocal;
+        for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
+        {
+            drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
+            if(materials && mp < materialsSize)
+            {
+                materialLocal                      = materials[mp];
+                materialLocal.modes.primitiveType  = meshMaterials[mp].modes.primitiveType;
+                materialLocal.modes.flags         |= meshMaterials[mp].modes.flags;
+                drawState.material = &materialLocal;
+            }
+            else
+                drawState.material = meshMaterials + mp;
+            korl_vulkan_setDrawState(&drawState);
+            korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, 0, meshPrimitiveVertexMetas + mp);
+        }
+        break;}
     }
 }
 korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)

@@ -231,34 +231,6 @@ typedef struct Korl_Gfx_Material
     Korl_Gfx_Material_Maps                  maps;
     Korl_Gfx_Material_Shaders               shaders;
 } Korl_Gfx_Material;// korl-utility-gfx has APIs to obtain "default" materials
-typedef struct Korl_Gfx_Drawable_MaterialSlot
-{
-    Korl_Gfx_Material material;
-    bool              used;
-} Korl_Gfx_Drawable_MaterialSlot;
-typedef enum Korl_Gfx_Drawable_Type
-    {KORL_GFX_DRAWABLE_TYPE_MESH
-} Korl_Gfx_Drawable_Type;
-typedef struct Korl_Gfx_Drawable
-{
-    Korl_Gfx_Drawable_Type type;
-    struct
-    {
-        Korl_Math_V3f32      position;
-        Korl_Math_V3f32      scale;
-        Korl_Math_Quaternion rotation;
-    } _model;
-    union
-    {
-        struct
-        {
-            Korl_Resource_Handle           resourceHandleScene3d;
-            Korl_Gfx_Drawable_MaterialSlot materialSlots[1];//@TODO: delete this member & refactor how material overrides work for MESH Drawables
-            u8                             rawUtf8Scene3dMeshName[32];//KORL-ISSUE-000-000-163: gfx: we should be able to refactor korl-resource such that we can obtain a ResourceHandle to a "child" MESH resource of a SCENE3D resource, removing the need to have to store the mesh name string of the mesh we're trying to use
-            u8                             rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
-        } mesh;
-    } subType;
-} Korl_Gfx_Drawable;
 typedef struct Korl_Gfx_ResultRay3d
 {
     Korl_Math_V3f32 position;
@@ -340,6 +312,36 @@ typedef struct Korl_Gfx_StagingAllocation
     Korl_Gfx_DeviceBufferHandle deviceBuffer;
     u$                          deviceBufferOffset;
 } Korl_Gfx_StagingAllocation;
+typedef enum Korl_Gfx_Drawable_Type
+    {KORL_GFX_DRAWABLE_TYPE_IMMEDIATE = 1
+    ,KORL_GFX_DRAWABLE_TYPE_MESH
+} Korl_Gfx_Drawable_Type;
+typedef struct Korl_Gfx_Drawable
+{
+    Korl_Gfx_Drawable_Type type;
+    struct
+    {
+        Korl_Math_V3f32      position;
+        Korl_Math_V3f32      scale;
+        Korl_Math_Quaternion rotation;
+    } _model;
+    union
+    {
+        struct
+        {
+            Korl_Gfx_Material_PrimitiveType primitiveType;
+            Korl_Gfx_Material_Mode_Flags    materialModeFlags;
+            Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
+            Korl_Gfx_StagingAllocation      stagingAllocation;
+        } immediate;
+        struct
+        {
+            Korl_Resource_Handle resourceHandleScene3d;
+            u8                   rawUtf8Scene3dMeshName[32];//KORL-ISSUE-000-000-163: gfx: we should be able to refactor korl-resource such that we can obtain a ResourceHandle to a "child" MESH resource of a SCENE3D resource, removing the need to have to store the mesh name string of the mesh we're trying to use
+            u8                   rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
+        } mesh;
+    } subType;
+} Korl_Gfx_Drawable;
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics      name(acu16 utf16AssetNameFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_gfx_font_getResources(name)                       Korl_Gfx_Font_Resources    name(acu16 utf16AssetNameFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_gfx_font_getUtf8Metrics(name)                     Korl_Gfx_Font_TextMetrics  name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text)
@@ -357,10 +359,9 @@ typedef struct Korl_Gfx_StagingAllocation
 #define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)                    Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_FUNCTION_korl_gfx_getSurfaceSize(name)                          Korl_Math_V2u32            name(void)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                       name(u8 red, u8 green, u8 blue)
-#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(const Korl_Gfx_Drawable*const context)
+#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(const Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
 #define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)
-//@TODO: why do we need a separate korl_gfx_setDrawState API?  technically, this could just be an _optional_ parameter to `drawStagingAllocation`; maybe just delete this API and see how things work out!
 #define KORL_FUNCTION_korl_gfx_setDrawState(name)                            void                       name(const Korl_Gfx_DrawState* drawState)
 #define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta)

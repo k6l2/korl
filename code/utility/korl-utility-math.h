@@ -110,6 +110,7 @@ typedef struct Korl_Math_Rng_WichmannHill
 {
     u16 seed[3];
 } Korl_Math_Rng_WichmannHill;
+//@TODO: create a Korl_Math_Transform3d, which has the capability of privately managing translation/scale/rotation, and lazy-generating/caching a transformation matrix for the user at-will via a "public" API
 korl_internal inline u64 korl_math_kilobytes(u64 x);
 korl_internal inline u64 korl_math_megabytes(u64 x);
 korl_internal inline u64 korl_math_gigabytes(u64 x);
