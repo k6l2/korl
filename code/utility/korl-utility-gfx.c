@@ -355,21 +355,21 @@ korl_internal Korl_Gfx_Drawable korl_gfx_immediateCircle(Korl_Math_V2f32 anchorR
 {
     korl_assert(circumferenceVertices >= 3);
     Korl_Math_V2f32* positions;
-    const u32 vertexCount = 1 + circumferenceVertices;
+    const u32 vertexCount = 1/*center vertex*/ + circumferenceVertices + 1/*repeat circumference start vertex*/;
     Korl_Gfx_Drawable result = _korl_gfx_immediate2d(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, &positions, o_colors, o_uvs);
     positions[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius - anchorRatio.x * 2 * radius
                                                           ,radius - anchorRatio.y * 2 * radius};
     if(o_uvs)
         (*o_uvs)[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
     const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
-    for(u32 v = 0; v < circumferenceVertices; v++)
+    for(u32 v = 0; v < circumferenceVertices + 1; v++)
     {
-        const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(1, KORL_C_CAST(f32, v) * radiansPerVertex);
-        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
-                                                              ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
+        const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(1, KORL_C_CAST(f32, v % circumferenceVertices) * radiansPerVertex);
+        positions[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
+                                                                  ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
         if(o_uvs)
-            (*o_uvs)[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
-                                                                 ,1.f - (0.5f + 0.5f * spoke.y)};
+            (*o_uvs)[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
+                                                                     ,1.f - (0.5f + 0.5f * spoke.y)};
     }
     if(o_positions)
         *o_positions = positions;
