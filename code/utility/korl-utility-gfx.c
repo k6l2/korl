@@ -351,6 +351,30 @@ korl_internal Korl_Gfx_Drawable korl_gfx_immediateRectangle(Korl_Math_V2f32 anch
         *o_positions = positions;
     return result;
 }
+korl_internal Korl_Gfx_Drawable korl_gfx_immediateCircle(Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+{
+    korl_assert(circumferenceVertices >= 3);
+    Korl_Math_V2f32* positions;
+    const u32 vertexCount = 1 + circumferenceVertices;
+    Korl_Gfx_Drawable result = _korl_gfx_immediate2d(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, &positions, o_colors, o_uvs);
+    positions[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius - anchorRatio.x * 2 * radius
+                                                          ,radius - anchorRatio.y * 2 * radius};
+    if(o_uvs)
+        (*o_uvs)[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
+    const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
+    for(u32 v = 0; v < circumferenceVertices; v++)
+    {
+        const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(1, KORL_C_CAST(f32, v) * radiansPerVertex);
+        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
+                                                              ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
+        if(o_uvs)
+            (*o_uvs)[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
+                                                                 ,1.f - (0.5f + 0.5f * spoke.y)};
+    }
+    if(o_positions)
+        *o_positions = positions;
+    return result;
+}
 korl_internal Korl_Gfx_Drawable korl_gfx_immediateAxisNormalLines(void)
 {
     Korl_Math_V3f32*   positions = NULL;
@@ -430,6 +454,45 @@ korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_
 {
     _korl_gfx_drawRectangle(position, versor, anchorRatio, size, outlineThickness, material, materialOutline, o_colors);
 }
+korl_internal void _korl_gfx_drawCircle(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
+{
+    const bool generateUvs = material && material->maps.resourceHandleTextureBase;
+    Korl_Math_V2f32* positions;
+    Korl_Math_V2f32* uvs       = NULL;
+    Korl_Gfx_Drawable immediate = korl_gfx_immediateCircle(anchorRatio, radius, circumferenceVertices, &positions, o_colors, generateUvs ? &uvs : NULL);
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    korl_gfx_draw(&immediate, material, 1);
+    if(materialOutline)
+    {
+        Korl_Math_V2f32* outlinePositions;
+        Korl_Gfx_Drawable immediateOutline = outlineThickness == 0 
+                                             ? korl_gfx_immediateLineStrip2d    (     circumferenceVertices + 1 , &outlinePositions, NULL)
+                                             : korl_gfx_immediateTriangleStrip2d(2 * (circumferenceVertices + 1), &outlinePositions, NULL, NULL);
+        immediateOutline.transform = immediate.transform;
+        const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
+        for(u32 v = 0; v < circumferenceVertices + 1; v++)
+        {
+            const u32             vMod    = v % circumferenceVertices;
+            const f32             radians = KORL_C_CAST(f32, vMod) * radiansPerVertex;
+            const Korl_Math_V2f32 spoke   = korl_math_v2f32_fromRotationZ(1, radians);
+            if(outlineThickness == 0)
+                outlinePositions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
+                                                                             ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
+            else
+            {
+                outlinePositions[2 * v + 0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius +   radius                     * spoke.x  - anchorRatio.x * 2 * radius
+                                                                                     ,radius +   radius                     * spoke.y  - anchorRatio.y * 2 * radius};
+                outlinePositions[2 * v + 1] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + ((radius + outlineThickness) * spoke.x) - anchorRatio.x * 2 * radius
+                                                                                     ,radius + ((radius + outlineThickness) * spoke.y) - anchorRatio.y * 2 * radius};
+            }
+        }
+        korl_gfx_draw(&immediateOutline, materialOutline, 1);
+    }
+}
+korl_internal void korl_gfx_drawCircle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
+{
+    _korl_gfx_drawCircle(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, radius, circumferenceVertices, outlineThickness, material, materialOutline, o_colors);
+}
 korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLines2d(lineCount, o_positions, o_colors);
@@ -440,6 +503,13 @@ korl_internal void korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quat
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLines3d(lineCount, o_positions, o_colors);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    korl_gfx_draw(&immediate, material, 1);
+}
+korl_internal void korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+{
+    korl_assert(vertexCount >= 2);
+    Korl_Gfx_Drawable immediate = korl_gfx_immediateLineStrip2d(vertexCount, o_positions, o_colors);
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
