@@ -1440,6 +1440,10 @@ korl_internal KORL_FUNCTION_korl_gfx_stagingAllocate(korl_gfx_stagingAllocate)
 {
     return korl_vulkan_stagingAllocate(stagingMeta);
 }
+korl_internal KORL_FUNCTION_korl_gfx_stagingReallocate(korl_gfx_stagingReallocate)
+{
+    return korl_vulkan_stagingReallocate(stagingMeta, stagingAllocation);
+}
 korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingAllocation)
 {
     korl_vulkan_drawStagingAllocation(stagingAllocation, stagingMeta);

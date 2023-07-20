@@ -246,19 +246,19 @@ typedef struct _Korl_Vulkan_Buffer
 {
     Korl_Vulkan_DeviceMemory_AllocationHandle allocation;
     // total bytes occupied by this buffer should be contained within the allocation
-    VkDeviceSize bytesUsed;
+    VkDeviceSize                              bytesUsed;
     /** Care must be taken with this value so that it doesn't overflow.  By 
      * incrementing this value each frame, we can know how many frames ago this 
      * buffer was used, and we can use this value to determine whether or not 
      * the GPU can possibly be still using the data contained within it, since 
      * the swap chain size is a small finite number, and WIP frames are 
      * processed in order. */
-    u8 framesSinceLastUsed;
+    u8                                        framesSinceLastUsed;
 } _Korl_Vulkan_Buffer;
 typedef struct _Korl_Vulkan_QueuedFreeDeviceLocalAllocation
 {
     Korl_Vulkan_DeviceMemory_AllocationHandle allocationHandle;
-    u8 framesSinceQueued;// once this # reaches the SurfaceContext's swapChainImagesSize, we know that this device memory _must_ no longer be in use, and so we can free it
+    u8                                        framesSinceQueued;// once this # reaches the SurfaceContext's swapChainImagesSize, we know that this device memory _must_ no longer be in use, and so we can free it
 } _Korl_Vulkan_QueuedFreeDeviceLocalAllocation;
 typedef struct _Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch
 {

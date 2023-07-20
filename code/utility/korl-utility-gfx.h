@@ -42,6 +42,7 @@ korl_internal Korl_Gfx_Drawable  korl_gfx_immediateRectangle(Korl_Math_V2f32 anc
 korl_internal Korl_Gfx_Drawable  korl_gfx_immediateCircle(Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal Korl_Gfx_Drawable  korl_gfx_immediateAxisNormalLines(void);
 korl_internal Korl_Gfx_Drawable  korl_gfx_mesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName);
+korl_internal void               korl_gfx_addLines2d(Korl_Gfx_Drawable* drawableLines, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors);

@@ -359,6 +359,7 @@ typedef struct Korl_Gfx_Drawable
 #define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)
 #define KORL_FUNCTION_korl_gfx_setDrawState(name)                            void                       name(const Korl_Gfx_DrawState* drawState)
 #define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
+#define KORL_FUNCTION_korl_gfx_stagingReallocate(name)                       Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
 #define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(name)                  Korl_Resource_Handle       name(const Korl_Gfx_VertexStagingMeta* vertexStagingMeta)
 #define KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(name)                Korl_Resource_Handle       name(const Korl_Gfx_Material* material)

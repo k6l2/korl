@@ -726,27 +726,27 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
 {
     const u$ stagingBufferArenaBytes = korl_math_megabytes(32);// KORL-ISSUE-000-000-134: vulkan: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
     korl_assert(bytesRequired <= stagingBufferArenaBytes);
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* attempt to find a staging buffer that can hold the vertexData */
     _Korl_Vulkan_Buffer*                   validBuffer     = NULL;
     _Korl_Vulkan_DeviceMemory_Alloctation* validAllocation = NULL;
     for(u$ b = 0; b < arrlenu(surfaceContext->stbDaStagingBuffers); b++)
     {
-        const u$ bufferIndexOffsetFromLastUsed                 = (b + surfaceContext->stagingBufferIndexLastUsed) % arrlenu(surfaceContext->stbDaStagingBuffers);
-        _Korl_Vulkan_Buffer*const                   buffer     = &(surfaceContext->stbDaStagingBuffers[bufferIndexOffsetFromLastUsed]);
-        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryHostVisible, buffer->allocation);
+        const u$                                    bufferIndexOffsetFromLastUsed = (b + surfaceContext->stagingBufferIndexLastUsed) % arrlenu(surfaceContext->stbDaStagingBuffers);
+        _Korl_Vulkan_Buffer*const                   buffer                        = &(surfaceContext->stbDaStagingBuffers[bufferIndexOffsetFromLastUsed]);
+        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation                    = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryHostVisible, buffer->allocation);
         /* if the buffer has enough room, we can just use it */
         const VkDeviceSize alignedBytesUsed = alignmentRequired 
-            ? korl_math_roundUpPowerOf2(buffer->bytesUsed, alignmentRequired) 
-            : buffer->bytesUsed;
+                                              ? korl_math_roundUpPowerOf2(buffer->bytesUsed, alignmentRequired) 
+                                              : buffer->bytesUsed;
         const VkDeviceSize bufferRemainingBytes = alignedBytesUsed >= allocation->bytesUsed 
-            ? 0 
-            : allocation->bytesUsed - alignedBytesUsed;
+                                                  ? 0 
+                                                  : allocation->bytesUsed - alignedBytesUsed;
         if(bufferRemainingBytes >= bytesRequired)
         {
-            validBuffer     = buffer;
-            validAllocation = allocation;
+            validBuffer       = buffer;
+            validAllocation   = allocation;
             buffer->bytesUsed = alignedBytesUsed;
             break;
         }
@@ -754,36 +754,38 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
             we can just reset the buffer and use it */
         if(buffer->framesSinceLastUsed < surfaceContext->swapChainImagesSize)
             continue;
-        #if KORL_DEBUG
-        // korl_log(VERBOSE, "resetting staging buffer [%llu]", bufferIndexOffsetFromLastUsed);
+        #if KORL_DEBUG && 0
+        korl_log(VERBOSE, "resetting staging buffer [%llu]", bufferIndexOffsetFromLastUsed);
         #endif
         buffer->bytesUsed = 0;
-        validBuffer     = buffer;
-        validAllocation = allocation;
+        validBuffer       = buffer;
+        validAllocation   = allocation;
         ///@ASSUMPTION: a reset buffer offset will always satisfy \c alignmentRequired
     }
     /* if we could not find a staging buffer that can hold vertexData, we can 
         just attempt to allocate a new one */
     if(!(validBuffer && validAllocation))
     {
-        #if KORL_DEBUG
-        // korl_log(VERBOSE, "allocating new staging buffer; arrlenu(surfaceContext->stbDaStagingBuffers)==%llu"
-        //                 , arrlenu(surfaceContext->stbDaStagingBuffers));
+        #if KORL_DEBUG && 0
+        korl_log(VERBOSE, "allocating new staging buffer; arrlenu(surfaceContext->stbDaStagingBuffers)==%llu"
+                        , arrlenu(surfaceContext->stbDaStagingBuffers));
         #endif
-        Korl_Vulkan_DeviceMemory_AllocationHandle newBufferAllocationHandle = _korl_vulkan_deviceMemory_allocateBuffer(&surfaceContext->deviceMemoryHostVisible
-                                                                                                                      ,stagingBufferArenaBytes
-                                                                                                                      ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                                                                                                                       | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                                                                                                                       | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-                                                                                                                       | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                                                                                                                       | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                                                                                                                      ,VK_SHARING_MODE_EXCLUSIVE
-                                                                                                                      ,0// 0 => generate new handle automatically
-                                                                                                                      ,&validAllocation);
+        Korl_Vulkan_DeviceMemory_AllocationHandle newBufferAllocationHandle = 
+            _korl_vulkan_deviceMemory_allocateBuffer(&surfaceContext->deviceMemoryHostVisible
+                                                    ,stagingBufferArenaBytes
+                                                    ,  VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                                                     | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                                                     | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+                                                     | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                                                     | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                                     // KORL-ISSUE-000-000-174: vulkan: aggressive staging buffer usage flags; the user should pass actual buffer usage flags or hints when allocating staging buffers, but this will require us to choose a staging VkBuffer based on specific usages as well, so there is some more work required here
+                                                    ,VK_SHARING_MODE_EXCLUSIVE
+                                                    ,0// 0 => generate new handle automatically
+                                                    ,&validAllocation);
         KORL_ZERO_STACK(_Korl_Vulkan_Buffer, newBuffer);
         newBuffer.allocation = newBufferAllocationHandle;
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaStagingBuffers, newBuffer);
-        validBuffer     = &arrlast(surfaceContext->stbDaStagingBuffers);
+        validBuffer = &arrlast(surfaceContext->stbDaStagingBuffers);
         ///@ASSUMPTION: a reset buffer offset will always satisfy \c alignmentRequired
     }
     /* at this point, we should have a valid buffer, and if not we are 
@@ -794,10 +796,56 @@ korl_internal void* _korl_vulkan_getStagingPool(VkDeviceSize bytesRequired, VkDe
     *out_byteOffsetStagingBuffer = validBuffer->bytesUsed;
     *out_bufferStaging           = validAllocation->subType.buffer.vulkanBuffer;
     void*const bufferMappedAddress = _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(&surfaceContext->deviceMemoryHostVisible, validBuffer->allocation);
-    u8*const resultAddress = KORL_C_CAST(u8*, bufferMappedAddress) + validBuffer->bytesUsed;
+    u8*const   resultAddress       = KORL_C_CAST(u8*, bufferMappedAddress) + validBuffer->bytesUsed;
     validBuffer->framesSinceLastUsed = 0;
     validBuffer->bytesUsed          += bytesRequired;
     return resultAddress;
+}
+korl_internal void* _korl_vulkan_resizeStagingPool(VkDeviceSize bytesRequired, VkDeviceSize bytesRequiredOld, VkDeviceSize alignmentRequired, VkBuffer* inOut_bufferStaging, VkDeviceSize* inOut_byteOffsetStagingBuffer)
+{
+    const u$ stagingBufferArenaBytes = korl_math_megabytes(32);// KORL-ISSUE-000-000-134: vulkan: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
+    korl_assert(bytesRequired <= stagingBufferArenaBytes);
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    /* attempt to find the existing staging buffer allocation */
+    _Korl_Vulkan_Buffer*                   validBuffer     = NULL;
+    _Korl_Vulkan_DeviceMemory_Alloctation* validAllocation = NULL;
+    for(u$ b = 0; !validBuffer && b < arrlenu(surfaceContext->stbDaStagingBuffers); b++)
+    {
+        const u$                                    bufferIndexOffsetFromLastUsed = (b + surfaceContext->stagingBufferIndexLastUsed) % arrlenu(surfaceContext->stbDaStagingBuffers);
+        _Korl_Vulkan_Buffer*const                   buffer                        = &(surfaceContext->stbDaStagingBuffers[bufferIndexOffsetFromLastUsed]);
+        _Korl_Vulkan_DeviceMemory_Alloctation*const allocation                    = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryHostVisible, buffer->allocation);
+        if(allocation->subType.buffer.vulkanBuffer == *inOut_bufferStaging)
+        {
+            validBuffer     = buffer;
+            validAllocation = allocation;
+        }
+    }
+    /* if the old buffer wasn't found, or is invalid or w/e, just make a new allocation; 
+        here, we have no choice but to just make a fresh new allocation, since we cannot get the old allocation to copy the old data from; 
+        should this just be an error condition?... 🤔 */
+    if(!validBuffer)
+        return _korl_vulkan_getStagingPool(bytesRequired, alignmentRequired, inOut_bufferStaging, inOut_byteOffsetStagingBuffer);
+    korl_assert(validBuffer->framesSinceLastUsed == 0);// if this fails, the user is attempting to resize an allocation from an already-submitted frame, which should _never_ happen!
+    void*const oldBufferMappedAddress = _korl_vulkan_deviceMemory_allocator_getBufferHostVisibleAddress(&surfaceContext->deviceMemoryHostVisible, validBuffer->allocation);
+    u8*const   oldResultAddress       = KORL_C_CAST(u8*, oldBufferMappedAddress) + validBuffer->bytesUsed - bytesRequiredOld;
+    /* check to see if the old allocation ends at `validBuffer->bytesUsed`; 
+        if not, just make a new allocation */
+    if(*inOut_byteOffsetStagingBuffer + bytesRequiredOld != validBuffer->bytesUsed)
+        goto copyToNewAllocation;
+    /* check to see if the new `bytesRequired` can fit in the staging buffer; 
+        if not, just make a new allocation */
+    if(validBuffer->bytesUsed - bytesRequiredOld + bytesRequired >= validAllocation->bytesUsed)
+        goto copyToNewAllocation;
+    /* if we reach this point, we can just "resize" the original buffer; 
+        update the `validBuffer->bytesUsed` with `bytesRequired` */
+    validBuffer->bytesUsed -= bytesRequiredOld;// revert the bytes used by the old allocation (data remains the same)
+    validBuffer->bytesUsed += bytesRequired;// update bytes used to be the new bytes required
+    return oldResultAddress;
+    copyToNewAllocation:
+        u8*const newResultAddress = _korl_vulkan_getStagingPool(bytesRequired, alignmentRequired, inOut_bufferStaging, inOut_byteOffsetStagingBuffer);
+        korl_memory_copy(newResultAddress, oldResultAddress, KORL_MATH_MIN(bytesRequired, bytesRequiredOld));
+        return newResultAddress;
 }
 korl_internal void* _korl_vulkan_getDescriptorStagingPool(VkDeviceSize descriptorBytes, VkBuffer* out_bufferStaging, VkDeviceSize* out_byteOffsetStagingBuffer)
 {
@@ -1881,7 +1929,8 @@ korl_internal VkDeviceSize _korl_vulkan_vertexStagingMeta_bytes(const Korl_Gfx_V
         case VK_VERTEX_INPUT_RATE_VERTEX:   attributeCount = stagingMeta->vertexCount;   break;
         case VK_VERTEX_INPUT_RATE_INSTANCE: attributeCount = stagingMeta->instanceCount; break;
         }
-        korl_assert(attributeCount);
+        if(!attributeCount)
+            continue;
         const VkDeviceSize attributeVectorBytes = _korl_vulkan_vertexAttribute_vectorBytes(vertexAttributeDescriptor);
         const VkDeviceSize attributeByteStart   = vertexAttributeDescriptor->byteOffsetBuffer;
         const VkDeviceSize attributeByteEnd     = vertexAttributeDescriptor->byteOffsetBuffer + (attributeCount * vertexAttributeDescriptor->byteStride) + attributeVectorBytes;
@@ -1895,6 +1944,13 @@ korl_internal Korl_Gfx_StagingAllocation korl_vulkan_stagingAllocate(const Korl_
     KORL_ZERO_STACK(Korl_Gfx_StagingAllocation, result);
     result.bytes  = _korl_vulkan_vertexStagingMeta_bytes(stagingMeta);
     result.buffer = _korl_vulkan_getStagingPool(result.bytes, /*alignment*/0, KORL_C_CAST(VkBuffer*, &result.deviceBuffer), &result.deviceBufferOffset);
+    return result;
+}
+korl_internal Korl_Gfx_StagingAllocation korl_vulkan_stagingReallocate(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
+{
+    Korl_Gfx_StagingAllocation result = *stagingAllocation;
+    result.bytes  = _korl_vulkan_vertexStagingMeta_bytes(stagingMeta);
+    result.buffer = _korl_vulkan_resizeStagingPool(result.bytes, stagingAllocation->bytes, /*alignment*/0, KORL_C_CAST(VkBuffer*, &result.deviceBuffer), &result.deviceBufferOffset);
     return result;
 }
 korl_internal void _korl_vulkan_flushPipelineState(const Korl_Gfx_VertexStagingMeta* stagingMeta)
