@@ -389,7 +389,7 @@ korl_internal Korl_Gfx_Drawable korl_gfx_immediateCircle(Korl_Math_V2f32 anchorR
         *o_positions = positions;
     return result;
 }
-korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight)
+korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
     /* determine how many glyphs need to be drawn from utf8Text, as well as the 
         AABB size of the text so we can calculate position offset based on anchorRatio */
@@ -448,15 +448,17 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Math_V2f32 anchorRat
                                    ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0 ].byteOffsetBuffer));
         break;
     }
+    if(o_textMetrics)
+        *o_textMetrics = textMetrics;
     return result;
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_immediateUtf8(Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight)
+korl_internal Korl_Gfx_Drawable korl_gfx_immediateUtf8(Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
-    return _korl_gfx_immediateUtf(anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight);
+    return _korl_gfx_immediateUtf(anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight, o_textMetrics);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_immediateUtf16(Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight)
+korl_internal Korl_Gfx_Drawable korl_gfx_immediateUtf16(Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
-    return _korl_gfx_immediateUtf(anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight);
+    return _korl_gfx_immediateUtf(anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight, o_textMetrics);
 }
 korl_internal Korl_Gfx_Drawable korl_gfx_immediateAxisNormalLines(void)
 {
@@ -680,7 +682,7 @@ korl_internal void korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Mat
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_gfx_draw(&immediate, material, 1, NULL);
 }
-korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, bool enableDepthTest)
+korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, bool enableDepthTest, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
     Korl_Gfx_Material materialOverride;// the base color map of the material will always be set to the translucency mask texture containing the baked rasterized glyphs, so we need to override the material
     if(material)
@@ -700,27 +702,27 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
         materialOverride.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(!materialOverride.shaders.resourceHandleShaderFragment)
         materialOverride.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialOverride);
-    Korl_Gfx_Drawable text = _korl_gfx_immediateUtf(anchorRatio, utfText, utfTextEncoding, utfTextSize, utf16FontAssetName, textPixelHeight);
+    Korl_Gfx_Drawable text = _korl_gfx_immediateUtf(anchorRatio, utfText, utfTextEncoding, utfTextSize, utf16FontAssetName, textPixelHeight, o_textMetrics);
     text.transform = korl_math_transform3d_rotateTranslate(versor, position);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     korl_gfx_draw(&text, &materialOverride, 1, &storageBuffers);
 }
-korl_internal void korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+korl_internal void korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
-    _korl_gfx_drawUtf(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, false/* if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway*/);
+    _korl_gfx_drawUtf(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, false/* if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway*/, o_textMetrics);
 }
-korl_internal void korl_gfx_drawUtf83d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+korl_internal void korl_gfx_drawUtf83d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
-    _korl_gfx_drawUtf(position, versor, anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, true);
+    _korl_gfx_drawUtf(position, versor, anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, true, o_textMetrics);
 }
-korl_internal void korl_gfx_drawUtf162d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+korl_internal void korl_gfx_drawUtf162d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
-    _korl_gfx_drawUtf(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, false/* if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway*/);
+    _korl_gfx_drawUtf(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, false/* if the user is drawing 2D geometry, they most likely don't care about depth write/test, but we probably want a way to set this anyway*/, o_textMetrics);
 }
-korl_internal void korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
+korl_internal void korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
-    _korl_gfx_drawUtf(position, versor, anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, true);
+    _korl_gfx_drawUtf(position, versor, anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight, outlineSize, material, materialOutline, true, o_textMetrics);
 }
 korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize)
 {
