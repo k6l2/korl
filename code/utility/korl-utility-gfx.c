@@ -293,7 +293,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediate3d(Korl_Gfx_Material_Primitiv
     result.transform       = korl_math_transform3d_identity();
     result.subType.immediate.primitiveType     = primitiveType;
     result.subType.immediate.materialModeFlags =   KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
-                               | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
+                                                 | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
     u32 byteOffsetBuffer = 0;
     result.subType.immediate.vertexStagingMeta.vertexCount = vertexCount;
     result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
@@ -388,6 +388,75 @@ korl_internal Korl_Gfx_Drawable korl_gfx_immediateCircle(Korl_Math_V2f32 anchorR
     if(o_positions)
         *o_positions = positions;
     return result;
+}
+korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight)
+{
+    /* determine how many glyphs need to be drawn from utf8Text, as well as the 
+        AABB size of the text so we can calculate position offset based on anchorRatio */
+    Korl_Gfx_Font_TextMetrics textMetrics;
+    switch(utfTextEncoding)
+    {
+    case  8: textMetrics = korl_gfx_font_getUtf8Metrics (utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu8 ){.size = utfTextSize, .data = KORL_C_CAST(const u8* , utfText)}); break;
+    case 16: textMetrics = korl_gfx_font_getUtf16Metrics(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}); break;
+    default:
+        textMetrics = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_Font_TextMetrics);
+        korl_log(ERROR, "unsupported UTF encoding: %hhu", utfTextEncoding);
+        break;
+    }
+    /**/
+    KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
+    result.type                            = KORL_GFX_DRAWABLE_TYPE_IMMEDIATE;
+    result.transform                       = korl_math_transform3d_identity();
+    result.subType.immediate.primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES;
+    u32 byteOffsetBuffer = 0;
+    result.subType.immediate.vertexStagingMeta.instanceCount = textMetrics.visibleGlyphCount;
+    result.subType.immediate.vertexStagingMeta.indexCount            = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
+    result.subType.immediate.vertexStagingMeta.indexType             = KORL_GFX_VERTEX_INDEX_TYPE_U16;
+    result.subType.immediate.vertexStagingMeta.indexByteOffsetBuffer = byteOffsetBuffer;
+    byteOffsetBuffer += result.subType.immediate.vertexStagingMeta.indexCount * sizeof(*KORL_GFX_TRI_QUAD_INDICES);
+    result.subType.immediate.vertexStagingMeta.instanceCount = textMetrics.visibleGlyphCount;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
+    byteOffsetBuffer += result.subType.immediate.vertexStagingMeta.instanceCount * result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = byteOffsetBuffer;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride       = sizeof(u32);
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize       = 1;
+    byteOffsetBuffer += result.subType.immediate.vertexStagingMeta.instanceCount * result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride;
+    result.subType.immediate.stagingAllocation = korl_gfx_stagingAllocate(&result.subType.immediate.vertexStagingMeta);
+    /* generate the text vertex data */
+    u16*const indices = KORL_C_CAST(u16*, KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.indexByteOffsetBuffer);
+    korl_memory_copy(indices, KORL_GFX_TRI_QUAD_INDICES, sizeof(KORL_GFX_TRI_QUAD_INDICES));
+    switch(utfTextEncoding)
+    {
+    case  8:
+        korl_gfx_font_generateUtf8(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu8){.size = utfTextSize, .data = KORL_C_CAST(const u8*, utfText)}
+                                  ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
+                                                                          ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
+                                  ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
+                                  ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0 ].byteOffsetBuffer));
+        break;
+    case 16:
+        korl_gfx_font_generateUtf16(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}
+                                   ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
+                                                                           ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
+                                   ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
+                                   ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0 ].byteOffsetBuffer));
+        break;
+    }
+    return result;
+}
+korl_internal Korl_Gfx_Drawable korl_gfx_immediateUtf8(Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight)
+{
+    return _korl_gfx_immediateUtf(anchorRatio, utf8Text.data, 8, utf8Text.size, utf16FontAssetName, textPixelHeight);
+}
+korl_internal Korl_Gfx_Drawable korl_gfx_immediateUtf16(Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight)
+{
+    return _korl_gfx_immediateUtf(anchorRatio, utf16Text.data, 16, utf16Text.size, utf16FontAssetName, textPixelHeight);
 }
 korl_internal Korl_Gfx_Drawable korl_gfx_immediateAxisNormalLines(void)
 {
@@ -622,76 +691,12 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     else
         materialOverride = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
     materialOverride.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND;// _all_ text drawn this way _must_ be translucent
-    /* determine how many glyphs need to be drawn from utf8Text, as well as the 
-        AABB size of the text so we can calculate position offset based on anchorRatio */
-    Korl_Gfx_Font_TextMetrics textMetrics;
-    switch(utfTextEncoding)
-    {
-    case  8: textMetrics = korl_gfx_font_getUtf8Metrics (utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu8 ){.size = utfTextSize, .data = KORL_C_CAST(const u8* , utfText)}); break;
-    case 16: textMetrics = korl_gfx_font_getUtf16Metrics(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}); break;
-    default:
-        textMetrics = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_Font_TextMetrics);
-        korl_log(ERROR, "unsupported UTF encoding: %hhu", utfTextEncoding);
-        break;
-    }
-    /* configure the renderer draw state */
-    const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
-    materialOverride.maps.resourceHandleTextureBase = fontResources.resourceHandleTexture;
-    if(!materialOverride.shaders.resourceHandleShaderVertex)
-        materialOverride.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    if(!materialOverride.shaders.resourceHandleShaderFragment)
-        materialOverride.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialOverride);
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
-    *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_makeM4f32_rotateTranslate(versor, position);
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
-    storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
-    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
-    drawState.pushConstantData = &pushConstantData;
-    drawState.material         = &materialOverride;
-    drawState.storageBuffers   = &storageBuffers;
-    korl_gfx_setDrawState(&drawState);
-    /* allocate staging memory & issue draw command */
-    KORL_ZERO_STACK(Korl_Gfx_VertexStagingMeta, stagingMeta);
-    u32 byteOffsetBuffer = 0;
-    stagingMeta.indexCount            = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
-    stagingMeta.indexType             = KORL_GFX_VERTEX_INDEX_TYPE_U16;
-    stagingMeta.indexByteOffsetBuffer = byteOffsetBuffer;
-    byteOffsetBuffer += stagingMeta.indexCount * sizeof(*KORL_GFX_TRI_QUAD_INDICES);
-    stagingMeta.instanceCount = textMetrics.visibleGlyphCount;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
-    byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = byteOffsetBuffer;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride       = sizeof(u32);
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
-    stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize       = 1;
-    byteOffsetBuffer += stagingMeta.instanceCount * stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride;
-    Korl_Gfx_StagingAllocation stagingAllocation = korl_gfx_stagingAllocate(&stagingMeta);
-    korl_gfx_drawStagingAllocation(&stagingAllocation, &stagingMeta);
-    /* generate the text vertex data */
-    u16*const indices = KORL_C_CAST(u16*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.indexByteOffsetBuffer);
-    korl_memory_copy(indices, KORL_GFX_TRI_QUAD_INDICES, sizeof(KORL_GFX_TRI_QUAD_INDICES));
-    switch(utfTextEncoding)
-    {
-    case  8:
-        korl_gfx_font_generateUtf8(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu8){.size = utfTextSize, .data = KORL_C_CAST(const u8*, utfText)}
-                                  ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
-                                                                          ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
-                                  ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
-                                  ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0    ].byteOffsetBuffer));
-        break;
-    case 16:
-        korl_gfx_font_generateUtf16(utf16FontAssetName, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}
-                                   ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
-                                                                           ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
-                                   ,KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer)
-                                   ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, stagingAllocation.buffer) + stagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0    ].byteOffsetBuffer));
-        break;
-    }
+    if(enableDepthTest)
+        materialOverride.modes.flags |=   KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                        | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
+    Korl_Gfx_Drawable text = _korl_gfx_immediateUtf(anchorRatio, utfText, utfTextEncoding, utfTextSize, utf16FontAssetName, textPixelHeight);
+    text.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    korl_gfx_draw(&text, &materialOverride, 1);
 }
 korl_internal void korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline)
 {

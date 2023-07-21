@@ -40,6 +40,8 @@ korl_internal Korl_Gfx_Drawable  korl_gfx_immediateTriangleFan2d(u32 vertexCount
 korl_internal Korl_Gfx_Drawable  korl_gfx_immediateTriangleStrip2d(u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal Korl_Gfx_Drawable  korl_gfx_immediateRectangle(Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal Korl_Gfx_Drawable  korl_gfx_immediateCircle(Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
+korl_internal Korl_Gfx_Drawable  korl_gfx_immediateUtf8(Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight);
+korl_internal Korl_Gfx_Drawable  korl_gfx_immediateUtf16(Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight);
 korl_internal Korl_Gfx_Drawable  korl_gfx_immediateAxisNormalLines(void);
 korl_internal Korl_Gfx_Drawable  korl_gfx_mesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName);
 korl_internal void               korl_gfx_addLines2d(Korl_Gfx_Drawable* drawableLines, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
