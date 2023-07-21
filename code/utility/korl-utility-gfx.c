@@ -486,12 +486,15 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
 korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
 {
     korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_LOOP[4] = {{0,0}, {1,0}, {1,1}, {0,1}};
-    const bool generateUvs = material && material->maps.resourceHandleTextureBase;
-    Korl_Math_V2f32* positions;
-    Korl_Math_V2f32* uvs       = NULL;
-    Korl_Gfx_Drawable immediate = korl_gfx_immediateRectangle(anchorRatio, size, &positions, o_colors, generateUvs ? &uvs : NULL);
-    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-    korl_gfx_draw(&immediate, material, 1);
+    if(material)
+    {
+        const bool generateUvs = 0 != material->maps.resourceHandleTextureBase;
+        Korl_Math_V2f32* positions;
+        Korl_Math_V2f32* uvs       = NULL;
+        Korl_Gfx_Drawable immediate = korl_gfx_immediateRectangle(anchorRatio, size, &positions, o_colors, generateUvs ? &uvs : NULL);
+        immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+        korl_gfx_draw(&immediate, material, 1);
+    }
     if(materialOutline)
     {
         Korl_Math_V2f32* outlinePositions;
@@ -529,19 +532,22 @@ korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_
 }
 korl_internal void _korl_gfx_drawCircle(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
 {
-    const bool generateUvs = material && material->maps.resourceHandleTextureBase;
-    Korl_Math_V2f32* positions;
-    Korl_Math_V2f32* uvs       = NULL;
-    Korl_Gfx_Drawable immediate = korl_gfx_immediateCircle(anchorRatio, radius, circumferenceVertices, &positions, o_colors, generateUvs ? &uvs : NULL);
-    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-    korl_gfx_draw(&immediate, material, 1);
+    if(material)
+    {
+        const bool generateUvs = 0 != material->maps.resourceHandleTextureBase;
+        Korl_Math_V2f32* positions;
+        Korl_Math_V2f32* uvs       = NULL;
+        Korl_Gfx_Drawable immediate = korl_gfx_immediateCircle(anchorRatio, radius, circumferenceVertices, &positions, o_colors, generateUvs ? &uvs : NULL);
+        immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+        korl_gfx_draw(&immediate, material, 1);
+    }
     if(materialOutline)
     {
         Korl_Math_V2f32* outlinePositions;
         Korl_Gfx_Drawable immediateOutline = outlineThickness == 0 
                                              ? korl_gfx_immediateLineStrip2d    (     circumferenceVertices + 1 , &outlinePositions, NULL)
                                              : korl_gfx_immediateTriangleStrip2d(2 * (circumferenceVertices + 1), &outlinePositions, NULL, NULL);
-        immediateOutline.transform = immediate.transform;
+        immediateOutline.transform = korl_math_transform3d_rotateTranslate(versor, position);
         const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
         for(u32 v = 0; v < circumferenceVertices + 1; v++)
         {
