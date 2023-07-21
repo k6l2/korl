@@ -1367,6 +1367,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_transform3d_m4f32(&context->transform);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.pushConstantData = &pushConstantData;
+    drawState.storageBuffers   = storageBuffers;
     korl_gfx_setDrawState(&drawState);
     switch(context->type)
     {
