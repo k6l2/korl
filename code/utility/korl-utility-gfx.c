@@ -448,6 +448,12 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Math_V2f32 anchorRat
                                    ,KORL_C_CAST(u32*            , KORL_C_CAST(u8*, result.subType.immediate.stagingAllocation.buffer) + result.subType.immediate.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0 ].byteOffsetBuffer));
         break;
     }
+    /* setup text-specific material/draw-state overrides */
+    const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
+    result.subType.immediate.overrides.shaderVertex        = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    result.subType.immediate.overrides.storageBufferVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
+    result.subType.immediate.overrides.materialMapBase     = fontResources.resourceHandleTexture;
+    /**/
     if(o_textMetrics)
         *o_textMetrics = textMetrics;
     return result;
@@ -552,7 +558,7 @@ korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quate
     Korl_Gfx_Drawable immediate = korl_gfx_immediateTriangles3d(korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments) / 3), &positions, NULL);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), generateUvs ? uvs : NULL, sizeof(*uvs));
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
 {
@@ -564,7 +570,7 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
         Korl_Math_V2f32* uvs       = NULL;
         Korl_Gfx_Drawable immediate = korl_gfx_immediateRectangle(anchorRatio, size, &positions, o_colors, generateUvs ? &uvs : NULL);
         immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-        korl_gfx_draw(&immediate, material, 1, NULL);
+        korl_gfx_draw(&immediate, material, 1);
     }
     if(materialOutline)
     {
@@ -590,7 +596,7 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
                 outlinePositions[2 * v + 1] = korl_math_v2f32_add(outlinePositions[2 * v + 0], korl_math_v2f32_multiplyScalar(fromCenterNorms, outlineThickness));
             }
         }
-        korl_gfx_draw(&immediateOutline, materialOutline, 1, NULL);
+        korl_gfx_draw(&immediateOutline, materialOutline, 1);
     }
 }
 korl_internal void korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
@@ -610,7 +616,7 @@ korl_internal void _korl_gfx_drawCircle(Korl_Math_V3f32 position, Korl_Math_Quat
         Korl_Math_V2f32* uvs       = NULL;
         Korl_Gfx_Drawable immediate = korl_gfx_immediateCircle(anchorRatio, radius, circumferenceVertices, &positions, o_colors, generateUvs ? &uvs : NULL);
         immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-        korl_gfx_draw(&immediate, material, 1, NULL);
+        korl_gfx_draw(&immediate, material, 1);
     }
     if(materialOutline)
     {
@@ -636,7 +642,7 @@ korl_internal void _korl_gfx_drawCircle(Korl_Math_V3f32 position, Korl_Math_Quat
                                                                                      ,radius + ((radius + outlineThickness) * spoke.y) - anchorRatio.y * 2 * radius};
             }
         }
-        korl_gfx_draw(&immediateOutline, materialOutline, 1, NULL);
+        korl_gfx_draw(&immediateOutline, materialOutline, 1);
     }
 }
 korl_internal void korl_gfx_drawCircle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
@@ -647,66 +653,55 @@ korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quat
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLines2d(lineCount, o_positions, o_colors);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLines3d(lineCount, o_positions, o_colors);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 2);
     Korl_Gfx_Drawable immediate = korl_gfx_immediateLineStrip2d(vertexCount, o_positions, o_colors);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     Korl_Gfx_Drawable immediate = korl_gfx_immediateTriangles2d(triangleCount, o_positions, o_colors);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 3);
     Korl_Gfx_Drawable immediate = _korl_gfx_immediate2d(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors, NULL);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
     korl_assert(vertexCount >= 3);
     Korl_Gfx_Drawable immediate = _korl_gfx_immediate3d(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-    korl_gfx_draw(&immediate, material, 1, NULL);
+    korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, bool enableDepthTest, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
     Korl_Gfx_Material materialOverride;// the base color map of the material will always be set to the translucency mask texture containing the baked rasterized glyphs, so we need to override the material
     if(material)
-    {
         materialOverride = *material;
-        materialOverride.modes.primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES;
-    }
     else
-        materialOverride = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+        materialOverride = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
     materialOverride.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND;// _all_ text drawn this way _must_ be translucent
     if(enableDepthTest)
         materialOverride.modes.flags |=   KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
                                         | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
-    const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
-    materialOverride.maps.resourceHandleTextureBase = fontResources.resourceHandleTexture;
-    if(!materialOverride.shaders.resourceHandleShaderVertex)
-        materialOverride.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    if(!materialOverride.shaders.resourceHandleShaderFragment)
-        materialOverride.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialOverride);
     Korl_Gfx_Drawable text = _korl_gfx_immediateUtf(anchorRatio, utfText, utfTextEncoding, utfTextSize, utf16FontAssetName, textPixelHeight, o_textMetrics);
     text.transform = korl_math_transform3d_rotateTranslate(versor, position);
-    KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
-    storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
-    korl_gfx_draw(&text, &materialOverride, 1, &storageBuffers);
+    korl_gfx_draw(&text, &materialOverride, 1);
 }
 korl_internal void korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics)
 {
@@ -728,5 +723,5 @@ korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d,
 {
     Korl_Gfx_Drawable mesh = korl_gfx_mesh(resourceHandleScene3d, utf8MeshName);
     mesh.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
-    korl_gfx_draw(&mesh, materials, materialsSize, NULL);
+    korl_gfx_draw(&mesh, materials, materialsSize);
 }

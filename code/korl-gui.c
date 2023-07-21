@@ -1758,9 +1758,9 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                          ,widget->position.y - smallestSize/2.f
                                                                                          ,z});
                 korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z,  KORL_PI32*0.25f, true));
-                korl_gfx_draw(&iconPiece, &material, 1, NULL);
+                korl_gfx_draw(&iconPiece, &material, 1);
                 korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, -KORL_PI32*0.25f, true));
-                korl_gfx_draw(&iconPiece, &material, 1, NULL);
+                korl_gfx_draw(&iconPiece, &material, 1);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
                 usedWidget->transient.aabbContent.min.y -= widget->size.y;
@@ -1773,7 +1773,7 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                          ,widget->position.y - smallestSize/2.f
                                                                                          ,z});
                 korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, widget->subType.button.specialButtonAlternateDisplay ? KORL_PI32/2 : 0, true));
-                korl_gfx_draw(&iconPiece, &material, 1, NULL);
+                korl_gfx_draw(&iconPiece, &material, 1);
                 /* our content AABB is just the widget's assigned size */
                 usedWidget->transient.aabbContent.max.x += widget->size.x;
                 usedWidget->transient.aabbContent.min.y -= widget->size.y;

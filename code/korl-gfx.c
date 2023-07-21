@@ -1367,7 +1367,6 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_transform3d_m4f32(&context->transform);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.pushConstantData = &pushConstantData;
-    drawState.storageBuffers   = storageBuffers;
     korl_gfx_setDrawState(&drawState);
     switch(context->type)
     {
@@ -1383,11 +1382,21 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         }
         else
             materialLocal = korl_gfx_material_defaultUnlit(context->subType.immediate.primitiveType, context->subType.immediate.materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-        if(!materialLocal.shaders.resourceHandleShaderVertex)
+        if(context->subType.immediate.overrides.materialMapBase)
+            materialLocal.maps.resourceHandleTextureBase = context->subType.immediate.overrides.materialMapBase;
+        if(context->subType.immediate.overrides.shaderVertex)
+            materialLocal.shaders.resourceHandleShaderVertex = context->subType.immediate.overrides.shaderVertex;
+        else if(!materialLocal.shaders.resourceHandleShaderVertex)
             materialLocal.shaders.resourceHandleShaderVertex = korl_gfx_getBuiltInShaderVertex(&context->subType.immediate.vertexStagingMeta);
-        if(!materialLocal.shaders.resourceHandleShaderFragment)
+        if(context->subType.immediate.overrides.shaderFragment)
+            materialLocal.shaders.resourceHandleShaderFragment = context->subType.immediate.overrides.shaderFragment;
+        else if(!materialLocal.shaders.resourceHandleShaderFragment)
             materialLocal.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialLocal);
+        KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
+        storageBuffers.resourceHandleVertex = context->subType.immediate.overrides.storageBufferVertex;
         drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
+        if(context->subType.immediate.overrides.storageBufferVertex)
+            drawState.storageBuffers = &storageBuffers;
         drawState.material = &materialLocal;
         korl_vulkan_setDrawState(&drawState);
         korl_gfx_drawStagingAllocation(&context->subType.immediate.stagingAllocation, &context->subType.immediate.vertexStagingMeta);
