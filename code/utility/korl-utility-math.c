@@ -1264,6 +1264,11 @@ korl_internal Korl_Math_V2f32& operator-=(Korl_Math_V2f32& vA, Korl_Math_V2f32 v
     vA.y -= vB.y;
     return vA;
 }
+korl_internal Korl_Math_V2f32& operator*=(Korl_Math_V2f32& vA, Korl_Math_V2f32 vB)
+{
+    vA = korl_math_v2f32_multiply(vA, vB);
+    return vA;
+}
 korl_internal Korl_Math_V3f32 operator+(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
     return korl_math_v3f32_add(vA, vB);
@@ -1416,6 +1421,11 @@ korl_internal Korl_Math_V3f32 operator*(Korl_Math_Quaternion q, Korl_Math_V3f32 
 korl_internal Korl_Math_Quaternion operator*(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
     return korl_math_quaternion_multiply(qA, qB);
+}
+korl_internal Korl_Math_V2f32& operator*=(Korl_Math_V2f32& v, Korl_Math_Quaternion q)
+{
+    v = korl_math_quaternion_transformV2f32(q, v, false);
+    return v;
 }
 korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& v, Korl_Math_Quaternion q)
 {
