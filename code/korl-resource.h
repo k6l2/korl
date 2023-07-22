@@ -70,10 +70,7 @@
 #include "utility/korl-utility-memory.h"
 typedef struct Korl_Audio_Format Korl_Audio_Format;
 korl_internal void                                           korl_resource_initialize(void);
-korl_internal Korl_Resource_Handle                           korl_resource_createBuffer(const struct Korl_Vulkan_CreateInfoBuffer* createInfo);
 korl_internal Korl_Resource_Handle                           korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
-korl_internal void                                           korl_resource_destroy(Korl_Resource_Handle handle);
-korl_internal void                                           korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset);
 korl_internal u$                                             korl_resource_getByteSize(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize);
 korl_internal void                                           korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount);

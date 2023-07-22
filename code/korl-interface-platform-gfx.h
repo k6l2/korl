@@ -314,6 +314,7 @@ typedef struct Korl_Gfx_StagingAllocation
 } Korl_Gfx_StagingAllocation;
 typedef enum Korl_Gfx_Drawable_Type
     {KORL_GFX_DRAWABLE_TYPE_IMMEDIATE = 1
+    // ,KORL_GFX_DRAWABLE_TYPE_BUFFERED//@TODO
     ,KORL_GFX_DRAWABLE_TYPE_MESH
 } Korl_Gfx_Drawable_Type;
 typedef struct Korl_Gfx_Drawable
@@ -324,7 +325,7 @@ typedef struct Korl_Gfx_Drawable
     {
         struct
         {
-            Korl_Gfx_Material_PrimitiveType primitiveType;    //@TODO: _technically_ this should be in the `overrides` struct
+            Korl_Gfx_Material_PrimitiveType primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
             Korl_Gfx_Material_Mode_Flags    materialModeFlags;//@TODO: _technically_ this should be in the `overrides` struct
             Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
             Korl_Gfx_StagingAllocation      stagingAllocation;
@@ -336,6 +337,11 @@ typedef struct Korl_Gfx_Drawable
                 Korl_Resource_Handle materialMapBase;
             } overrides;
         } immediate;
+        struct
+        {
+            Korl_Gfx_VertexStagingMeta vertexStagingMeta;
+            Korl_Resource_Handle       resourceHandleBuffer;
+        } buffered;
         struct
         {
             Korl_Resource_Handle resourceHandleScene3d;

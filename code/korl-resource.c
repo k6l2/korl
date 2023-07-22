@@ -50,7 +50,7 @@ typedef struct _Korl_Resource
                 struct
                 {
                     Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
-                    Korl_Vulkan_CreateInfoBuffer              createInfo;
+                    Korl_Resource_CreateInfoBuffer            createInfo;
                 } buffer;
                 struct
                 {
@@ -325,7 +325,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                     usage of the buffer is going to be until we iterate over all the MeshPrimitives, so we have to defer buffer 
                     creation after accumulating this data, and while we're at it, we might as well accumulate the total bytes 
                     required so that we can just do a single device buffer allocation (no reallocs) */
-                KORL_ZERO_STACK(Korl_Vulkan_CreateInfoBuffer, createInfoBuffer);
+                KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBuffer);
                 u$ meshPrimitiveOffset = 0;// the offset in the meshPrimitiveDrawModes array in which the current mesh's meshPrimitives begin
                 for(u32 m = 0; m < gltf->meshes.size; m++)
                 {
@@ -352,7 +352,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             meshPrimitiveVertexMeta->indexCount            = accessor->count;
                             meshPrimitiveVertexMeta->indexByteOffsetBuffer = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
                             createInfoBuffer.bytes += bufferView->byteLength;
-                            createInfoBuffer.usageFlags |= KORL_VULKAN_BUFFER_USAGE_FLAG_INDEX;
+                            createInfoBuffer.usageFlags |= KORL_RESOURCE_BUFFER_USAGE_FLAG_INDEX;
                         }
                         /* transcode vertex attribute meta data */
                         struct
@@ -403,7 +403,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize = 4 * 4; break;
                             }
                             createInfoBuffer.bytes += bufferView->byteLength;
-                            createInfoBuffer.usageFlags |= KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX;
+                            createInfoBuffer.usageFlags |= KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX;
                         }
                         /* transcode mesh primitive draw mode */
                         *meshPrimitiveMaterial = korl_gfx_material_defaultLit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID
@@ -529,7 +529,7 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
     /**/
     return handle;
 }
-korl_internal Korl_Resource_Handle korl_resource_createBuffer(const Korl_Vulkan_CreateInfoBuffer* createInfo)
+korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_create)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_assert(context->nextUniqueId <= _KORL_RESOURCE_UNIQUE_ID_MAX);// assuming this ever fires under normal circumstances (_highly_ unlikely), we will need to implement a system to recycle old unused UIDs or something
@@ -583,15 +583,15 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     resource->subType.graphics.subType.image.createInfo                   = *createInfo;
     return handle;
 }
-korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
+korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    if(!handle)
+    if(!resourceHandle)
         return;// silently do nothing for NULL handles
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceHandle);
     /* destroy the transcoded multimedia asset */
     switch(unpackedHandle.multimediaType)
     {
@@ -626,9 +626,9 @@ korl_internal void korl_resource_destroy(Korl_Resource_Handle handle)
     else
         korl_free(context->allocatorHandleTransient, resource->data);
     /* remove the resource from the database */
-    mchmdel(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
+    mchmdel(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandle);
 }
-korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
+korl_internal KORL_FUNCTION_korl_resource_update(korl_resource_update)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
@@ -643,6 +643,23 @@ korl_internal void korl_resource_update(Korl_Resource_Handle handle, const void*
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
+}
+korl_internal KORL_FUNCTION_korl_resource_getUpdateBuffer(korl_resource_getUpdateBuffer)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
+    korl_assert(hashMapIndex >= 0);
+    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
+    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
+    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
+    korl_assert(byteOffset < resource->dataBytes);
+    *io_bytesRequested_bytesAvailable = KORL_MATH_MIN(resource->dataBytes - byteOffset, *io_bytesRequested_bytesAvailable);
+    if(!resource->dirty)
+    {
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
+        resource->dirty = true;
+    }
+    return KORL_C_CAST(u8*, resource->data) + byteOffset;
 }
 korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
 {

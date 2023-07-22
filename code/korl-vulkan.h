@@ -51,16 +51,6 @@ typedef struct Korl_Vulkan_CreateInfoTexture
 {
     Korl_Math_V2u32 size;
 } Korl_Vulkan_CreateInfoTexture;
-enum Korl_Vulkan_BufferUsageFlags
-    {KORL_VULKAN_BUFFER_USAGE_FLAG_INDEX   = 1 << 0
-    ,KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX  = 1 << 1
-    ,KORL_VULKAN_BUFFER_USAGE_FLAG_STORAGE = 1 << 2
-};
-typedef struct Korl_Vulkan_CreateInfoBuffer
-{
-    u$  bytes;
-    u32 usageFlags;// see: Korl_Vulkan_BufferUsageFlags
-} Korl_Vulkan_CreateInfoBuffer;
 typedef struct Korl_Vulkan_CreateInfoShader
 {
     const void* data;
@@ -81,7 +71,7 @@ korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingReall
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Vulkan_CreateInfoBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Resource_CreateInfoBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Gfx_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);

@@ -2331,17 +2331,17 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
                                                     ,requiredHandle
                                                     ,NULL/*out_allocation*/);
 }
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Vulkan_CreateInfoBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Resource_CreateInfoBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* determine the buffer usage flags based on the buffer's attribute descriptors */
     VkBufferUsageFlags bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT
                                         | VK_BUFFER_USAGE_TRANSFER_SRC_BIT/* in order allow the user to "resize" a buffer, we need this to allow us to transfer data from the old buffer to the new buffer*/;
-    if(createInfo->usageFlags & KORL_VULKAN_BUFFER_USAGE_FLAG_INDEX)
+    if(createInfo->usageFlags & KORL_RESOURCE_BUFFER_USAGE_FLAG_INDEX)
         bufferUsageFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    if(createInfo->usageFlags & KORL_VULKAN_BUFFER_USAGE_FLAG_VERTEX)
+    if(createInfo->usageFlags & KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX)
         bufferUsageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    if(createInfo->usageFlags & KORL_VULKAN_BUFFER_USAGE_FLAG_STORAGE)
+    if(createInfo->usageFlags & KORL_RESOURCE_BUFFER_USAGE_FLAG_STORAGE)
         bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     /* create the buffer */
     _Korl_Vulkan_DeviceMemory_Alloctation* deviceMemoryAllocation = NULL;
