@@ -35,7 +35,7 @@ korl_internal void               korl_gfx_drawable_destroy(Korl_Gfx_Drawable* co
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLines2d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLines3d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLineStrip2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
-korl_internal Korl_Gfx_Drawable  korl_gfx_drawableTriangles2d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal Korl_Gfx_Drawable  korl_gfx_drawableTriangles2d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableTriangles3d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableTriangleFan2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableTriangleStrip2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
@@ -53,7 +53,7 @@ korl_internal void               korl_gfx_drawCircle2d(Korl_Math_V2f32 position,
 korl_internal void               korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
-korl_internal void               korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal void               korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void               korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics);
@@ -63,3 +63,4 @@ korl_internal void               korl_gfx_drawUtf163d(Korl_Math_V3f32 position, 
 korl_internal void               korl_gfx_drawAabb3(Korl_Math_Aabb3f32 aabb, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize);
 korl_internal void               korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale);
+korl_internal void               korl_gfx_setRectangleUvAabb(Korl_Math_V2f32* uvs, const Korl_Math_Aabb2f32 aabb);

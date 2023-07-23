@@ -2,6 +2,7 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
 #include "korl-interface-platform.h"
+korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
 /** used for Korl_Gfx_StagingAllocation reallocation procedures, as we need to 
  * offset the buffers of each vertex attribute within the allocation once 
  * reallocation occurs */
@@ -423,9 +424,9 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableLineStrip2d(Korl_Gfx_Drawable_R
     korl_assert(vertexCount >= 2);
     return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINE_STRIP, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount, o_positions, o_colors, NULL, NULL, NULL);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles2d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles2d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
-    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 3 * triangleCount, o_positions, o_colors, NULL, NULL, NULL);
+    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 3 * triangleCount, o_positions, o_colors, o_uvs, NULL, NULL);
 }
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles3d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
@@ -444,15 +445,14 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleStrip2d(Korl_Gfx_Drawab
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableRectangle(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     Korl_Math_V2f32* positions;
-    korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
-    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, korl_arraySize(QUAD_POSITION_NORMALS_TRI_STRIP), &positions, o_colors, o_uvs, NULL, NULL);
-    for(u32 v = 0; v < korl_arraySize(QUAD_POSITION_NORMALS_TRI_STRIP); v++)
+    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP), &positions, o_colors, o_uvs, NULL, NULL);
+    for(u32 v = 0; v < korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP); v++)
     {
-        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
-                                                              ,QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
+        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
+                                                              ,_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
         if(o_uvs)
-            (*o_uvs)[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      QUAD_POSITION_NORMALS_TRI_STRIP[v].x
-                                                                 ,1.f - QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
+            (*o_uvs)[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x
+                                                                 ,1.f - _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
     }
     if(o_positions)
         *o_positions = positions;
@@ -758,9 +758,9 @@ korl_internal void korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
-korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, triangleCount, o_positions, o_colors);
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, triangleCount, o_positions, o_colors, o_uvs);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
@@ -821,4 +821,10 @@ korl_internal void korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_M
     drawable.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
     Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
     korl_gfx_draw(&drawable, &material, 1);
+}
+korl_internal void korl_gfx_setRectangleUvAabb(Korl_Math_V2f32* uvs, const Korl_Math_Aabb2f32 aabb)
+{
+    const Korl_Math_V2f32 aabbSize = korl_math_aabb2f32_size(aabb);
+    for(u8 i = 0; i < korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP); i++)
+        uvs[i] = korl_math_v2f32_add(aabb.min, korl_math_v2f32_multiply(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[i], aabbSize));
 }
