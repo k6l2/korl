@@ -669,7 +669,7 @@ korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     return resource->dataBytes;
 }
-korl_internal void korl_resource_resize(Korl_Resource_Handle handle, u$ newByteSize)
+korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);

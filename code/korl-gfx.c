@@ -1370,36 +1370,44 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     korl_gfx_setDrawState(&drawState);
     switch(context->type)
     {
-    case KORL_GFX_DRAWABLE_TYPE_IMMEDIATE:{
+    case KORL_GFX_DRAWABLE_TYPE_RUNTIME:{
         /* configure the renderer draw state */
         Korl_Gfx_Material materialLocal;
         if(materials)
         {
             korl_assert(materialsSize == 1);
             materialLocal                      = materials[0];
-            materialLocal.modes.primitiveType  = context->subType.immediate.primitiveType;
-            materialLocal.modes.flags         |= context->subType.immediate.materialModeFlags;
+            materialLocal.modes.primitiveType  = context->subType.runtime.overrides.primitiveType;
+            materialLocal.modes.flags         |= context->subType.runtime.overrides.materialModeFlags;
         }
         else
-            materialLocal = korl_gfx_material_defaultUnlit(context->subType.immediate.primitiveType, context->subType.immediate.materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
-        if(context->subType.immediate.overrides.materialMapBase)
-            materialLocal.maps.resourceHandleTextureBase = context->subType.immediate.overrides.materialMapBase;
-        if(context->subType.immediate.overrides.shaderVertex)
-            materialLocal.shaders.resourceHandleShaderVertex = context->subType.immediate.overrides.shaderVertex;
+            materialLocal = korl_gfx_material_defaultUnlit(context->subType.runtime.overrides.primitiveType, context->subType.runtime.overrides.materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+        if(context->subType.runtime.overrides.materialMapBase)
+            materialLocal.maps.resourceHandleTextureBase = context->subType.runtime.overrides.materialMapBase;
+        if(context->subType.runtime.overrides.shaderVertex)
+            materialLocal.shaders.resourceHandleShaderVertex = context->subType.runtime.overrides.shaderVertex;
         else if(!materialLocal.shaders.resourceHandleShaderVertex)
-            materialLocal.shaders.resourceHandleShaderVertex = korl_gfx_getBuiltInShaderVertex(&context->subType.immediate.vertexStagingMeta);
-        if(context->subType.immediate.overrides.shaderFragment)
-            materialLocal.shaders.resourceHandleShaderFragment = context->subType.immediate.overrides.shaderFragment;
+            materialLocal.shaders.resourceHandleShaderVertex = korl_gfx_getBuiltInShaderVertex(&context->subType.runtime.vertexStagingMeta);
+        if(context->subType.runtime.overrides.shaderFragment)
+            materialLocal.shaders.resourceHandleShaderFragment = context->subType.runtime.overrides.shaderFragment;
         else if(!materialLocal.shaders.resourceHandleShaderFragment)
             materialLocal.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&materialLocal);
         KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
-        storageBuffers.resourceHandleVertex = context->subType.immediate.overrides.storageBufferVertex;
+        storageBuffers.resourceHandleVertex = context->subType.runtime.overrides.storageBufferVertex;
         drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
-        if(context->subType.immediate.overrides.storageBufferVertex)
+        if(context->subType.runtime.overrides.storageBufferVertex)
             drawState.storageBuffers = &storageBuffers;
         drawState.material = &materialLocal;
         korl_vulkan_setDrawState(&drawState);
-        korl_gfx_drawStagingAllocation(&context->subType.immediate.stagingAllocation, &context->subType.immediate.vertexStagingMeta);
+        switch(context->subType.runtime.type)
+        {
+        case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
+            korl_gfx_drawStagingAllocation(&context->subType.runtime.subType.singleFrame.stagingAllocation, &context->subType.runtime.vertexStagingMeta);
+            break;
+        case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:{
+            korl_gfx_drawVertexBuffer(context->subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &context->subType.runtime.vertexStagingMeta);
+            break;}
+        }
         break;}
     case KORL_GFX_DRAWABLE_TYPE_MESH:{
         const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
@@ -1457,6 +1465,11 @@ korl_internal KORL_FUNCTION_korl_gfx_stagingReallocate(korl_gfx_stagingReallocat
 korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingAllocation)
 {
     korl_vulkan_drawStagingAllocation(stagingAllocation, stagingMeta);
+}
+korl_internal KORL_FUNCTION_korl_gfx_drawVertexBuffer(korl_gfx_drawVertexBuffer)
+{
+    const Korl_Vulkan_DeviceMemory_AllocationHandle bufferDeviceMemoryAllocationHandle = korl_resource_getVulkanDeviceMemoryAllocationHandle(resourceHandleBuffer);
+    korl_vulkan_drawVertexBuffer(bufferDeviceMemoryAllocationHandle, bufferByteOffset, stagingMeta);
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)
 {

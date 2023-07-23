@@ -312,11 +312,22 @@ typedef struct Korl_Gfx_StagingAllocation
     Korl_Gfx_DeviceBufferHandle deviceBuffer;
     u$                          deviceBufferOffset;
 } Korl_Gfx_StagingAllocation;
+/** For \c KORL_GFX_DRAWABLE_TYPE_RUNTIME , do _not_ store pointers to update 
+ * buffers obtained from any of the \c korl_gfx_* APIs, as they are invalidated 
+ * either at end-of-frame, _or_ the next call to obtain an update buffer (such 
+ * as a resize call). */
 typedef enum Korl_Gfx_Drawable_Type
-    {KORL_GFX_DRAWABLE_TYPE_IMMEDIATE = 1
-    // ,KORL_GFX_DRAWABLE_TYPE_BUFFERED//@TODO
+    {KORL_GFX_DRAWABLE_TYPE_RUNTIME = 1
     ,KORL_GFX_DRAWABLE_TYPE_MESH
 } Korl_Gfx_Drawable_Type;
+/** For \c KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME , the user _must_ call 
+ * \c korl_gfx_drawable_destroy when they are done using it; otherwise, memory 
+ * will be leaked from \c korl-resource and/or whatever renderer we are using, 
+ * such as \c korl-vulkan . */
+typedef enum Korl_Gfx_Drawable_Runtime_Type
+    {KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME
+    ,KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME
+} Korl_Gfx_Drawable_Runtime_Type;
 typedef struct Korl_Gfx_Drawable
 {
     Korl_Gfx_Drawable_Type type;
@@ -325,23 +336,30 @@ typedef struct Korl_Gfx_Drawable
     {
         struct
         {
-            Korl_Gfx_Material_PrimitiveType primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
-            Korl_Gfx_Material_Mode_Flags    materialModeFlags;//@TODO: _technically_ this should be in the `overrides` struct
-            Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
-            Korl_Gfx_StagingAllocation      stagingAllocation;
+            Korl_Gfx_VertexStagingMeta     vertexStagingMeta;
+            Korl_Gfx_Drawable_Runtime_Type type;
+            union
+            {
+                struct
+                {
+                    Korl_Gfx_StagingAllocation stagingAllocation;
+                } singleFrame;
+                struct
+                {
+                    Korl_Resource_Handle resourceHandleBuffer;
+                } multiFrame;
+            } subType;
             struct
             {
-                Korl_Resource_Handle shaderVertex;
-                Korl_Resource_Handle shaderFragment;
-                Korl_Resource_Handle storageBufferVertex;
-                Korl_Resource_Handle materialMapBase;
+                Korl_Gfx_Material_PrimitiveType primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
+                /* all members below here are effectively _optional_ */
+                Korl_Gfx_Material_Mode_Flags materialModeFlags;
+                Korl_Resource_Handle         shaderVertex;
+                Korl_Resource_Handle         shaderFragment;
+                Korl_Resource_Handle         storageBufferVertex;
+                Korl_Resource_Handle         materialMapBase;
             } overrides;
-        } immediate;
-        struct
-        {
-            Korl_Gfx_VertexStagingMeta vertexStagingMeta;
-            Korl_Resource_Handle       resourceHandleBuffer;
-        } buffered;
+        } runtime;
         struct
         {
             Korl_Resource_Handle resourceHandleScene3d;
@@ -374,5 +392,6 @@ typedef struct Korl_Gfx_Drawable
 #define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_stagingReallocate(name)                       Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
 #define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta)
+#define KORL_FUNCTION_korl_gfx_drawVertexBuffer(name)                        void                       name(Korl_Resource_Handle resourceHandleBuffer, u$ bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(name)                  Korl_Resource_Handle       name(const Korl_Gfx_VertexStagingMeta* vertexStagingMeta)
 #define KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(name)                Korl_Resource_Handle       name(const Korl_Gfx_Material* material)

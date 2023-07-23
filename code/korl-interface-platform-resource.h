@@ -13,6 +13,7 @@ typedef struct Korl_Resource_CreateInfoBuffer
 } Korl_Resource_CreateInfoBuffer;
 #define KORL_FUNCTION_korl_resource_fromFile(name)        Korl_Resource_Handle name(acu16 fileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 #define KORL_FUNCTION_korl_resource_buffer_create(name)   Korl_Resource_Handle name(const struct Korl_Resource_CreateInfoBuffer* createInfo)
+#define KORL_FUNCTION_korl_resource_resize(name)          void                 name(Korl_Resource_Handle handle, u$ newByteSize)
 #define KORL_FUNCTION_korl_resource_destroy(name)         void                 name(Korl_Resource_Handle resourceHandle)
 #define KORL_FUNCTION_korl_resource_update(name)          void                 name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 #define KORL_FUNCTION_korl_resource_getUpdateBuffer(name) void*                name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
