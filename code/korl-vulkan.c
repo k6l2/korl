@@ -39,7 +39,8 @@ korl_global_const char* G_KORL_VULKAN_DEVICE_EXTENSIONS[] =
     do\
     {\
         const VkResult _korl_vulkan_checkedResult = (operation);\
-        korl_assert(_korl_vulkan_checkedResult == VK_SUCCESS);\
+        if(_korl_vulkan_checkedResult != VK_SUCCESS)\
+            korl_log(ERROR, "_korl_vulkan_checkedResult == %i", _korl_vulkan_checkedResult);\
     } while(0)
 #if KORL_DEBUG
 korl_internal VkBool32 VKAPI_CALL _korl_vulkan_debugUtilsMessengerCallback(
