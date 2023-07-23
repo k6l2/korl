@@ -62,3 +62,4 @@ korl_internal void               korl_gfx_drawUtf162d(Korl_Math_V2f32 position, 
 korl_internal void               korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Font_TextMetrics* o_textMetrics);
 korl_internal void               korl_gfx_drawAabb3(Korl_Math_Aabb3f32 aabb, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize);
+korl_internal void               korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale);

@@ -815,3 +815,10 @@ korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d,
     mesh.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
     korl_gfx_draw(&mesh, materials, materialsSize);
 }
+korl_internal void korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale)
+{
+    Korl_Gfx_Drawable drawable = korl_gfx_drawableAxisNormalLines(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME);
+    drawable.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
+    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    korl_gfx_draw(&drawable, &material, 1);
+}
