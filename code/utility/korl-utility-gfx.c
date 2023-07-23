@@ -271,7 +271,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Ru
     result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
     result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = attributeInputRate;
     result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
-    byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+    byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
     if(o_colors)
     {
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer = byteOffsetBuffer;
@@ -279,7 +279,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Ru
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].inputRate        = attributeInputRate;
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].vectorSize       = 4;
-        byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride;
+        byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride;
     }
     if(o_uvs)
     {
@@ -288,14 +288,14 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Ru
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = attributeInputRate;
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
-        byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
+        byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
     }
     if(o_extra0)
     {
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0]                  = *extra0_attributeDescriptor;
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = byteOffsetBuffer;
         result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = attributeInputRate;
-        byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride;
+        byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride;
     }
     void* updateBuffer = NULL;
     switch(type)
