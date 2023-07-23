@@ -256,8 +256,8 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Ru
     u32 byteOffsetBuffer = 0;
     switch(attributeInputRate)
     {
-    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX  : result.subType.runtime.vertexStagingMeta.vertexCount   = attributeCount;
-    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE: result.subType.runtime.vertexStagingMeta.instanceCount = attributeCount;
+    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX  : result.subType.runtime.vertexStagingMeta.vertexCount   = attributeCount; break;
+    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE: result.subType.runtime.vertexStagingMeta.instanceCount = attributeCount; break;
     }
     if(o_indices)
     {
