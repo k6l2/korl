@@ -615,6 +615,7 @@ korl_internal void korl_gfx_addLines2d(Korl_Gfx_Drawable* drawableLines, u32 lin
         NOTE: we do memory moves (instead of copies) to adjust the old attribute 
               buffers because it's highly likely that they will self-intersect 
               with their new ranges after stagingReallocate */
+    //@TODO: PERFORMANCE(MAJOR): if the user is doing even a _moderate_ amount of dynamic geometry reallocations, the following memory_moves will absolutely _tank_ performance; we need to design APIs that allow the user to create & append to RUNTIME Drawables that have _interleaved_ vertex data in order for such an `_add*` API to be actually viable
     Korl_Math_V2f32*const   old_positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, updateBuffer) + drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
     Korl_Gfx_Color4u8*const old_colors    = drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
                                             ? KORL_C_CAST(Korl_Gfx_Color4u8*, KORL_C_CAST(u8*, updateBuffer) + drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer)
