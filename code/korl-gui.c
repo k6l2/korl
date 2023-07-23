@@ -1592,8 +1592,9 @@ korl_internal void korl_gui_frameEnd(void)
                 childWidgetCursorOffset = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
                 korl_time_probeStart(title_bar);
                 {/* draw the window title bar */
+                    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
                     Korl_Gfx_Color4u8* colors;
-                    korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.1f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY}, 0, NULL, NULL, &colors, NULL);
+                    korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.1f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY}, 0, &material, NULL, &colors, NULL);
                     colors[0] = colors[2] = titleBarColor;// conditionally highlight the title bar color
                     colors[1] = colors[3] = context->style.colorTitleBar;// keep the bottom two vertices the default title bar color
                 }
@@ -1735,7 +1736,7 @@ korl_internal void korl_gui_frameEnd(void)
                 break;}
             }
             const Korl_Gfx_Material materialButton = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(colorButton));
-            korl_gfx_drawRectangle2d(widget->position, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialButton, NULL, NULL, NULL);
+            korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialButton, NULL, NULL, NULL);
             switch(widget->subType.button.display)
             {
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_TEXT:{
@@ -1756,7 +1757,7 @@ korl_internal void korl_gui_frameEnd(void)
                 Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize}, NULL, NULL, NULL);
                 korl_math_transform3d_setPosition(&iconPiece.transform, (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
                                                                                          ,widget->position.y - smallestSize/2.f
-                                                                                         ,z});
+                                                                                         ,z + 0.5f});
                 korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z,  KORL_PI32*0.25f, true));
                 korl_gfx_draw(&iconPiece, &material, 1);
                 korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, -KORL_PI32*0.25f, true));
@@ -1771,7 +1772,7 @@ korl_internal void korl_gui_frameEnd(void)
                 Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize}, NULL, NULL, NULL);
                 korl_math_transform3d_setPosition(&iconPiece.transform, (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
                                                                                          ,widget->position.y - smallestSize/2.f
-                                                                                         ,z});
+                                                                                         ,z + 0.5f});
                 korl_math_transform3d_setVersor(&iconPiece.transform, korl_math_quaternion_fromAxisRadians(KORL_MATH_V3F32_Z, widget->subType.button.specialButtonAlternateDisplay ? KORL_PI32/2 : 0, true));
                 korl_gfx_draw(&iconPiece, &material, 1);
                 /* our content AABB is just the widget's assigned size */
