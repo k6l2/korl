@@ -337,10 +337,12 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Ru
 korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable3d(Korl_Gfx_Drawable_Runtime_Type type, Korl_Gfx_Material_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
-    result.type                                    = KORL_GFX_DRAWABLE_TYPE_RUNTIME;
-    result.subType.runtime.type                    = type;
-    result.transform                               = korl_math_transform3d_identity();
-    result.subType.runtime.overrides.primitiveType = primitiveType;
+    result.type                                        = KORL_GFX_DRAWABLE_TYPE_RUNTIME;
+    result.subType.runtime.type                        = type;
+    result.transform                                   = korl_math_transform3d_identity();
+    result.subType.runtime.overrides.primitiveType     = primitiveType;
+    result.subType.runtime.overrides.materialModeFlags =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST
+                                                        | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
     u32 byteOffsetBuffer = 0;
     result.subType.runtime.vertexStagingMeta.vertexCount = vertexCount;
     result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
