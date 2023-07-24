@@ -1754,7 +1754,9 @@ korl_internal void korl_gui_frameEnd(void)
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
                 const f32               smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 const Korl_Gfx_Material material     = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
-                Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize}, NULL, NULL, NULL);
+                KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoIconPiece);
+                createInfoIconPiece.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+                Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(&createInfoIconPiece, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize});
                 korl_math_transform3d_setPosition(&iconPiece.transform, (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
                                                                                          ,widget->position.y - smallestSize/2.f
                                                                                          ,z + 0.5f});
@@ -1769,7 +1771,9 @@ korl_internal void korl_gui_frameEnd(void)
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
                 const f32                smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
                 const Korl_Gfx_Material  material     = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
-                Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize}, NULL, NULL, NULL);
+                KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoIconPiece);
+                createInfoIconPiece.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+                Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(&createInfoIconPiece, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize});
                 korl_math_transform3d_setPosition(&iconPiece.transform, (Korl_Math_V3f32){widget->position.x + smallestSize/2.f
                                                                                          ,widget->position.y - smallestSize/2.f
                                                                                          ,z + 0.5f});

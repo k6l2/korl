@@ -31,6 +31,7 @@ This time, we are going to construct a Vulkan API to just give the user direct a
 [x] KORL-ISSUE-000-000-149: vulkan: HACK; uvAabb fragment shader push constant is hacky & very implementation-specific; I would much rather allow the user to be able to configure their own push constants or something
 [x] KORL-ISSUE-000-000-147: vulkan: delete all these shader modules; move the shader management task out to korl-gfx
 [x] finish @TODOs
+[ ] refactor korl-utility-gfx to use new Korl_Gfx_CreateInfoRuntimeDrawable & korl_gfx_drawable_attribute* API concepts
 [ ] ensure usability/versatility of the new rendering APIs by integrating this branch with a more fleshed out project, such as the `farm` project
 [x] add KORL_GFX_DRAWABLE_TYPE_BUFFERED type; 
     [x] expose korl-resource APIs for buffer create/destroy/update; 

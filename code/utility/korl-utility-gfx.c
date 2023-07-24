@@ -366,159 +366,6 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable(const Korl_Gfx_CreateI
     }
     return result;
 }
-korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Runtime_Type type, Korl_Gfx_Material_PrimitiveType primitiveType, u32 indexCount, u16** o_indices, Korl_Gfx_VertexAttributeInputRate attributeInputRate, u32 attributeCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs, const Korl_Gfx_VertexAttributeDescriptor* extra0_attributeDescriptor, void** o_extra0)
-{
-    KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
-    result.type                                    = KORL_GFX_DRAWABLE_TYPE_RUNTIME;
-    result.subType.runtime.type                    = type;
-    result.transform                               = korl_math_transform3d_identity();
-    result.subType.runtime.overrides.primitiveType = primitiveType;
-    u32 byteOffsetBuffer = 0;
-    switch(attributeInputRate)
-    {
-    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX  : result.subType.runtime.vertexStagingMeta.vertexCount   = attributeCount; break;
-    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE: result.subType.runtime.vertexStagingMeta.instanceCount = attributeCount; break;
-    }
-    if(o_indices)
-    {
-        result.subType.runtime.vertexStagingMeta.indexCount            = indexCount;
-        result.subType.runtime.vertexStagingMeta.indexType             = KORL_GFX_VERTEX_INDEX_TYPE_U16;
-        result.subType.runtime.vertexStagingMeta.indexByteOffsetBuffer = byteOffsetBuffer;
-        byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.indexCount * sizeof(**o_indices);
-    }
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V2f32);
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = attributeInputRate;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
-    byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
-    if(o_colors)
-    {
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer = byteOffsetBuffer;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride       = sizeof(Korl_Gfx_Color4u8);
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].inputRate        = attributeInputRate;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].vectorSize       = 4;
-        byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride;
-    }
-    if(o_uvs)
-    {
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = attributeInputRate;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
-        byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
-    }
-    if(o_extra0)
-    {
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0]                  = *extra0_attributeDescriptor;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = byteOffsetBuffer;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = attributeInputRate;
-        byteOffsetBuffer += attributeCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride;
-    }
-    void* updateBuffer = NULL;
-    switch(type)
-    {
-    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
-        result.subType.runtime.subType.singleFrame.stagingAllocation = korl_gfx_stagingAllocate(&result.subType.runtime.vertexStagingMeta);
-        updateBuffer = result.subType.runtime.subType.singleFrame.stagingAllocation.buffer;
-        break;
-    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
-        KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBuffer);
-        createInfoBuffer.bytes      = byteOffsetBuffer;
-        createInfoBuffer.usageFlags = KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX;
-        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_buffer_create(&createInfoBuffer);
-        u$ bytesRequested_bytesAvailable = KORL_U$_MAX;
-        updateBuffer = korl_resource_getUpdateBuffer(result.subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &bytesRequested_bytesAvailable);
-        korl_assert(bytesRequested_bytesAvailable == createInfoBuffer.bytes);
-        break;
-    }
-    if(o_indices)
-        *o_indices = KORL_C_CAST(u16*
-                                ,KORL_C_CAST(u8*, updateBuffer) 
-                                 + result.subType.runtime.vertexStagingMeta.indexByteOffsetBuffer);
-    *o_positions = KORL_C_CAST(Korl_Math_V2f32*
-                              ,KORL_C_CAST(u8*, updateBuffer) 
-                               + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    if(o_colors)
-        *o_colors = KORL_C_CAST(Korl_Gfx_Color4u8*
-                               ,KORL_C_CAST(u8*, updateBuffer) 
-                                + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
-    if(o_uvs)
-        *o_uvs = KORL_C_CAST(Korl_Math_V2f32*
-                            ,KORL_C_CAST(u8*, updateBuffer) 
-                             + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer);
-    if(o_extra0)
-        *o_extra0 = KORL_C_CAST(u8*, updateBuffer) 
-                    + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer;
-    return result;
-}
-korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable3d(Korl_Gfx_Drawable_Runtime_Type type, Korl_Gfx_Material_PrimitiveType primitiveType, u32 vertexCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
-{
-    KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
-    result.type                                        = KORL_GFX_DRAWABLE_TYPE_RUNTIME;
-    result.subType.runtime.type                        = type;
-    result.transform                                   = korl_math_transform3d_identity();
-    result.subType.runtime.overrides.primitiveType     = primitiveType;
-    result.subType.runtime.overrides.materialModeFlags =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST
-                                                        | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
-    u32 byteOffsetBuffer = 0;
-    result.subType.runtime.vertexStagingMeta.vertexCount = vertexCount;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = byteOffsetBuffer;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(Korl_Math_V3f32);
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-    result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 3;
-    byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
-    if(o_colors)
-    {
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer = byteOffsetBuffer;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride       = sizeof(Korl_Gfx_Color4u8);
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].vectorSize       = 4;
-        byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteStride;
-    }
-    if(o_uvs)
-    {
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer = byteOffsetBuffer;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride       = sizeof(Korl_Math_V2f32);
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].vectorSize       = 2;
-        byteOffsetBuffer += result.subType.runtime.vertexStagingMeta.vertexCount * result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteStride;
-    }
-    void* updateBuffer = NULL;
-    switch(type)
-    {
-    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
-        result.subType.runtime.subType.singleFrame.stagingAllocation = korl_gfx_stagingAllocate(&result.subType.runtime.vertexStagingMeta);
-        updateBuffer = result.subType.runtime.subType.singleFrame.stagingAllocation.buffer;
-        break;
-    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
-        KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBuffer);
-        createInfoBuffer.bytes      = byteOffsetBuffer;
-        createInfoBuffer.usageFlags = KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX;
-        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_buffer_create(&createInfoBuffer);
-        u$ bytesRequested_bytesAvailable = KORL_U$_MAX;
-        updateBuffer = korl_resource_getUpdateBuffer(result.subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &bytesRequested_bytesAvailable);
-        korl_assert(bytesRequested_bytesAvailable == createInfoBuffer.bytes);
-        break;
-    }
-    *o_positions = KORL_C_CAST(Korl_Math_V3f32*
-                              ,KORL_C_CAST(u8*, updateBuffer) 
-                               + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    if(o_colors)
-        *o_colors = KORL_C_CAST(Korl_Gfx_Color4u8*
-                               ,KORL_C_CAST(u8*, updateBuffer) 
-                                + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
-    if(o_uvs)
-        *o_uvs = KORL_C_CAST(Korl_Math_V2f32*
-                            ,KORL_C_CAST(u8*, updateBuffer) 
-                             + result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV].byteOffsetBuffer);
-    return result;
-}
 korl_internal void korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context)
 {
     if(context->type == KORL_GFX_DRAWABLE_TYPE_RUNTIME)
@@ -530,75 +377,70 @@ korl_internal void korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context)
         }
     }
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines2d(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount)
 {
     return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 2 * lineCount);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines3d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
-{
-    return _korl_gfx_runtimeDrawable3d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES, 2 * lineCount, o_positions, o_colors, NULL);
-}
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableLineStrip2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableLineStrip(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount)
 {
     korl_assert(vertexCount >= 2);
-    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINE_STRIP, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount, o_positions, o_colors, NULL, NULL, NULL);
+    return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINE_STRIP, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles2d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 triangleCount)
 {
-    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 3 * triangleCount, o_positions, o_colors, o_uvs, NULL, NULL);
+    return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 3 * triangleCount);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles3d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
-{
-    return _korl_gfx_runtimeDrawable3d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 3 * triangleCount, o_positions, o_colors, NULL);
-}
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleFan2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleFan(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount)
 {
     korl_assert(vertexCount >= 3);
-    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount, o_positions, o_colors, NULL, NULL, NULL);
+    return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleStrip2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleStrip(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount)
 {
     korl_assert(vertexCount >= 3);
-    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount, o_positions, o_colors, o_uvs, NULL, NULL);
+    return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount);
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableRectangle(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableRectangle(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size)
 {
-    Korl_Math_V2f32* positions;
-    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP), &positions, o_colors, o_uvs, NULL, NULL);
+    Korl_Gfx_CreateInfoRuntimeDrawable createInfoOverride = *createInfo;
+    createInfoOverride.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable(&createInfoOverride, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP));
+    Korl_Math_V2f32*const positions = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    Korl_Math_V2f32*const uvs       = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      , 0);
     for(u32 v = 0; v < korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP); v++)
     {
         positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
                                                               ,_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
-        if(o_uvs)
-            (*o_uvs)[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x
-                                                                 ,1.f - _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
+        if(uvs)
+            uvs[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x
+                                                            ,1.f - _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
     }
-    if(o_positions)
-        *o_positions = positions;
     return result;
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableCircle(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableCircle(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices)
 {
     korl_assert(circumferenceVertices >= 3);
-    Korl_Math_V2f32* positions;
     const u32 vertexCount = 1/*center vertex*/ + circumferenceVertices + 1/*repeat circumference start vertex*/;
-    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount, &positions, o_colors, o_uvs, NULL, NULL);
+    Korl_Gfx_CreateInfoRuntimeDrawable createInfoOverride = *createInfo;
+    createInfoOverride.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable(&createInfoOverride, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount);
+    Korl_Math_V2f32*const   positions = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    Korl_Math_V2f32*const   uvs       = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      , 0);
+    Korl_Gfx_Color4u8*const colors    = korl_gfx_drawable_attributeV4u8 (&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR   , 0);
     positions[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius - anchorRatio.x * 2 * radius
                                                           ,radius - anchorRatio.y * 2 * radius};
-    if(o_uvs)
-        (*o_uvs)[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
+    if(uvs)
+        uvs[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
     const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
     for(u32 v = 0; v < circumferenceVertices + 1; v++)
     {
         const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(1, KORL_C_CAST(f32, v % circumferenceVertices) * radiansPerVertex);
         positions[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
                                                                   ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
-        if(o_uvs)
-            (*o_uvs)[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
+        if(uvs)
+            uvs[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
                                                                      ,1.f - (0.5f + 0.5f * spoke.y)};
     }
-    if(o_positions)
-        *o_positions = positions;
     return result;
 }
 korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, Korl_Gfx_Font_TextMetrics* o_textMetrics)
@@ -618,17 +460,19 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
     if(o_textMetrics)
         *o_textMetrics = textMetrics;
     /* create the Drawable & its backing memory allocations */
-    /* we don't use `korl_gfx_drawableTriangles2d` because that API doesn't support vertex indices; 
-        `korl_gfx_drawableTriangles2d` doesn't support vertex indices because 
+    /* we don't use `korl_gfx_drawableTriangles` because that API doesn't support vertex indices; 
+        `korl_gfx_drawableTriangles` doesn't support vertex indices because 
         that requires knowledge of triangle topology, which I'm not quite sure 
         how to translate into a general API (yet at least) */
-    u16*             indices;
-    Korl_Math_V2f32* glyphInstancePositions;
-    u32*             glyphIndices;
-    const Korl_Gfx_VertexAttributeDescriptor glyphIndicesAttributeDescriptor = {.byteStride  = sizeof(*glyphIndices)
-                                                                               ,.elementType = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32
-                                                                               ,.vectorSize  = 1};
-    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, korl_arraySize(KORL_GFX_TRI_QUAD_INDICES), &indices, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE, textMetrics.visibleGlyphCount, &glyphInstancePositions, NULL, NULL, &glyphIndicesAttributeDescriptor, KORL_C_CAST(void**, &glyphIndices));
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type            = type;
+    createInfoDrawable.vertexIndexType = KORL_GFX_VERTEX_INDEX_TYPE_U16;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0 ] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_U32;
+    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable(&createInfoDrawable, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, korl_arraySize(KORL_GFX_TRI_QUAD_INDICES), KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE, textMetrics.visibleGlyphCount);
+    u16*const             indices                = korl_gfx_drawable_indexU16      (&result, 0);
+    Korl_Math_V2f32*const glyphInstancePositions = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    u32*const             glyphIndices           = korl_gfx_drawable_attributeU32  (&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0, 0);
     /* generate the text vertex data */
     korl_memory_copy(indices, KORL_GFX_TRI_QUAD_INDICES, sizeof(KORL_GFX_TRI_QUAD_INDICES));
     switch(utfTextEncoding)
@@ -664,9 +508,15 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableUtf16(Korl_Gfx_Drawable_Runtime
 }
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableAxisNormalLines(Korl_Gfx_Drawable_Runtime_Type type)
 {
-    Korl_Math_V3f32*   positions = NULL;
-    Korl_Gfx_Color4u8* colors    = NULL;
-    Korl_Gfx_Drawable result     = korl_gfx_drawableLines3d(type, 3, &positions, &colors);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = type;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR   ] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable result = korl_gfx_drawableLines(&createInfoDrawable, 3);
+    result.subType.runtime.overrides.materialModeFlags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE 
+                                                        | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST;
+    Korl_Math_V3f32*const   positions = korl_gfx_drawable_attributeV3f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    Korl_Gfx_Color4u8*const colors    = korl_gfx_drawable_attributeV4u8 (&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR   , 0);
     positions[0] = KORL_MATH_V3F32_ZERO; positions[1] = KORL_MATH_V3F32_X;
     positions[2] = KORL_MATH_V3F32_ZERO; positions[3] = KORL_MATH_V3F32_Y;
     positions[4] = KORL_MATH_V3F32_ZERO; positions[5] = KORL_MATH_V3F32_Z;
@@ -704,7 +554,24 @@ korl_internal void korl_gfx_drawable_addInterleavedVertices(Korl_Gfx_Drawable*co
         break;
     }
 }
-korl_internal void* _korl_gfx_drawable_attribute(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+korl_internal void* _korl_gfx_drawable_index(const Korl_Gfx_Drawable*const context, u32 indicesIndex)
+{
+    void* updateBuffer = NULL;
+    switch(context->subType.runtime.type)
+    {
+    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
+        updateBuffer = context->subType.runtime.subType.singleFrame.stagingAllocation.buffer;
+        break;
+    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
+        u$ bytesRequested_bytesAvailable = KORL_U$_MAX;
+        updateBuffer = korl_resource_getUpdateBuffer(context->subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &bytesRequested_bytesAvailable);
+        break;
+    }
+    return KORL_C_CAST(void*, KORL_C_CAST(u8*, updateBuffer) 
+                              + context->subType.runtime.vertexStagingMeta.indexByteOffsetBuffer
+                              + _korl_gfx_vertexIndexType_byteStride(context->subType.runtime.vertexStagingMeta.indexType) * indicesIndex);
+}
+korl_internal void* _korl_gfx_drawable_attribute(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
 {
     void* updateBuffer = NULL;
     switch(context->subType.runtime.type)
@@ -721,47 +588,96 @@ korl_internal void* _korl_gfx_drawable_attribute(Korl_Gfx_Drawable*const context
                               + context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].byteOffsetBuffer
                               + context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].byteStride * attributeIndex);
 }
-korl_internal Korl_Math_V2f32* korl_gfx_drawable_attributeV2f32(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+korl_internal u16* korl_gfx_drawable_indexU16(const Korl_Gfx_Drawable*const context, u32 indicesIndex)
 {
+    if(context->subType.runtime.vertexStagingMeta.indexType == KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
+        return NULL;
+    korl_assert(context->subType.runtime.vertexStagingMeta.indexType == KORL_GFX_VERTEX_INDEX_TYPE_U16);
+    return KORL_C_CAST(u16*, _korl_gfx_drawable_index(context, indicesIndex));
+}
+korl_internal u32* korl_gfx_drawable_attributeU32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+{
+    if(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+        return NULL;
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32);
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize  == 1);
+    return KORL_C_CAST(u32*, _korl_gfx_drawable_attribute(context, binding, attributeIndex));
+}
+korl_internal Korl_Math_V2f32* korl_gfx_drawable_attributeV2f32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+{
+    if(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+        return NULL;
     korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32);
     korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize  == 2);
     return KORL_C_CAST(Korl_Math_V2f32*, _korl_gfx_drawable_attribute(context, binding, attributeIndex));
 }
-korl_internal Korl_Math_V4u8* korl_gfx_drawable_attributeV4u8(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+korl_internal Korl_Math_V3f32* korl_gfx_drawable_attributeV3f32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
 {
+    if(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+        return NULL;
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32);
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize  == 3);
+    return KORL_C_CAST(Korl_Math_V3f32*, _korl_gfx_drawable_attribute(context, binding, attributeIndex));
+}
+korl_internal Korl_Math_V4u8* korl_gfx_drawable_attributeV4u8(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+{
+    if(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+        return NULL;
     korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8);
     korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize  == 4);
     return KORL_C_CAST(Korl_Math_V4u8*, _korl_gfx_drawable_attribute(context, binding, attributeIndex));
 }
-korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material)
 {
     const bool generateUvs = material && material->maps.resourceHandleTextureBase;
-    Korl_Math_V3f32* positions;
-    Korl_Math_V2f32* uvs       = NULL;
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles3d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments) / 3), &positions, NULL);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(generateUvs)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles(&createInfoDrawable, korl_checkCast_u$_to_u32(korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments) / 3));
+    immediate.subType.runtime.overrides.materialModeFlags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE 
+                                                           | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST;
+    Korl_Math_V3f32*const positions = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    Korl_Math_V2f32*const uvs       = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      , 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
-    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), generateUvs ? uvs : NULL, sizeof(*uvs));
+    korl_math_generateMeshSphere(radius, latitudeSegments, longitudeSegments, positions, sizeof(*positions), uvs, sizeof(*uvs));
     korl_gfx_draw(&immediate, material, 1);
+    return immediate;
 }
-korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags materialModeFlagOverrides, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_LOOP[4] = {{0,0}, {1,0}, {1,1}, {0,1}};
     if(material)
     {
         const bool generateUvs = o_uvs || 0 != material->maps.resourceHandleTextureBase;
-        Korl_Math_V2f32*  positions;
-        Korl_Math_V2f32*  uvs       = NULL;
-        Korl_Gfx_Drawable immediate = korl_gfx_drawableRectangle(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, anchorRatio, size, &positions, o_colors, generateUvs ? (o_uvs ? o_uvs : &uvs) : NULL);
-        immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+        KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+        createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+        if(generateUvs)
+            createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+        if(o_colors)
+            createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+        Korl_Gfx_Drawable immediate = korl_gfx_drawableRectangle(&createInfoDrawable, anchorRatio, size);
+        if(o_uvs)
+            *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
+        if(o_colors)
+            *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
+        immediate.transform                                   = korl_math_transform3d_rotateTranslate(versor, position);
+        immediate.subType.runtime.overrides.materialModeFlags |= materialModeFlagOverrides;
         korl_gfx_draw(&immediate, material, 1);
     }
     if(materialOutline)
     {
-        Korl_Math_V2f32* outlinePositions;
+        KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+        createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
         Korl_Gfx_Drawable immediateOutline = outlineThickness == 0 
-                                             ? korl_gfx_drawableLineStrip2d    (KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME,      korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1 , &outlinePositions, NULL)
-                                             : korl_gfx_drawableTriangleStrip2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, 2 * (korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1), &outlinePositions, NULL, NULL);
-        immediateOutline.transform = korl_math_transform3d_rotateTranslate(versor, position);
+                                             ? korl_gfx_drawableLineStrip    (&createInfoDrawable,      korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1 )
+                                             : korl_gfx_drawableTriangleStrip(&createInfoDrawable, 2 * (korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1));
+        Korl_Math_V2f32*const outlinePositions = korl_gfx_drawable_attributeV2f32(&immediateOutline, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+        immediateOutline.transform                                   = korl_math_transform3d_rotateTranslate(versor, position);
+        immediateOutline.subType.runtime.overrides.materialModeFlags |= materialModeFlagOverrides;
         const Korl_Math_V2f32 centerOfMass = korl_math_v2f32_subtract(korl_math_v2f32_multiplyScalar(size, 0.5f), korl_math_v2f32_multiply(anchorRatio, size));
         for(u32 v = 0; v < korl_arraySize(QUAD_POSITION_NORMALS_LOOP) + 1; v++)
         {
@@ -782,32 +698,46 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Math_V3f32 position, Korl_Math_Q
         korl_gfx_draw(&immediateOutline, materialOutline, 1);
     }
 }
-korl_internal void korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal void korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* materialInner, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_innerColors, Korl_Math_V2f32** o_innerUvs)
 {
-    _korl_gfx_drawRectangle(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, size, outlineThickness, material, materialOutline, o_colors, o_uvs);
+    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAGS_NONE, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, o_innerColors, o_innerUvs);
 }
-korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* materialInner, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_innerColors, Korl_Math_V2f32** o_innerUvs)
 {
-    _korl_gfx_drawRectangle(position, versor, anchorRatio, size, outlineThickness, material, materialOutline, o_colors, o_uvs);
+    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE, position, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, o_innerColors, o_innerUvs);
 }
-korl_internal void _korl_gfx_drawCircle(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
+korl_internal void _korl_gfx_drawCircle(Korl_Gfx_Material_Mode_Flags materialModeFlagOverrides, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
 {
     if(material)
     {
         const bool generateUvs = 0 != material->maps.resourceHandleTextureBase;
-        Korl_Math_V2f32* positions;
-        Korl_Math_V2f32* uvs       = NULL;
-        Korl_Gfx_Drawable immediate = korl_gfx_drawableCircle(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, anchorRatio, radius, circumferenceVertices, &positions, o_colors, generateUvs ? &uvs : NULL);
-        immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+        KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+        createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+        if(generateUvs)
+            createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+        if(o_colors)
+            createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+        Korl_Gfx_Drawable immediate = korl_gfx_drawableCircle(&createInfoDrawable, anchorRatio, radius, circumferenceVertices);
+        // if(o_uvs)
+        //     *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
+        if(o_colors)
+            *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
+        immediate.transform                                   = korl_math_transform3d_rotateTranslate(versor, position);
+        immediate.subType.runtime.overrides.materialModeFlags |= materialModeFlagOverrides;
         korl_gfx_draw(&immediate, material, 1);
     }
     if(materialOutline)
     {
-        Korl_Math_V2f32* outlinePositions;
+        KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+        createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
         Korl_Gfx_Drawable immediateOutline = outlineThickness == 0 
-                                             ? korl_gfx_drawableLineStrip2d    (KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME,      circumferenceVertices + 1 , &outlinePositions, NULL)
-                                             : korl_gfx_drawableTriangleStrip2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, 2 * (circumferenceVertices + 1), &outlinePositions, NULL, NULL);
-        immediateOutline.transform = korl_math_transform3d_rotateTranslate(versor, position);
+                                             ? korl_gfx_drawableLineStrip    (&createInfoDrawable,      circumferenceVertices + 1 )
+                                             : korl_gfx_drawableTriangleStrip(&createInfoDrawable, 2 * (circumferenceVertices + 1));
+        Korl_Math_V2f32*const outlinePositions = korl_gfx_drawable_attributeV2f32(&immediateOutline, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+        immediateOutline.transform                                   = korl_math_transform3d_rotateTranslate(versor, position);
+        immediateOutline.subType.runtime.overrides.materialModeFlags |= materialModeFlagOverrides;
         const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
         for(u32 v = 0; v < circumferenceVertices + 1; v++)
         {
@@ -828,9 +758,9 @@ korl_internal void _korl_gfx_drawCircle(Korl_Math_V3f32 position, Korl_Math_Quat
         korl_gfx_draw(&immediateOutline, materialOutline, 1);
     }
 }
-korl_internal void korl_gfx_drawCircle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
+korl_internal void korl_gfx_drawCircle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* materialInner, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_innerColors)
 {
-    _korl_gfx_drawCircle(KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, radius, circumferenceVertices, outlineThickness, material, materialOutline, o_colors);
+    _korl_gfx_drawCircle(KORL_GFX_MATERIAL_MODE_FLAGS_NONE, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, radius, circumferenceVertices, outlineThickness, materialInner, materialOutline, o_innerColors);
 }
 korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
@@ -839,7 +769,7 @@ korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quat
     createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
     if(o_colors)
         createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableLines2d(&createInfoDrawable, lineCount);
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableLines(&createInfoDrawable, lineCount);
     *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
     if(o_colors)
         *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
@@ -848,35 +778,78 @@ korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quat
 }
 korl_internal void korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableLines3d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, lineCount, o_positions, o_colors);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableLines(&createInfoDrawable, lineCount);
+    *o_positions = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    immediate.subType.runtime.overrides.materialModeFlags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                           | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
-    korl_assert(vertexCount >= 2);
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableLineStrip2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, vertexCount, o_positions, o_colors);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableLineStrip(&createInfoDrawable, vertexCount);
+    *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, triangleCount, o_positions, o_colors, o_uvs);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles(&createInfoDrawable, triangleCount);
+    *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
+    if(o_uvs)
+        *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
-    korl_assert(vertexCount >= 3);
-    Korl_Gfx_Drawable immediate = _korl_gfx_runtimeDrawable2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount, o_positions, o_colors, NULL, NULL, NULL);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangleFan(&createInfoDrawable, vertexCount);
+    *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
-    korl_assert(vertexCount >= 3);
-    Korl_Gfx_Drawable immediate = _korl_gfx_runtimeDrawable3d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN, vertexCount, o_positions, o_colors, NULL);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangleFan(&createInfoDrawable, vertexCount);
+    *o_positions = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    immediate.subType.runtime.overrides.materialModeFlags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                           | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, const void* utfText, const u8 utfTextEncoding, u$ utfTextSize, acu16 utf16FontAssetName, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, bool enableDepthTest, Korl_Gfx_Font_TextMetrics* o_textMetrics)
