@@ -336,8 +336,9 @@ typedef struct Korl_Gfx_Drawable
     {
         struct
         {
-            Korl_Gfx_VertexStagingMeta     vertexStagingMeta;
             Korl_Gfx_Drawable_Runtime_Type type;
+            Korl_Gfx_VertexStagingMeta     vertexStagingMeta;
+            bool                           interleavedAttributes;
             union
             {
                 struct
@@ -353,11 +354,11 @@ typedef struct Korl_Gfx_Drawable
             {
                 Korl_Gfx_Material_PrimitiveType primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
                 /* all members below here are effectively _optional_ */
-                Korl_Gfx_Material_Mode_Flags materialModeFlags;
-                Korl_Resource_Handle         shaderVertex;
-                Korl_Resource_Handle         shaderFragment;
-                Korl_Resource_Handle         storageBufferVertex;
-                Korl_Resource_Handle         materialMapBase;
+                Korl_Gfx_Material_Mode_Flags    materialModeFlags;
+                Korl_Resource_Handle            shaderVertex;
+                Korl_Resource_Handle            shaderFragment;
+                Korl_Resource_Handle            storageBufferVertex;
+                Korl_Resource_Handle            materialMapBase;
             } overrides;
         } runtime;
         struct

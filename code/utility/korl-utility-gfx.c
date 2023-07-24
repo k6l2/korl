@@ -247,6 +247,125 @@ korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const conte
         positions[2 * (3 * i + 2) + 1] = cameraWorldCornersFar[i];
     }
 }
+korl_internal u32 _korl_gfx_vertexIndexType_byteStride(Korl_Gfx_VertexIndexType indexType)
+{
+    switch(indexType)
+    {
+    case KORL_GFX_VERTEX_INDEX_TYPE_INVALID: return 0;
+    case KORL_GFX_VERTEX_INDEX_TYPE_U16    : return sizeof(u16);
+    case KORL_GFX_VERTEX_INDEX_TYPE_U32    : return sizeof(u32);
+    }
+    korl_log(ERROR, "invalid indexType: %i", indexType);
+    return 0;
+}
+korl_internal u32 _korl_gfx_attributeDatatype_byteStride(Korl_Gfx_RuntimeDrawableAttributeDatatype attributeDatatype)
+{
+    switch(attributeDatatype)
+    {
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_INVALID: return 0;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_U32    : return sizeof(u32);
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32  : return sizeof(Korl_Math_V2f32);
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32  : return sizeof(Korl_Math_V3f32);
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8   : return sizeof(Korl_Math_V4u8);
+    }
+    korl_log(ERROR, "invalid attributeDatatype: %i", attributeDatatype);
+    return 0;
+}
+korl_internal Korl_Gfx_VertexAttributeElementType _korl_gfx_attributeDatatype_elementType(Korl_Gfx_RuntimeDrawableAttributeDatatype attributeDatatype)
+{
+    switch(attributeDatatype)
+    {
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_INVALID: return KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_U32    : return KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32  : return KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32  : return KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8   : return KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;
+    }
+    korl_log(ERROR, "invalid attributeDatatype: %i", attributeDatatype);
+    return KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID;
+}
+korl_internal u8 _korl_gfx_attributeDatatype_vectorSize(Korl_Gfx_RuntimeDrawableAttributeDatatype attributeDatatype)
+{
+    switch(attributeDatatype)
+    {
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_INVALID: return 0;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_U32    : return 1;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32  : return 2;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32  : return 3;
+    case KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8   : return 4;
+    }
+    korl_log(ERROR, "invalid attributeDatatype: %i", attributeDatatype);
+    return 0;
+}
+korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, Korl_Gfx_Material_PrimitiveType primitiveType, u32 indexCount, Korl_Gfx_VertexAttributeInputRate attributeInputRate, u32 attributeCount)
+{
+    KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
+    result.type                                    = KORL_GFX_DRAWABLE_TYPE_RUNTIME;
+    result.subType.runtime.type                    = createInfo->type;
+    result.subType.runtime.interleavedAttributes   = createInfo->interleavedAttributes;
+    result.transform                               = korl_math_transform3d_identity();
+    result.subType.runtime.overrides.primitiveType = primitiveType;
+    if(createInfo->vertexIndexType != KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
+    {
+        result.subType.runtime.vertexStagingMeta.indexType  = createInfo->vertexIndexType;
+        result.subType.runtime.vertexStagingMeta.indexCount = indexCount;
+    }
+    switch(attributeInputRate)
+    {
+    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX  : result.subType.runtime.vertexStagingMeta.vertexCount   = attributeCount; break;
+    case KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE: result.subType.runtime.vertexStagingMeta.instanceCount = attributeCount; break;
+    }
+    u32 byteOffsetBuffer = 0;
+    if(createInfo->vertexIndexType != KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
+    {
+        result.subType.runtime.vertexStagingMeta.indexCount            = indexCount;
+        result.subType.runtime.vertexStagingMeta.indexType             = createInfo->vertexIndexType;
+        result.subType.runtime.vertexStagingMeta.indexByteOffsetBuffer = byteOffsetBuffer;
+        byteOffsetBuffer += indexCount * _korl_gfx_vertexIndexType_byteStride(createInfo->vertexIndexType);
+    }
+    u32 interleavedByteStride = 0;
+    for(u32 a = 0; a < KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; a++)
+    {
+        if(createInfo->attributeDatatypes[a] == KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_INVALID)
+            continue;
+        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[a].byteOffsetBuffer = byteOffsetBuffer;
+        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[a].elementType      = _korl_gfx_attributeDatatype_elementType(createInfo->attributeDatatypes[a]);
+        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[a].inputRate        = attributeInputRate;
+        result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[a].vectorSize       = _korl_gfx_attributeDatatype_vectorSize(createInfo->attributeDatatypes[a]);
+        if(createInfo->interleavedAttributes)
+        {
+            interleavedByteStride += _korl_gfx_attributeDatatype_byteStride(createInfo->attributeDatatypes[a]);
+            byteOffsetBuffer      += _korl_gfx_attributeDatatype_byteStride(createInfo->attributeDatatypes[a]);
+        }
+        else
+        {
+            result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[a].byteStride = _korl_gfx_attributeDatatype_byteStride(createInfo->attributeDatatypes[a]);
+            byteOffsetBuffer += attributeCount * _korl_gfx_attributeDatatype_byteStride(createInfo->attributeDatatypes[a]);
+        }
+    }
+    if(createInfo->interleavedAttributes)
+        // we don't know what value to give attribute byteStrides until we've looped over all possible attributes, 
+        //  so for interleaved vertex attributes we need to loop over all the attributes a second time & assign the uniform stride
+        for(u32 a = 0; a < KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; a++)
+        {
+            if(createInfo->attributeDatatypes[a] == KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_INVALID)
+                continue;
+            result.subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[a].byteStride = interleavedByteStride;
+        }
+    switch(createInfo->type)
+    {
+    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
+        result.subType.runtime.subType.singleFrame.stagingAllocation = korl_gfx_stagingAllocate(&result.subType.runtime.vertexStagingMeta);
+        break;
+    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
+        KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBuffer);
+        createInfoBuffer.bytes      = createInfo->interleavedAttributes ? attributeCount * interleavedByteStride : byteOffsetBuffer;
+        createInfoBuffer.usageFlags = KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX;
+        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_buffer_create(&createInfoBuffer);
+        break;
+    }
+    return result;
+}
 korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable2d(Korl_Gfx_Drawable_Runtime_Type type, Korl_Gfx_Material_PrimitiveType primitiveType, u32 indexCount, u16** o_indices, Korl_Gfx_VertexAttributeInputRate attributeInputRate, u32 attributeCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs, const Korl_Gfx_VertexAttributeDescriptor* extra0_attributeDescriptor, void** o_extra0)
 {
     KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
@@ -411,9 +530,9 @@ korl_internal void korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context)
         }
     }
 }
-korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines2d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines2d(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount)
 {
-    return _korl_gfx_runtimeDrawable2d(type, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES, 0, NULL, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 2 * lineCount, o_positions, o_colors, NULL, NULL, NULL);
+    return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 2 * lineCount);
 }
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines3d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
@@ -568,78 +687,51 @@ korl_internal Korl_Gfx_Drawable korl_gfx_mesh(Korl_Resource_Handle resourceHandl
     result.subType.mesh.rawUtf8Scene3dMeshNameSize                = korl_checkCast_u$_to_u8(utf8MeshName.size);
     return result;
 }
-korl_internal void korl_gfx_addLines2d(Korl_Gfx_Drawable* drawableLines, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+korl_internal void korl_gfx_drawable_addInterleavedVertices(Korl_Gfx_Drawable*const context, u32 vertexCount)
 {
-    korl_assert(drawableLines->type == KORL_GFX_DRAWABLE_TYPE_RUNTIME);
-    korl_assert(drawableLines->subType.runtime.overrides.primitiveType == KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES);
-    Korl_Gfx_VertexStagingMeta newVertexStagingMeta = drawableLines->subType.runtime.vertexStagingMeta;
-    newVertexStagingMeta.vertexCount += 2 * lineCount;
-    /* get a list of vertex attribute bindings & their byte offsets, sorted by ascending byte offset */
-    _Korl_Gfx_SortableVertexBinding sortableVertexBindings[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
-    u32                             sortableVertexBindingsSize = 0;
-    for(u32 i = 0; i < KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; i++)
-        if(drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[i].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
-            sortableVertexBindings[sortableVertexBindingsSize++] = 
-                KORL_STRUCT_INITIALIZE(_Korl_Gfx_SortableVertexBinding){.binding          = KORL_C_CAST(Korl_Gfx_VertexAttributeBinding, i)
-                                                                       ,.byteOffsetBuffer = drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[i].byteOffsetBuffer};
-    korl_algorithm_sort_quick(sortableVertexBindings, sortableVertexBindingsSize, sizeof(*sortableVertexBindings), _korl_gfx_sortVertexBindings_ascendByteOffset);
-    /* offset the vertex attribute byte offets for the new VertexStagingMeta by the total size of all previous attributes */
-    u32 currentByteOffsetBuffer = 0;
-    for(u32 i = 0; i < sortableVertexBindingsSize; i++)
-    {
-        newVertexStagingMeta.vertexAttributeDescriptors[sortableVertexBindings[i].binding].byteOffsetBuffer = currentByteOffsetBuffer;
-        currentByteOffsetBuffer += newVertexStagingMeta.vertexCount * newVertexStagingMeta.vertexAttributeDescriptors[sortableVertexBindings[i].binding].byteStride;
-    }
-    /* reallocate the staging buffer */
-    void* updateBuffer = NULL;
-    switch(drawableLines->subType.runtime.type)
+    korl_assert(context->type == KORL_GFX_DRAWABLE_TYPE_RUNTIME);
+    korl_assert(context->subType.runtime.interleavedAttributes);// reallocation of disjoint attributes yields such bad performance, that I don't think we should ever support that functionality; see repository history in this code module for that old implementation if you're really curious, but just "trust me bro"™: create your RUNTIME Drawable with interleavedAttributes == true if you ever hit this assert
+    context->subType.runtime.vertexStagingMeta.vertexCount += vertexCount;
+    switch(context->subType.runtime.type)
     {
     case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
-        drawableLines->subType.runtime.subType.singleFrame.stagingAllocation = korl_gfx_stagingReallocate(&newVertexStagingMeta, &drawableLines->subType.runtime.subType.singleFrame.stagingAllocation);
-        updateBuffer = drawableLines->subType.runtime.subType.singleFrame.stagingAllocation.buffer;
+        context->subType.runtime.subType.singleFrame.stagingAllocation = korl_gfx_stagingReallocate(&context->subType.runtime.vertexStagingMeta, &context->subType.runtime.subType.singleFrame.stagingAllocation);
         break;
     case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
-        korl_resource_resize(drawableLines->subType.runtime.subType.multiFrame.resourceHandleBuffer, currentByteOffsetBuffer);
-        u$ bytesRequested_bytesAvailable = currentByteOffsetBuffer;
-        updateBuffer = korl_resource_getUpdateBuffer(drawableLines->subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &bytesRequested_bytesAvailable);
-        korl_assert(bytesRequested_bytesAvailable == currentByteOffsetBuffer);
+        const u$ newBufferBytes = context->subType.runtime.vertexStagingMeta.indexCount  * _korl_gfx_vertexIndexType_byteStride(context->subType.runtime.vertexStagingMeta.indexType)
+                                + context->subType.runtime.vertexStagingMeta.vertexCount * context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride;
+        korl_resource_resize(context->subType.runtime.subType.multiFrame.resourceHandleBuffer, newBufferBytes);
         break;
     }
-    /* update vertex staging meta & associated vertex data pointers */
-    *o_positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, updateBuffer) + newVertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    if(o_colors)
-        *o_colors = KORL_C_CAST(Korl_Gfx_Color4u8*, KORL_C_CAST(u8*, updateBuffer) + newVertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer);
-    /* temporarily re-obtain memory pointers to where this data _used_ to be located before the realloc; 
-        then, because we know that the staging allocation is _expanded_ we can perform simple memory moves on the data, 
-        starting at the highest attribute addresses; 
-        NOTE: we do memory moves (instead of copies) to adjust the old attribute 
-              buffers because it's highly likely that they will self-intersect 
-              with their new ranges after stagingReallocate */
-    //@TODO: PERFORMANCE(MAJOR): if the user is doing even a _moderate_ amount of dynamic geometry reallocations, the following memory_moves will absolutely _tank_ performance; we need to design APIs that allow the user to create & append to RUNTIME Drawables that have _interleaved_ vertex data in order for such an `_add*` API to be actually viable
-    Korl_Math_V2f32*const   old_positions = KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, updateBuffer) + drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
-    Korl_Gfx_Color4u8*const old_colors    = drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
-                                            ? KORL_C_CAST(Korl_Gfx_Color4u8*, KORL_C_CAST(u8*, updateBuffer) + drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].byteOffsetBuffer)
-                                            : NULL;
-    drawableLines->subType.runtime.vertexStagingMeta = newVertexStagingMeta;// update the Drawable to use the new VertexStagingMeta
-    for(u32 i = sortableVertexBindingsSize - 1; i < sortableVertexBindingsSize; i--)
+}
+korl_internal void* _korl_gfx_drawable_attribute(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+{
+    void* updateBuffer = NULL;
+    switch(context->subType.runtime.type)
     {
-        switch(sortableVertexBindings[i].binding)
-        {
-        case KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION:{
-            korl_memory_move(*o_positions, old_positions
-                            ,  drawableLines->subType.runtime.vertexStagingMeta.vertexCount 
-                             * drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[sortableVertexBindings[i].binding].byteStride);
-            break;}
-        case KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR:{
-            if(o_colors && old_colors)// COLOR attribute is completely optional
-                korl_memory_move(*o_colors, old_colors
-                                ,  drawableLines->subType.runtime.vertexStagingMeta.vertexCount 
-                                 * drawableLines->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[sortableVertexBindings[i].binding].byteStride);
-            break;}
-        default:
-            korl_log(ERROR, "unsupported vertex binding: %u", sortableVertexBindings[i].binding);
-        }
+    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
+        updateBuffer = context->subType.runtime.subType.singleFrame.stagingAllocation.buffer;
+        break;
+    case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
+        u$ bytesRequested_bytesAvailable = KORL_U$_MAX;
+        updateBuffer = korl_resource_getUpdateBuffer(context->subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &bytesRequested_bytesAvailable);
+        break;
     }
+    return KORL_C_CAST(void*, KORL_C_CAST(u8*, updateBuffer) 
+                              + context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].byteOffsetBuffer
+                              + context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].byteStride * attributeIndex);
+}
+korl_internal Korl_Math_V2f32* korl_gfx_drawable_attributeV2f32(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+{
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32);
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize  == 2);
+    return KORL_C_CAST(Korl_Math_V2f32*, _korl_gfx_drawable_attribute(context, binding, attributeIndex));
+}
+korl_internal Korl_Math_V4u8* korl_gfx_drawable_attributeV4u8(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
+{
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8);
+    korl_assert(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize  == 4);
+    return KORL_C_CAST(Korl_Math_V4u8*, _korl_gfx_drawable_attribute(context, binding, attributeIndex));
 }
 korl_internal void korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material)
 {
@@ -742,7 +834,15 @@ korl_internal void korl_gfx_drawCircle2d(Korl_Math_V2f32 position, Korl_Math_Qua
 }
 korl_internal void korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
 {
-    Korl_Gfx_Drawable immediate = korl_gfx_drawableLines2d(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, lineCount, o_positions, o_colors);
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableLines2d(&createInfoDrawable, lineCount);
+    *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }

@@ -32,7 +32,21 @@ korl_internal Korl_Math_M4f32    korl_gfx_camera_projection(const Korl_Gfx_Camer
 korl_internal Korl_Math_M4f32    korl_gfx_camera_view(const Korl_Gfx_Camera*const context);
 korl_internal void               korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const context, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context);
-korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLines2d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+typedef enum Korl_Gfx_RuntimeDrawableAttributeDatatype
+    {KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_INVALID
+    ,KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_U32
+    ,KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32
+    ,KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32
+    ,KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8
+} Korl_Gfx_RuntimeDrawableAttributeDatatype;
+typedef struct Korl_Gfx_CreateInfoRuntimeDrawable
+{
+    Korl_Gfx_Drawable_Runtime_Type            type;
+    Korl_Gfx_VertexIndexType                  vertexIndexType;
+    Korl_Gfx_RuntimeDrawableAttributeDatatype attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+    bool                                      interleavedAttributes;
+} Korl_Gfx_CreateInfoRuntimeDrawable;
+korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLines2d(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLines3d(Korl_Gfx_Drawable_Runtime_Type type, u32 lineCount, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableLineStrip2d(Korl_Gfx_Drawable_Runtime_Type type, u32 vertexCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableTriangles2d(Korl_Gfx_Drawable_Runtime_Type type, u32 triangleCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
@@ -45,7 +59,9 @@ korl_internal Korl_Gfx_Drawable  korl_gfx_drawableUtf8(Korl_Gfx_Drawable_Runtime
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableUtf16(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, acu16 utf16FontAssetName, f32 textPixelHeight, Korl_Gfx_Font_TextMetrics* o_textMetrics);
 korl_internal Korl_Gfx_Drawable  korl_gfx_drawableAxisNormalLines(Korl_Gfx_Drawable_Runtime_Type type);
 korl_internal Korl_Gfx_Drawable  korl_gfx_mesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName);
-korl_internal void               korl_gfx_addLines2d(Korl_Gfx_Drawable* drawableLines, u32 lineCount, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal void               korl_gfx_drawable_addInterleavedVertices(Korl_Gfx_Drawable*const context, u32 vertexCount);
+korl_internal Korl_Math_V2f32*   korl_gfx_drawable_attributeV2f32(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex);
+korl_internal Korl_Math_V4u8*    korl_gfx_drawable_attributeV4u8(Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex);
 korl_internal void               korl_gfx_drawSphere(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, f32 radius, u32 latitudeSegments, u32 longitudeSegments, const Korl_Gfx_Material* material);
 korl_internal void               korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal void               korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
