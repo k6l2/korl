@@ -382,7 +382,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
                             korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
                             meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteStride       = korl_codec_gltf_accessor_getStride(accessor);
+                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteStride       = korl_codec_gltf_accessor_getStride(accessor, bufferViews);
                             meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
                             switch(accessor->componentType)
                             {
@@ -442,7 +442,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
                             korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->indexByteOffsetBuffer
                                             ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
-                                            ,meshPrimitiveVertexMeta->indexCount * korl_codec_gltf_accessor_getStride(accessor));
+                                            ,meshPrimitiveVertexMeta->indexCount * korl_codec_gltf_accessor_getStride(accessor, bufferViews));
                         }
                         struct
                         {
@@ -459,6 +459,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                                 continue;
                             const Korl_Codec_Gltf_Accessor*const   accessor   = accessors + attributeIndex;
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
+                            korl_assert(bufferView->byteStride == 0);//@TODO: support interleaved MeshPrimitive attributes; we are assuming that all our attributes are tightly-packed/disjoint!
                             korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer
                                             ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
                                             ,bufferView->byteLength);

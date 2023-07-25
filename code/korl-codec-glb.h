@@ -86,17 +86,19 @@ typedef enum Korl_Codec_Gltf_Accessor_Type
 } Korl_Codec_Gltf_Accessor_Type;
 typedef struct Korl_Codec_Gltf_Accessor
 {
-    u32                                    bufferView;
+    i32                                    bufferView;// < 0 => all values are 0, and the attribute is tightly-packed
     Korl_Codec_Gltf_Accessor_Type          type;
     Korl_Codec_Gltf_Accessor_ComponentType componentType;
     u32                                    count;
     Korl_Math_Aabb3f32                     aabb;
 } Korl_Codec_Gltf_Accessor;
+korl_global_const Korl_Codec_Gltf_Accessor KORL_CODEC_GLTF_ACCESSOR_DEFAULT = {.bufferView = -1};
 typedef struct Korl_Codec_Gltf_BufferView
 {
     u32 buffer;
     u32 byteLength;
     u32 byteOffset;
+    u8  byteStride;// glTF-2.0 spec 5.11.4: validRange=[4, 252]; 0 => attribute is tightly packed
 } Korl_Codec_Gltf_BufferView;
 typedef struct Korl_Codec_Gltf_Buffer
 {
@@ -161,4 +163,4 @@ korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives
 korl_internal Korl_Codec_Gltf_Accessor*       korl_codec_gltf_getAccessors(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_BufferView*     korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Buffer*         korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context);
-korl_internal u32                             korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context);
+korl_internal u32                             korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context, const Korl_Codec_Gltf_BufferView* bufferViewArray);

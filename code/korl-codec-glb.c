@@ -60,6 +60,7 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BUFFER
     ,KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_LENGTH
     ,KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_OFFSET
+    ,KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_STRIDE
     ,KORL_GLTF_OBJECT_BUFFERS
     ,KORL_GLTF_OBJECT_BUFFERS_ARRAY
     ,KORL_GLTF_OBJECT_BUFFERS_ARRAY_ELEMENT
@@ -288,7 +289,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_ACCESSORS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->accessors, sizeof(Korl_Codec_Gltf_Accessor), NULL);
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->accessors, sizeof(Korl_Codec_Gltf_Accessor), &KORL_CODEC_GLTF_ACCESSOR_DEFAULT);
                     Korl_Codec_Gltf_Accessor*const accessorArray = array;
                     for(i32 i = 0; accessorArray && i < jsonToken->size; i++)
                         accessorArray[i] = (Korl_Codec_Gltf_Accessor){.aabb = KORL_MATH_AABB3F32_EMPTY};
@@ -337,6 +338,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_LENGTH;
                     else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteOffset")))
                         objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_OFFSET;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("byteStride")))
+                        objectType = KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_STRIDE;
                     break;}
                 case KORL_GLTF_OBJECT_BUFFERS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
@@ -582,6 +585,10 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 Korl_Codec_Gltf_BufferView*const currentBufferView = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY, sizeof(*currentBufferView));
                 if(currentBufferView) currentBufferView->byteOffset = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
+            case KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BYTE_STRIDE:{
+                Korl_Codec_Gltf_BufferView*const currentBufferView = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY, sizeof(*currentBufferView));
+                if(currentBufferView) currentBufferView->byteStride = korl_checkCast_f32_to_u8(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
             case KORL_GLTF_OBJECT_BUFFERS_ARRAY_ELEMENT_BYTE_LENGTH:{
                 Korl_Codec_Gltf_Buffer*const currentBuffer = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_BUFFERS_ARRAY, sizeof(*currentBuffer));
                 if(currentBuffer) currentBuffer->byteLength = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
@@ -773,8 +780,16 @@ korl_internal Korl_Codec_Gltf_Buffer* korl_codec_gltf_getBuffers(const Korl_Code
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Buffer*, KORL_C_CAST(u8*, context) + context->buffers.byteOffset);
 }
-korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context)
+korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context, const Korl_Codec_Gltf_BufferView* bufferViewArray)
 {
+    /* obtain byte stride directly from the Accessor's BufferView */
+    if(context->bufferView >= 0)
+    {
+        const Korl_Codec_Gltf_BufferView*const bufferView = bufferViewArray + context->bufferView;
+        if(bufferView->byteStride != 0)
+            return bufferView->byteStride;
+    }
+    /* calculate tightly-packed byte stride */
     u32 componentBytes = 0;
     switch(context->componentType)
     {

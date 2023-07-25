@@ -18,6 +18,7 @@ korl_internal i32 korl_checkCast_i$_to_i32(i$ x);
 korl_internal f32 korl_checkCast_i$_to_f32(i$ x);
 korl_internal i32 korl_checkCast_f32_to_i32(f32 x);
 korl_internal u32 korl_checkCast_f32_to_u32(f32 x);
+korl_internal u8  korl_checkCast_f32_to_u8(f32 x);
 korl_internal wchar_t*       korl_checkCast_pu16_to_pwchar(u16* x);
 korl_internal const wchar_t* korl_checkCast_cpu16_to_cpwchar(const u16* x);
 korl_internal const char*    korl_checkCast_cpu8_to_cpchar(const u8* x);
