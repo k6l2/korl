@@ -33,7 +33,7 @@
  */
 #define KORL_GAME_INITIALIZE(name)        void* name(KorlPlatformApi korlApi)
 #define KORL_GAME_ON_RELOAD(name)         void  name(void* context, KorlPlatformApi korlApi)
-//@TODO: API rectification: create a Korl_KeyEvent
+//KORL-ISSUE-000-000-175: interface-game: API rectification: create a Korl_KeyEvent
 #define KORL_GAME_ON_KEYBOARD_EVENT(name) void  name(Korl_KeyboardCode keyCode, bool isDown, bool isRepeat)                   // OPTIONAL symbol in the game code module
 #define KORL_GAME_ON_MOUSE_EVENT(name)    void  name(Korl_MouseEvent mouseEvent)                                              // OPTIONAL symbol in the game code module
 #define KORL_GAME_ON_GAMEPAD_EVENT(name)  void  name(Korl_GamepadEvent gamepadEvent)                                          // OPTIONAL symbol in the game code module
