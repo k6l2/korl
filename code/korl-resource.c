@@ -459,7 +459,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
                                 continue;
                             const Korl_Codec_Gltf_Accessor*const   accessor   = accessors + attributeIndex;
                             const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_assert(bufferView->byteStride == 0);//@TODO: support interleaved MeshPrimitive attributes; we are assuming that all our attributes are tightly-packed/disjoint!
+                            korl_assert(bufferView->byteStride == 0);//KORL-ISSUE-000-000-177: gltf: support interleaved MeshPrimitive attributes; we are assuming that all our attributes are tightly-packed/disjoint!
                             korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer
                                             ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
                                             ,bufferView->byteLength);
