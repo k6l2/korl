@@ -1397,7 +1397,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
         if(context->subType.runtime.overrides.storageBufferVertex)
             drawState.storageBuffers = &storageBuffers;
-        drawState.material = &materialLocal;
+        drawState.material         = &materialLocal;
+        drawState.pushConstantData = context->subType.runtime.overrides.pushConstantData;
         korl_vulkan_setDrawState(&drawState);
         switch(context->subType.runtime.type)
         {

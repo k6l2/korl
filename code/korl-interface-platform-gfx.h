@@ -352,13 +352,14 @@ typedef struct Korl_Gfx_Drawable
             } subType;
             struct
             {
-                Korl_Gfx_Material_PrimitiveType primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
+                Korl_Gfx_Material_PrimitiveType            primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
                 /* all members below here are effectively _optional_ */
-                Korl_Gfx_Material_Mode_Flags    materialModeFlags;
-                Korl_Resource_Handle            shaderVertex;
-                Korl_Resource_Handle            shaderFragment;
-                Korl_Resource_Handle            storageBufferVertex;
-                Korl_Resource_Handle            materialMapBase;
+                Korl_Gfx_Material_Mode_Flags               materialModeFlags;
+                Korl_Resource_Handle                       shaderVertex;
+                Korl_Resource_Handle                       shaderFragment;
+                Korl_Resource_Handle                       storageBufferVertex;
+                Korl_Resource_Handle                       materialMapBase;
+                const Korl_Gfx_DrawState_PushConstantData* pushConstantData;// kinda hacky, but this effectively allows the user to customize their own PushConstant data on a per-draw-call basis; likely to be refactored in the distant future
             } overrides;
         } runtime;
         struct
