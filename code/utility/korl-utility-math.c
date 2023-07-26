@@ -1175,6 +1175,14 @@ korl_internal void korl_math_transform3d_setPosition(Korl_Math_Transform3d* cont
             context->_m4f32IsUpdated = false;
     context->_position = position;
 }
+korl_internal void korl_math_transform3d_move(Korl_Math_Transform3d* context, Korl_Math_V3f32 positionDelta)
+{
+    KORL_STATIC_ASSERT(korl_arraySize(positionDelta.elements) == korl_arraySize(context->_position.elements));
+    for(u8 i = 0; context->_m4f32IsUpdated && i < korl_arraySize(context->_position.elements); i++)
+        if(positionDelta.elements[i] != 0.f)
+            context->_m4f32IsUpdated = false;
+    korl_math_v3f32_assignAdd(&context->_position, positionDelta);
+}
 korl_internal void korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor)
 {
     KORL_STATIC_ASSERT(korl_arraySize(versor.elements) == korl_arraySize(context->_versor.elements));

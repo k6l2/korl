@@ -24,10 +24,13 @@ typedef struct Korl_Camera_FreeFly
     u32                          inputFlags;
     Korl_Math_V3f32              position;
     Korl_Math_V3f32              velocity;
+    f32                          acceleration;
+    f32                          speedMax;
     Korl_Camera_FreeFly_YawPitch yawPitch;
     Korl_Camera_FreeFly_YawPitch yawPitchVelocity;
 } Korl_Camera_FreeFly;
-korl_internal void            korl_camera_freeFly_setInput(Korl_Camera_FreeFly*const context, Korl_Camera_FreeFly_InputFlags inputFlag, bool isActive);
-korl_internal void            korl_camera_freeFly_step(Korl_Camera_FreeFly*const context, f32 deltaSeconds);
-korl_internal Korl_Math_V3f32 korl_camera_freeFly_forward(const Korl_Camera_FreeFly*const context);
-korl_internal Korl_Gfx_Camera korl_camera_freeFly_createGfxCamera(const Korl_Camera_FreeFly*const context);
+korl_internal Korl_Camera_FreeFly korl_camera_freeFly_create(f32 acceleration, f32 speedMax);
+korl_internal void                korl_camera_freeFly_setInput(Korl_Camera_FreeFly*const context, Korl_Camera_FreeFly_InputFlags inputFlag, bool isActive);
+korl_internal void                korl_camera_freeFly_step(Korl_Camera_FreeFly*const context, f32 deltaSeconds);
+korl_internal Korl_Math_V3f32     korl_camera_freeFly_forward(const Korl_Camera_FreeFly*const context);
+korl_internal Korl_Gfx_Camera     korl_camera_freeFly_createGfxCamera(const Korl_Camera_FreeFly*const context, f32 fovVerticalDegrees, f32 clipNear, f32 clipFar);

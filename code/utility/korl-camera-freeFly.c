@@ -1,8 +1,16 @@
 #include "korl-camera-freeFly.h"
 #include "utility/korl-utility-gfx.h"
+#include "korl-interface-platform.h"
 korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD = { 0, -1, 0};// blender model space
 korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_RIGHT   = {-1,  0, 0};// blender model space
 korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_UP      = { 0,  0, 1};// blender model space
+korl_internal Korl_Camera_FreeFly korl_camera_freeFly_create(f32 acceleration, f32 speedMax)
+{
+    KORL_ZERO_STACK(Korl_Camera_FreeFly, result);
+    result.acceleration = acceleration;
+    result.speedMax     = speedMax;
+    return result;
+}
 korl_internal void korl_camera_freeFly_setInput(Korl_Camera_FreeFly*const context, Korl_Camera_FreeFly_InputFlags inputFlag, bool isActive)
 {
     if(isActive)
@@ -47,25 +55,23 @@ korl_internal void korl_camera_freeFly_step(Korl_Camera_FreeFly*const context, f
     const f32 cameraMoveMagnitude = korl_math_v3f32_magnitude(&cameraMove);
     if(!korl_math_isNearlyZero(cameraMoveMagnitude))
     {
-        korl_shared_const f32 CAMERA_ACCELERATION = 1000;
         cameraMove = korl_math_v3f32_normalKnownMagnitude(cameraMove, cameraMoveMagnitude);
         const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_RIGHT, context->yawPitch.pitch, true);
         const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_UP   , context->yawPitch.yaw  , true);
         const Korl_Math_V3f32      accelDirection        = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), cameraMove, false);
         if(korl_math_v3f32_dot(context->velocity, accelDirection) < 0)
             context->velocity = KORL_MATH_V3F32_ZERO;
-        korl_math_v3f32_assignAdd(&context->velocity, korl_math_v3f32_multiplyScalar(accelDirection, deltaSeconds * CAMERA_ACCELERATION));
+        korl_math_v3f32_assignAdd(&context->velocity, korl_math_v3f32_multiplyScalar(accelDirection, deltaSeconds * context->acceleration));
     }
     else
         /* come to a full-stop if the user is not trying to move at all */
         context->velocity = KORL_MATH_V3F32_ZERO;
     {/* cap speed */
-        korl_shared_const f32 CAMERA_SPEED_MAX = 1000;
         f32 speed = korl_math_v3f32_magnitude(&context->velocity);
-        if(speed > CAMERA_SPEED_MAX)
+        if(speed > context->speedMax)
         {
             context->velocity = korl_math_v3f32_normalKnownMagnitude(context->velocity, speed);
-            korl_math_v3f32_assignMultiplyScalar(&context->velocity, CAMERA_SPEED_MAX);
+            korl_math_v3f32_assignMultiplyScalar(&context->velocity, context->speedMax);
         }
     }
     {/* movement */
@@ -81,11 +87,11 @@ korl_internal Korl_Math_V3f32 korl_camera_freeFly_forward(const Korl_Camera_Free
     const Korl_Math_V3f32      cameraForward         = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD, false);
     return cameraForward;
 }
-korl_internal Korl_Gfx_Camera korl_camera_freeFly_createGfxCamera(const Korl_Camera_FreeFly*const context)
+korl_internal Korl_Gfx_Camera korl_camera_freeFly_createGfxCamera(const Korl_Camera_FreeFly*const context, f32 fovVerticalDegrees, f32 clipNear, f32 clipFar)
 {
     const Korl_Math_Quaternion quaternionCameraPitch = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_RIGHT, context->yawPitch.pitch, true);
     const Korl_Math_Quaternion quaternionCameraYaw   = korl_math_quaternion_fromAxisRadians(_KORL_CAMERA_FREEFLY_DEFAULT_UP   , context->yawPitch.yaw  , true);
     const Korl_Math_V3f32      cameraForward         = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD, false);
     const Korl_Math_V3f32      cameraUp              = korl_math_quaternion_transformV3f32(korl_math_quaternion_multiply(quaternionCameraYaw, quaternionCameraPitch), _KORL_CAMERA_FREEFLY_DEFAULT_UP, false);
-    return korl_gfx_camera_createFov(90, 10, 1e16f, context->position, cameraForward, cameraUp);
+    return korl_gfx_camera_createFov(fovVerticalDegrees, clipNear, clipFar, context->position, cameraForward, cameraUp);
 }

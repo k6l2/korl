@@ -303,6 +303,7 @@ korl_internal Korl_Math_Transform3d korl_math_transform3d_identity(void);
 korl_internal Korl_Math_Transform3d korl_math_transform3d_rotateTranslate(Korl_Math_Quaternion versor, Korl_Math_V3f32 position);
 korl_internal Korl_Math_Transform3d korl_math_transform3d_rotateScaleTranslate(Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, Korl_Math_V3f32 position);
 korl_internal void                  korl_math_transform3d_setPosition(Korl_Math_Transform3d* context, Korl_Math_V3f32 position);
+korl_internal void                  korl_math_transform3d_move(Korl_Math_Transform3d* context, Korl_Math_V3f32 positionDelta);
 korl_internal void                  korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor);
 korl_internal void                  korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale);
 korl_internal Korl_Math_M4f32       korl_math_transform3d_m4f32(Korl_Math_Transform3d* context);
