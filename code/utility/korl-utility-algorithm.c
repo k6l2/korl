@@ -179,9 +179,11 @@ korl_internal KORL_ALGORITHM_COMPARE(_korl_algorithm_graphDirected_sortTopologic
 {
     _Korl_Algorithm_GraphDirected_Edge*const edgeA = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, a);
     _Korl_Algorithm_GraphDirected_Edge*const edgeB = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, b);
-    return edgeA->indexParent == edgeB->indexParent 
-           ? edgeA->indexChild  > edgeB->indexChild 
-           : edgeA->indexParent > edgeB->indexParent;
+    return edgeA->indexParent > edgeB->indexParent ? 1 
+           : edgeA->indexParent < edgeB->indexParent ? -1 
+             : edgeA->indexChild > edgeB->indexChild ? 1
+               : edgeA->indexChild < edgeB->indexChild ? -1
+                 : 0;
 }
 korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
 {
@@ -200,9 +202,17 @@ korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_G
         // if this is the first edge where this node is the parent, we assign this edge index as the start of this node's "child array"
         if(0 == context->nodeMetas[context->edges[e].indexParent].children)
             context->nodeMetas[context->edges[e].indexParent].childEdgesIndex = e;
-        //@TODO: if this isn't the first edge for this parent node, ensure that the previous edge is different, since edges should also be sorted in ascending indexChild values
+        else// if this isn't the first edge for this parent node, do sanity checks
+        {
+            // we _can't_ be the first edge at this point
+            korl_assert(e > 0);
+            // ensure the parent index of the previous edge is, indeed, the same as this edge
+            korl_assert(context->edges[e - 1].indexParent == context->edges[e].indexParent);
+            // ensure that the previous edge is strictly less, since edges should also be sorted in ascending indexChild values; this ensures the user doesn't accidentally add the same edge twice
+            korl_assert(context->edges[e - 1].indexChild  <  context->edges[e].indexChild);
+        }
         context->nodeMetas[context->edges[e].indexParent].children++;
-        context->nodeMetas[context->edges[e].indexChild].inDegree++;
+        context->nodeMetas[context->edges[e].indexChild ].inDegree++;
     }
     /* allocate a node index deque; queue all nodes with in-degree == 0; the 
         `resultDeque` will by used by enqueueing items to the back of the array 
