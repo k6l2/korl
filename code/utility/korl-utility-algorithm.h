@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
+// @TODO: add code samples for KORL_ALGORITHM_BVH_VOLUME_UNION & KORL_ALGORITHM_BVH_VOLUME_INTERSECTS
 #define KORL_ALGORITHM_BVH_VOLUME_UNION(name) void name(void* a, const void* b)
 typedef KORL_ALGORITHM_BVH_VOLUME_UNION(fnSig_korl_algorithm_bvh_volumeUnion);
 #define KORL_ALGORITHM_BVH_VOLUME_INTERSECTS(name) bool name(const void* a, const void* b)
@@ -26,9 +27,10 @@ typedef struct Korl_Algorithm_Bvh_CreateInfo
 typedef struct Korl_Algorithm_Bvh
 {
     Korl_Algorithm_Bvh_CreateInfo createInfo;
-    void*           nodes;// dynamic array of _Bvh_Node; we can't really utilize stb_ds for this unfortunately, because stb_ds needs to know the datatype's size, and we don't actually know what the user defines as a "volume"
-    u32             nodesCapacity;
-    u32             nodesSize;
+    void*                         nodes;// dynamic array of _Bvh_Node; we can't really utilize stb_ds for this unfortunately, because stb_ds needs to know the datatype's size, and we don't actually know what the user defines as a "volume"
+    u32                           nodesCapacity;
+    u32                           nodesSize;
+    // this struct is followed in memory by the following data:
     // (leafBoundingVolumes * boundingVolumeStride) boundingVolumes;
 } Korl_Algorithm_Bvh;
 korl_internal Korl_Algorithm_Bvh* korl_algorithm_bvh_create(const Korl_Algorithm_Bvh_CreateInfo*const createInfo);
@@ -41,3 +43,23 @@ korl_internal void                korl_algorithm_bvh_build(Korl_Algorithm_Bvh* c
  * the same allocator as \c context->createInfo.allocator , and whose elements 
  * should all be intersecting \c *boundingVolume */
 korl_internal void*               korl_algorithm_bvh_query(Korl_Algorithm_Bvh* context, const void* boundingVolume, u$* o_resultArraySize, fnSig_korl_algorithm_bvh_volumeIntersects* volumeIntersects);
+typedef struct Korl_Algorithm_GraphDirected_CreateInfo
+{
+    Korl_Memory_AllocatorHandle allocator;
+    u32                         nodesSize;
+} Korl_Algorithm_GraphDirected_CreateInfo;
+typedef struct Korl_Algorithm_GraphDirected
+{
+    Korl_Algorithm_GraphDirected_CreateInfo        createInfo;
+    struct _Korl_Algorithm_GraphDirected_NodeMeta* nodeMetas;
+    struct _Korl_Algorithm_GraphDirected_Edge*     edges;
+    u32                                            edgesCapacity;
+    u32                                            edgesSize;
+} Korl_Algorithm_GraphDirected;
+korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo);
+korl_internal void                         korl_algorithm_graphDirected_addEdge(Korl_Algorithm_GraphDirected* context, u32 indexParent, u32 indexChild);
+/** \return An array of indices into the user's nodes array sorted topologically, 
+ * such that parent node indices _always_ come _before_ their child node indices.  
+ * If no such order exists (the graph created by the user contains cycles), then 
+ * \c NULL is returned.  The result array is allocated via the \c allocator parameter. */
+korl_internal u32*                         korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator);

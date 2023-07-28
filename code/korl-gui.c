@@ -1394,6 +1394,7 @@ korl_internal void korl_gui_frameEnd(void)
     korl_assert(widgetsRemaining <= arrlenu(context->stbDaWidgets));//sanity-check to make sure we aren't about to invalidate _Widget pointers we just accumulated
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
     korl_time_probeStop(nullify_unused_widgets);
+    //@TODO: simplify this logic with `korl_algorithm_graphDirected_sortTopological`
     /* now that we have a list of widgets that are used this frame, we can 
         gather the meta data necessary to perform a topological sort of the 
         entire list, which will allow us to process the entire widget DAG from 

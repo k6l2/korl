@@ -145,3 +145,96 @@ korl_internal void* korl_algorithm_bvh_query(Korl_Algorithm_Bvh* context, const 
     }
     return result;
 }
+typedef struct _Korl_Algorithm_GraphDirected_Edge
+{
+    u32 indexParent;
+    u32 indexChild;
+} _Korl_Algorithm_GraphDirected_Edge;
+typedef struct _Korl_Algorithm_GraphDirected_NodeMeta
+{
+    u32 children;
+    u32 childEdgesIndex;// index into the graphs `edges` member; only valid if `children` != 0
+    u32 inDegree;
+} _Korl_Algorithm_GraphDirected_NodeMeta;
+korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo)
+{
+    KORL_ZERO_STACK(Korl_Algorithm_GraphDirected, result);
+    result.createInfo    = *createInfo;
+    result.nodeMetas     = KORL_C_CAST(_Korl_Algorithm_GraphDirected_NodeMeta*, korl_allocate(createInfo->allocator, createInfo->nodesSize * sizeof(*result.nodeMetas)));
+    result.edgesCapacity = createInfo->nodesSize;
+    result.edges         = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, korl_allocate(createInfo->allocator, result.edgesCapacity * sizeof(*result.edges)));
+    return result;
+}
+korl_internal void korl_algorithm_graphDirected_addEdge(Korl_Algorithm_GraphDirected* context, u32 indexParent, u32 indexChild)
+{
+    korl_assert(context->edgesSize <= context->edgesCapacity);
+    if(context->edgesSize == context->edgesCapacity)
+    {
+        context->edgesCapacity = KORL_MATH_MAX(2 * context->edgesCapacity, context->edgesCapacity + 1);
+        context->edges         = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, korl_reallocate(context->createInfo.allocator, context->edges, context->edgesCapacity * sizeof(*context->edges)));
+    }
+    context->edges[context->edgesSize++] = KORL_STRUCT_INITIALIZE(_Korl_Algorithm_GraphDirected_Edge){.indexParent = indexParent, .indexChild = indexChild};
+}
+korl_internal KORL_ALGORITHM_COMPARE(_korl_algorithm_graphDirected_sortTopological_edgeSortCompare_ascendIndexParent_ascendIndexChild)
+{
+    _Korl_Algorithm_GraphDirected_Edge*const edgeA = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, a);
+    _Korl_Algorithm_GraphDirected_Edge*const edgeB = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, b);
+    return edgeA->indexParent == edgeB->indexParent 
+           ? edgeA->indexChild  > edgeB->indexChild 
+           : edgeA->indexParent > edgeB->indexParent;
+}
+korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
+{
+    // loosely derived from: https://www.goeduhub.com/9919/topological-sort-in-c
+    /* sort the list of edges by `indexParent` (order doesn't really matter here I don't think...);
+        this allows us to store & use a list of child nodes for all nodes - O(e * log(e))*/
+    korl_algorithm_sort_quick(context->edges, context->edgesSize, sizeof(*context->edges)
+                             ,_korl_algorithm_graphDirected_sortTopological_edgeSortCompare_ascendIndexParent_ascendIndexChild);
+    /* iterate over all edges & accumulate the "in-degree" of all nodes, where 
+        "in-degree" of a graph vertex is just the # of edges which point to that 
+        vertex; in the case of GraphDirected, we can simply count the # of edges 
+        whose indexChild == the node's index; in addition, update 
+        `context->nodeMetas` with child information - O(e) */
+    for(u32 e = 0; e < context->edgesSize; e++)
+    {
+        // if this is the first edge where this node is the parent, we assign this edge index as the start of this node's "child array"
+        if(0 == context->nodeMetas[context->edges[e].indexParent].children)
+            context->nodeMetas[context->edges[e].indexParent].childEdgesIndex = e;
+        //@TODO: if this isn't the first edge for this parent node, ensure that the previous edge is different, since edges should also be sorted in ascending indexChild values
+        context->nodeMetas[context->edges[e].indexParent].children++;
+        context->nodeMetas[context->edges[e].indexChild].inDegree++;
+    }
+    /* allocate a node index deque; queue all nodes with in-degree == 0; the 
+        `resultDeque` will by used by enqueueing items to the back of the array 
+        (where "back" is determined by "front" + size), and dequeueing items 
+        from the front (advancing the front offset simultaneously) - O(n) */
+    u32* resultDeque      = KORL_C_CAST(u32*, korl_allocateDirty(allocator, context->createInfo.nodesSize * sizeof(*resultDeque)));
+    u32  resultDequeSize  = 0;
+    u32  resultDequeFront = 0;
+    for(u32 n = 0; n < context->createInfo.nodesSize; n++)
+        if(0 == context->nodeMetas[n].inDegree)
+            resultDeque[resultDequeFront + resultDequeSize++] = n;
+    /* perform topological sort using deque recursion to visit all nodes */
+    while(resultDequeSize)
+    {
+        /* dequeue the next node */
+        const u32 nextNode = resultDeque[resultDequeFront++];
+        resultDequeSize--;
+        /* reduce in-degree of all adjacent nodes by 1, and queue all those whose in-degree is now 0 */
+        _Korl_Algorithm_GraphDirected_Edge*const nodeEdges = context->edges + context->nodeMetas[nextNode].childEdgesIndex;
+        for(u32 c = 0; c < context->nodeMetas[nextNode].children; c++)
+        {
+            korl_assert(nodeEdges[c].indexParent == nextNode);
+            if(0 == --context->nodeMetas[nodeEdges[c].indexChild].inDegree)
+                resultDeque[resultDequeFront + resultDequeSize++] = nodeEdges[c].indexChild;
+        }
+    }
+    /* if a cycle was detected, dispose of the deque and give the user nothing */
+    if(resultDequeFront < context->createInfo.nodesSize)
+    {
+        korl_free(allocator, resultDeque);
+        return NULL;
+    }
+    korl_assert(resultDequeFront == context->createInfo.nodesSize);
+    return resultDeque;
+}
