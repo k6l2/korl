@@ -1,5 +1,6 @@
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-interface-platform-memory.h"
 #define KORL_PI32  3.14159f
 #define KORL_TAU32 6.28318f // 2*PI
 #define KORL_MATH_CLAMP(x, min, max)        ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
@@ -309,6 +310,15 @@ korl_internal void                  korl_math_transform3d_move(Korl_Math_Transfo
 korl_internal void                  korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor);
 korl_internal void                  korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale);
 korl_internal Korl_Math_M4f32       korl_math_transform3d_m4f32(Korl_Math_Transform3d* context);
+#if 0//@TODO
+/* Korl_Math_TriangleMesh *****************************************************/
+typedef struct Korl_Math_TriangleMesh
+{
+    Korl_Memory_AllocatorHandle allocator;
+} Korl_Math_TriangleMesh;
+korl_internal Korl_Math_TriangleMesh korl_math_triangleMesh_create(Korl_Memory_AllocatorHandle allocator);
+korl_internal void                   korl_math_triangleMesh_destroy(Korl_Math_TriangleMesh* context);
+#endif
 /* C++ API ********************************************************************/
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);

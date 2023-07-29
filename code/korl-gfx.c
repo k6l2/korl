@@ -641,6 +641,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
     _korl_gfx_context->surfaceSize = surfaceSize;
     _korl_gfx_context->seconds    += deltaSeconds;
     KORL_MEMORY_POOL_EMPTY(_korl_gfx_context->pendingLights);
+    #if 0//@TODO: uncomment later; temporary disable korl-resource APIs
     if(!_korl_gfx_context->blankTexture)
     {
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoBlankTexture);
@@ -661,6 +662,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
         _korl_gfx_context->resourceShaderKorlFragmentColorTexture = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-color-texture.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
         _korl_gfx_context->resourceShaderKorlFragmentLit          = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
     }
+    #endif
 }
 korl_internal void korl_gfx_flushGlyphPages(void)
 {
