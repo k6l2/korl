@@ -61,5 +61,6 @@ korl_internal void                         korl_algorithm_graphDirected_addEdge(
 /** \return An array of indices into the user's nodes array sorted topologically, 
  * such that parent node indices _always_ come _before_ their child node indices.  
  * If no such order exists (the graph created by the user contains cycles), then 
- * \c NULL is returned.  The result array is allocated via the \c allocator parameter. */
+ * \c NULL is returned.  The result array is allocated via the \c allocator 
+ * parameter. */
 korl_internal u32*                         korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator);

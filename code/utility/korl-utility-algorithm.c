@@ -154,7 +154,7 @@ typedef struct _Korl_Algorithm_GraphDirected_NodeMeta
 {
     u32 children;
     u32 childEdgesIndex;// index into the graphs `edges` member; only valid if `children` != 0
-    u32 inDegree;
+    u32 inDegree;// transient; calculated & destroyed in `sortTopological`
 } _Korl_Algorithm_GraphDirected_NodeMeta;
 korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo)
 {
@@ -187,7 +187,7 @@ korl_internal KORL_ALGORITHM_COMPARE(_korl_algorithm_graphDirected_sortTopologic
 }
 korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
 {
-    // loosely derived from: https://www.goeduhub.com/9919/topological-sort-in-c
+    // this is effectively just Kahn's algorithm: https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
     /* sort the list of edges by `indexParent` (order doesn't really matter here I don't think...);
         this allows us to store & use a list of child nodes for all nodes - O(e * log(e))*/
     korl_algorithm_sort_quick(context->edges, context->edgesSize, sizeof(*context->edges)
@@ -245,6 +245,9 @@ korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_G
         korl_free(allocator, resultDeque);
         return NULL;
     }
-    korl_assert(resultDequeFront == context->createInfo.nodesSize);
+    korl_assert(resultDequeFront == context->createInfo.nodesSize);// sanity check
+    /* at this point, we have a list of array indices in topological sort 
+        (resultDeque), but if the user wants de-interleaved sub-trees, etc., 
+        then we have some extra work to do... */
     return resultDeque;
 }
