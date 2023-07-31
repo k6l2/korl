@@ -16,7 +16,7 @@
 ## action items
 
 [x] rip out all korl-resource code
-[ ] add `pool` as a  `utility` module
+[x] add `pool` as a  `utility` module
 [ ] create new Resource database; just a Pool of Resources
 [ ] add UTF16=>Pool_Handle data structure
   - test obtaining Resource Pool_Handle using a file name string
