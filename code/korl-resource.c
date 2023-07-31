@@ -8,6 +8,7 @@
 #include "korl-interface-platform.h"
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
+#if 0//@TODO: delete/recycle
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
@@ -84,18 +85,22 @@ typedef struct _Korl_Resource_Map
     Korl_Resource_Handle key;
     _Korl_Resource       value;
 } _Korl_Resource_Map;
+#endif
 typedef struct _Korl_Resource_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandleRuntime;// all unique data that cannot be easily reobtained/reconstructed from a korl-memoryState is stored here, including this struct itself
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
+    #if 0//@TODO: delete/recycle
     _Korl_Resource_Map*         stbHmResources;
     Korl_Resource_Handle*       stbDsDirtyResourceHandles;
     u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
     Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
     Korl_Audio_Format           audioRendererFormat;// the currently configured audio renderer format, likely to be set by korl-sfx; when this is changed via `korl_resource_setAudioFormat`, all audio resources will be resampled to match this format, and that resampled audio data is what will be mixed into korl-audio; we do this to sacrifice memory for speed, as it should be much better performance to not have to worry about audio resampling algorithms at runtime
     bool                        audioResamplesPending;// set when `audioRendererFormat` changes, or we lazy-load a file resource via `korl_resource_fromFile`; once set, each call to `korl_resource_flushUpdates` will incur iteration over all audio resources to ensure that they are all resampled to `audioRendererFormat`'s specifications; only cleared when `korl_resource_flushUpdates` finds that all audio resources are loaded & resampled
+    #endif
 } _Korl_Resource_Context;
 korl_global_variable _Korl_Resource_Context* _korl_resource_context;
+#if 0//@TODO: delete/recycle
 korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_handle_unpack(Korl_Resource_Handle handle)
 {
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
@@ -488,6 +493,7 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
     if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
         context->audioResamplesPending = true;
 }
+#endif
 korl_internal void korl_resource_initialize(void)
 {
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
@@ -497,14 +503,17 @@ korl_internal void korl_resource_initialize(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     context->allocatorHandleRuntime   = allocator;
     context->allocatorHandleTransient = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-resource-transient", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    #if 0//@TODO: delete/recycle
     context->stringPool               = korl_allocate(context->allocatorHandleRuntime, sizeof(*context->stringPool));
     *context->stringPool              = korl_stringPool_create(context->allocatorHandleRuntime);
     mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, 128);
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
 {
     _Korl_Resource_Context*const         context        = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);// sets the type to _KORL_RESOURCE_TYPE_FILE
     /* we should now have all the info needed to create the packed resource handle */
@@ -529,10 +538,13 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
     _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     /**/
     return handle;
+    #endif
+    return 0;//@TODO
 }
 korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_create)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     korl_assert(context->nextUniqueId <= _KORL_RESOURCE_UNIQUE_ID_MAX);// assuming this ever fires under normal circumstances (_highly_ unlikely), we will need to implement a system to recycle old unused UIDs or something
     /* construct the new resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
@@ -556,10 +568,13 @@ korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_cre
     resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createBuffer(createInfo, 0/*0 => generate new handle*/);
     resource->subType.graphics.subType.buffer.createInfo                   = *createInfo;
     return handle;
+    #endif
+    return 0;//@TODO
 }
 korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     korl_assert(context->nextUniqueId <= _KORL_RESOURCE_UNIQUE_ID_MAX);// assuming this ever fires under normal circumstances (_highly_ unlikely), we will need to implement a system to recycle old unused UIDs or something
     /* construct the new resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
@@ -583,10 +598,13 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
     resource->subType.graphics.subType.image.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(createInfo, 0/*0 => generate new handle*/);
     resource->subType.graphics.subType.image.createInfo                   = *createInfo;
     return handle;
+    #endif
+    return 0;//@TODO
 }
 korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(!resourceHandle)
         return;// silently do nothing for NULL handles
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandle);
@@ -628,10 +646,12 @@ korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
         korl_free(context->allocatorHandleTransient, resource->data);
     /* remove the resource from the database */
     mchmdel(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandle);
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_resource_update(korl_resource_update)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
@@ -644,10 +664,12 @@ korl_internal KORL_FUNCTION_korl_resource_update(korl_resource_update)
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_resource_getUpdateBuffer(korl_resource_getUpdateBuffer)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
@@ -661,18 +683,24 @@ korl_internal KORL_FUNCTION_korl_resource_getUpdateBuffer(korl_resource_getUpdat
         resource->dirty = true;
     }
     return KORL_C_CAST(u8*, resource->data) + byteOffset;
+    #endif
+    return NULL;//@TODO
 }
 korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     return resource->dataBytes;
+    #endif
+    return 0;//@TODO
 }
 korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
@@ -702,10 +730,12 @@ korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
     resource->data      = korl_reallocate(context->allocatorHandleRuntime, resource->data, newByteSize);
     resource->dataBytes = newByteSize;
     korl_assert(resource->data);
+    #endif
 }
 korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
     korl_assert(hashMapIndex >= 0);
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
@@ -737,10 +767,12 @@ korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShift
         mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
         resource->dirty = true;
     }
+    #endif
 }
 korl_internal void korl_resource_flushUpdates(void)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     const Korl_Resource_Handle*const dirtyHandlesEnd = context->stbDsDirtyResourceHandles + arrlen(context->stbDsDirtyResourceHandles);
     for(const Korl_Resource_Handle* dirtyHandle = context->stbDsDirtyResourceHandles; dirtyHandle < dirtyHandlesEnd; dirtyHandle++)
     {
@@ -817,10 +849,12 @@ korl_internal void korl_resource_flushUpdates(void)
             korl_log(VERBOSE, "pendingAudioResamples=%llu", pendingAudioResamples);
         korl_log(VERBOSE, "resampledResources=%llu", resampledResources);
     }
+    #endif
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(!handle)
         return 0;// silently return a NULL device memory allocation handle if the resource handle is NULL
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -839,11 +873,13 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanD
     default:
         korl_log(ERROR, "invalid resource graphics type");
     }
+    #endif
     return 0;
 }
 korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(0 == korl_memory_compare(&context->audioRendererFormat, audioFormat, sizeof(*audioFormat)))
         return;
     context->audioRendererFormat   = *audioFormat;
@@ -859,10 +895,12 @@ korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFo
         korl_free(context->allocatorHandleTransient, resource->subType.audio.resampledData);
         resource->subType.audio.resampledData = NULL;
     }
+    #endif
 }
 korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(!handle || context->audioResamplesPending)
         return KORL_STRUCT_INITIALIZE_ZERO(acu8);// silently return a NULL device memory allocation handle if the resource handle is NULL _or_ if korl-resource has a pending resampling operation
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
@@ -877,10 +915,13 @@ korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audi
         return (acu8){.data=resource->subType.audio.resampledData, .size=resource->subType.audio.resampledDataBytes};
     /* otherwise, we can just directly use the audio data */
     return (acu8){.data=resource->data, .size=resource->dataBytes};
+    #endif
+    return (acu8){0};//@TODO
 }
 korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_getSize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(!resourceHandleTexture)
         return KORL_MATH_V2U32_ZERO;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceHandleTexture);
@@ -892,10 +933,13 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
     if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.image.createInfo.size;
+    #endif
+    return KORL_MATH_V2U32_ZERO;//@TODO
 }
 korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(!handleResourceShader)
         return 0;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceShader);
@@ -907,10 +951,13 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
     if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.shader.handle;
+    #endif
+    return 0;//@TODO
 }
 korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, const Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, const Korl_Gfx_Material** o_meshMaterials)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     if(!handleResourceScene3d)
         goto returnNothing;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
@@ -954,9 +1001,11 @@ korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle ha
     returnNothing:
         *o_meshPrimitiveCount  = 0;
         *o_meshPrimitiveBuffer = 0;
+    #endif
 }
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
+    #if 0//@TODO: delete/recycle
     if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleRuntime))
     {
         Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
@@ -975,6 +1024,7 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
         }
         korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleRuntime, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
     }
+    #endif
     // KORL-ISSUE-000-000-135: resource: defragment transient resource data
 }
 korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
@@ -994,6 +1044,7 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
     /* go through each Resource & re-create the transcoded multimedia assets, 
         since we should expect that when a memory state is loaded all multimedia 
         device assets are invalidated! */
+    #if 0//@TODO: delete/recycle
     for(u$ r = 0; r < hmlenu(context->stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
     {
         _Korl_Resource_Map*const resourceMapItem = &(context->stbHmResources[r]);
@@ -1059,10 +1110,12 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
             break;
         }
     }
+    #endif
 }
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    #if 0//@TODO: delete/recycle
     /* check to see if the asset is loaded in our database */
     _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(rawUtf16AssetName, &graphicsType);
@@ -1076,5 +1129,6 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
         next time it is obtained by the user (via _fromFile) it is re-transcoded */
     _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
     _korl_resource_unload(resource, unpackedHandle);
+    #endif
 }
 #undef _LOCAL_STRING_POOL_POINTER

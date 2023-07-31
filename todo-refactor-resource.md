@@ -15,7 +15,7 @@
 
 ## action items
 
-[ ] rip out all korl-resource code
+[x] rip out all korl-resource code
 [ ] add `pool` as a  `utility` module
 [ ] create new Resource database; just a Pool of Resources
 [ ] add UTF16=>Pool_Handle data structure
