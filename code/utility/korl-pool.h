@@ -3,8 +3,8 @@
  * either uniform structs or polymorphic-tagged-unions, where they can be 
  * referred to at any time using a small "handle" value, such that operations on 
  * said objects are essentially constant time.  This abstraction allows objects 
- * to refer to each other via these aforementioned "handle" values in an 
- * extremely safe way, such that when an object in the pool is removed and a 
+ * to refer to each other via these aforementioned "handle" values in a 
+ * _reasonably_ safe way, such that when an object in the pool is removed and a 
  * different object that has a handle to it tries to get it: the handle used to 
  * attempt to get the object will be invalidated, and the caller will receive a 
  * NULL object.
@@ -20,7 +20,7 @@ typedef u64 Korl_Pool_Handle;// composed of {Korl_Pool_Index, Korl_Pool_ItemType
 typedef struct Korl_Pool_ItemMeta
 {
     Korl_Pool_ItemType type;// due to the requirement that a Korl_Pool_Handle == 0 is invalid, this value will never be stored as 0 for a valid pool item; see comments for Korl_Pool_Handle
-    Korl_Pool_Salt     salt;
+    Korl_Pool_Salt     salt;// the way this works is that for each item slot in the pool this value will be incremented the moment the item is removed from the pool; this allows us to have _reasonable_ certainty that if the item slot is reallocated and someone with the old object's handle tries to get the old item, then the handle is invalid
 } Korl_Pool_ItemMeta;
 typedef struct Korl_Pool
 {

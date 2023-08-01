@@ -27,39 +27,39 @@ korl_internal KORL_FUNCTION__korl_stb_ds_reallocate(_korl_stb_ds_reallocate)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
-#if _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT
+    #if _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT
         return realloc(allocation, bytes);
-#elif defined(STBDS_UNIT_TESTS)
+    #elif defined(STBDS_UNIT_TESTS)
         allocatorHandle = _korl_stb_ds_allocatorHandle;
-#else
+    #else
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
         enumAllocatorsUserData.in_allocation = allocation;
         korl_memory_allocator_enumerateAllocators(_korl_stb_ds_enumAllocatorCallback_findContainingAllocator, &enumAllocatorsUserData);
         allocatorHandle = enumAllocatorsUserData.out_allocatorHandle;
     }
-#endif
+    #endif
     return korl_memory_allocator_reallocate(allocatorHandle, allocation, bytes, file, line, false);
 }
 korl_internal KORL_FUNCTION__korl_stb_ds_free(_korl_stb_ds_free)
 {
     Korl_Memory_AllocatorHandle allocatorHandle = korl_checkCast_u$_to_u16(KORL_C_CAST(u$, context));
     if(!allocatorHandle)
-#if _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT
+    #if _KORL_STB_DS_USE_CRT_MEMORY_MANAGEMENT
     {
         free(allocation);
         return;
     }
-#elif defined(STBDS_UNIT_TESTS)
+    #elif defined(STBDS_UNIT_TESTS)
         allocatorHandle = _korl_stb_ds_allocatorHandle;
-#else
+    #else
     {
         KORL_ZERO_STACK(_Korl_Stb_Ds_EnumAllocatorsUserData_FindContainingAllocator, enumAllocatorsUserData);
         enumAllocatorsUserData.in_allocation = allocation;
         korl_memory_allocator_enumerateAllocators(_korl_stb_ds_enumAllocatorCallback_findContainingAllocator, &enumAllocatorsUserData);
         allocatorHandle = enumAllocatorsUserData.out_allocatorHandle;
     }
-#endif
+    #endif
     korl_free(allocatorHandle, allocation);
 }
 korl_internal void korl_stb_ds_initialize(void)
@@ -68,12 +68,12 @@ korl_internal void korl_stb_ds_initialize(void)
         create it in all builds to maintain allocator handle order */
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(1);
-#if defined(STBDS_UNIT_TESTS)
+    #if defined(STBDS_UNIT_TESTS)
     heapCreateInfo.initialHeapBytes = korl_math_megabytes(448);
     _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
     stbds_unit_tests();
     korl_assert(korl_memory_allocator_isEmpty(_korl_stb_ds_allocatorHandle));
-#else
+    #else
     _korl_stb_ds_allocatorHandle = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_CRT, L"korl-stb-ds", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
-#endif
+    #endif
 }

@@ -1,13 +1,14 @@
 #include "korl-resource.h"
 #include "korl-stb-ds.h"
 #include "korl-stb-image.h"
-#include "utility/korl-stringPool.h"
 #include "korl-audio.h"
 #include "korl-codec-audio.h"
 #include "korl-codec-glb.h"
 #include "korl-interface-platform.h"
+#include "utility/korl-stringPool.h"
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
+#include "utility/korl-pool.h"
 #if 0//@TODO: delete/recycle
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
@@ -86,10 +87,21 @@ typedef struct _Korl_Resource_Map
     _Korl_Resource       value;
 } _Korl_Resource_Map;
 #endif
+typedef struct _Korl_Resource
+{
+    Korl_Resource_Handle handle;//@TODO: delete if we don't use this
+} _Korl_Resource;
+typedef struct _Korl_Resource_Map
+{
+    const char*          key;// raw UTF-8 asset file name
+    Korl_Resource_Handle value;
+} _Korl_Resource_Map;
 typedef struct _Korl_Resource_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandleRuntime;// all unique data that cannot be easily reobtained/reconstructed from a korl-memoryState is stored here, including this struct itself
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
+    Korl_Pool                   resourcePool;// stored in runtime memory
+    _Korl_Resource_Map*         stbShFileResources;// stored in runtime memory; acceleration data structure allowing the user to more efficiently obtain the same file-backed Resource
     #if 0//@TODO: delete/recycle
     _Korl_Resource_Map*         stbHmResources;
     Korl_Resource_Handle*       stbDsDirtyResourceHandles;
@@ -503,6 +515,7 @@ korl_internal void korl_resource_initialize(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     context->allocatorHandleRuntime   = allocator;
     context->allocatorHandleTransient = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-resource-transient", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
+    korl_pool_initialize(&context->resourcePool, context->allocatorHandleRuntime, sizeof(_Korl_Resource), 256);
     #if 0//@TODO: delete/recycle
     context->stringPool               = korl_allocate(context->allocatorHandleRuntime, sizeof(*context->stringPool));
     *context->stringPool              = korl_stringPool_create(context->allocatorHandleRuntime);

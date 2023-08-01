@@ -17,9 +17,10 @@
 
 [x] rip out all korl-resource code
 [x] add `pool` as a  `utility` module
-[ ] create new Resource database; just a Pool of Resources
+[x] create new Resource database; just a Pool of Resources
 [ ] add UTF16=>Pool_Handle data structure
   - test obtaining Resource Pool_Handle using a file name string
+[ ] perform defragmentation on korl-resource persistent memory
 [ ] create a mechanism to register a "Resource type"
   - resource type registration requirements:
     - resource type id : u16
@@ -29,6 +30,14 @@
     - flush : function*, codeModule, C API string
       - _optional_, as not all Resources need to be transcoded into a multimedia module
         - needed for: IMAGE, BUFFER, AUDIO (? for resampling?)
+    - pre-process : function*, codeModule, C API string
+      - _optional_, as not all Resources need pre-processing
+        - needed for: IMAGE (pre-multiply alpha)
+        - pre-processed assets should be saved/cached on the hard drive in "build/data/" directory
+          - fuck... I don't think stb-image has an encoder... ☹
+            - https://github.com/lvandeve/lodepng
+              - Zlib license
+          - can we write the saved asset with the same metadata (last-write timestamp)?
     - perhaps a global context of some kind?
       - useful for: 
         - global AUDIO resampling
@@ -47,3 +56,20 @@
   - compose MATERIAL Resource out of SHADER & IMAGE Resources
     - MATERIAL Resources can reference IMAGE Resources; we want to use the same IMAGE Resource Handles that are children of the SCENE3D potentially
 [ ] finish implementation & registration of all current Resource types
+[ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?
+  - user defines a "resource-manifest.txt" file somewhere
+  - KORL contains an internal tool "korl-inventory"
+    - output build binaries to "%PROJECT_ROOT%/build/tools"
+    - input: "resource-manifest.txt"
+      - a list of all resource asset file names, relative to the root of the project's development directory
+      - any additional options the user wants to perform pre-processing 
+    - output:
+      - a "korl-resource.h" file
+        - compile-time enumeration of resource indices
+        - constant UTF strings for each file name
+        - save this file to "%PROJECT_ROOT%/build/code/"
+      - an "assets.bin" file
+        - pre-processed raw file assets
+        - at the end of file, a manifest containing a directory of all contained assets
+          - by using a trailing manifest at end-of-file, this allows us to easily merge the "assets.bin" file with the game's executable to create a 1-file distributable (if desired)
+          - maybe include the file's "last-edited" timestamp here, so we can still implement a reasonably efficient hot-reloading solution
