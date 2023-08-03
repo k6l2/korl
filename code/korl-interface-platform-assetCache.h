@@ -3,7 +3,7 @@
 typedef struct Korl_AssetCache_AssetData
 {
     void* data;
-    u32 dataBytes;
+    u32   dataBytes;
 } Korl_AssetCache_AssetData;
 typedef enum Korl_AssetCache_Get_Flags
     { KORL_ASSETCACHE_GET_FLAGS_NONE = 0

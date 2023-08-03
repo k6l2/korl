@@ -18,18 +18,12 @@
 [x] rip out all korl-resource code
 [x] add `pool` as a  `utility` module
 [x] create new Resource database; just a Pool of Resources
-[ ] add UTF16=>Pool_Handle data structure
-  - test obtaining Resource Pool_Handle using a file name string
-[ ] perform defragmentation on korl-resource persistent memory
-[ ] create a mechanism to register a "Resource type"
+[x] create a mechanism to register a "Resource type"
   - resource type registration requirements:
     - resource type id : u16
     - file transcoder : function*, codeModule, C API string
       - this is _optional_, as not all Resources will be decoded from raw file data!
         - needed for: IMAGE, SHADER, SCENE3D, AUDIO
-    - flush : function*, codeModule, C API string
-      - _optional_, as not all Resources need to be transcoded into a multimedia module
-        - needed for: IMAGE, BUFFER, AUDIO (? for resampling?)
     - pre-process : function*, codeModule, C API string
       - _optional_, as not all Resources need pre-processing
         - needed for: IMAGE (pre-multiply alpha)
@@ -38,12 +32,18 @@
             - https://github.com/lvandeve/lodepng
               - Zlib license
           - can we write the saved asset with the same metadata (last-write timestamp)?
+    - flush : function*, codeModule, C API string
+      - _optional_, as not all Resources need to be transcoded into a multimedia module
+        - needed for: IMAGE, BUFFER, AUDIO (? for resampling?)
     - perhaps a global context of some kind?
       - useful for: 
         - global AUDIO resampling
         - perhaps for SCENE3D Resources, we can remember the Resource Type Id of MESH & IMAGE Resources
   - register an extremely simple resource type to test functionality
     - let's start with SHADER, since this is needed for _all_ drawing operations, and should let us at least perform primitive drawing operations
+[ ] add UTF16=>Pool_Handle data structure
+  - test obtaining Resource Pool_Handle using a file name string
+[ ] perform defragmentation on korl-resource persistent memory
 [ ] test korl-resource by drawing a bunch of korl-gfx primitives using simple SHADER Resources
   - only pipelines that don't use images/samplers for now...
   - no BUFFER resources just yet
@@ -73,3 +73,6 @@
         - at the end of file, a manifest containing a directory of all contained assets
           - by using a trailing manifest at end-of-file, this allows us to easily merge the "assets.bin" file with the game's executable to create a 1-file distributable (if desired)
           - maybe include the file's "last-edited" timestamp here, so we can still implement a reasonably efficient hot-reloading solution
+[ ] test hot-reloading of code module that contains a registered resource descriptor
+  - followed by hot-reload of one of the resources using said descriptor
+  - to ensure that we are updating function pointers of resource descriptor callbacks

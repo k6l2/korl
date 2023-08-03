@@ -138,3 +138,4 @@ shutdownSuccess:
 #include "utility/korl-utility-memory.c"
 #include "utility/korl-utility-gfx.c"
 #include "utility/korl-pool.c"
+#include "korl-resource-shader.c"

@@ -9,8 +9,8 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-pool.h"
-#if 0//@TODO: delete/recycle
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
+#if 0//@TODO: delete/recycle
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
 typedef enum _Korl_Resource_Type
     {_KORL_RESOURCE_TYPE_INVALID // this value indicates the entire Resource Handle is not valid
@@ -87,6 +87,16 @@ typedef struct _Korl_Resource_Map
     _Korl_Resource       value;
 } _Korl_Resource_Map;
 #endif
+typedef struct _Korl_Resource_Descriptor
+{
+    Korl_StringPool_String name;
+    u$                     resourceBytes;
+    struct
+    {
+        fnSig_korl_resource_descriptorCallback_transcode* transcode;
+        Korl_StringPool_String                            transcodeUtf8;
+    } callbacks;
+} _Korl_Resource_Descriptor;
 typedef struct _Korl_Resource
 {
     Korl_Resource_Handle handle;//@TODO: delete if we don't use this
@@ -100,6 +110,8 @@ typedef struct _Korl_Resource_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandleRuntime;// all unique data that cannot be easily reobtained/reconstructed from a korl-memoryState is stored here, including this struct itself
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
+    _Korl_Resource_Descriptor*  stbDaDescriptors;
+    Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store: Descriptor names, callback API names
     Korl_Pool                   resourcePool;// stored in runtime memory
     _Korl_Resource_Map*         stbShFileResources;// stored in runtime memory; acceleration data structure allowing the user to more efficiently obtain the same file-backed Resource
     #if 0//@TODO: delete/recycle
@@ -515,17 +527,53 @@ korl_internal void korl_resource_initialize(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     context->allocatorHandleRuntime   = allocator;
     context->allocatorHandleTransient = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"korl-resource-transient", KORL_MEMORY_ALLOCATOR_FLAGS_NONE, &heapCreateInfo);
-    korl_pool_initialize(&context->resourcePool, context->allocatorHandleRuntime, sizeof(_Korl_Resource), 256);
-    #if 0//@TODO: delete/recycle
     context->stringPool               = korl_allocate(context->allocatorHandleRuntime, sizeof(*context->stringPool));
     *context->stringPool              = korl_stringPool_create(context->allocatorHandleRuntime);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, 16);
+    korl_pool_initialize(&context->resourcePool, context->allocatorHandleRuntime, sizeof(_Korl_Resource), 256);
+    mcsh_new_arena(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources);
+    #if 0//@TODO: delete/recycle
     mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, 128);
     #endif
+    /* register KORL built-in Resource Descriptors */
+    korl_resource_shader_register();
+}
+korl_internal KORL_FUNCTION__korl_resource_descriptor_add(_korl_resource_descriptor_add)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    /* ensure descriptor name is unique */
+    {
+        const _Korl_Resource_Descriptor*const descriptorsEnd = context->stbDaDescriptors + arrlen(context->stbDaDescriptors);
+        for(_Korl_Resource_Descriptor* descriptor = context->stbDaDescriptors; descriptor < descriptorsEnd; descriptor++)
+            if(string_equalsAcu8(&descriptor->name, utf8DescriptorName))
+            {
+                korl_log(ERROR, "descriptor name \"%.*hs\" already exists", utf8DescriptorName.size, utf8DescriptorName.data);
+                return;
+            }
+    }
+    /* add descriptor to the database */
+    KORL_ZERO_STACK(_Korl_Resource_Descriptor, newDescriptor);
+    newDescriptor.name                    = string_newAcu8(utf8DescriptorName);
+    newDescriptor.resourceBytes           = resourceBytes;
+    newDescriptor.callbacks.transcode     = callbackTranscode;
+    newDescriptor.callbacks.transcodeUtf8 = string_newAcu8(utf8CallbackTranscode);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
+    korl_log(INFO, "resource descriptor \"%.*hs\" added", utf8DescriptorName.size, utf8DescriptorName.data);
 }
 korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
 {
-    _Korl_Resource_Context*const         context        = _korl_resource_context;
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    /* find the resource descriptor index whose name matches the descriptor name param; the index of the descriptor will be the Resource's "type" */
+    //@TODO
+    /* if the file name is new, we need to add it to the database */
+    ptrdiff_t hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);
+    if(hashMapIndex < 0)
+    {
+        // @TODO: we need to register "resource types" first, & derive the resource type from the utf8FileName
+        // korl_pool_add(&context->resourcePool, resourceType, &newResource);
+        // mcshput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data, );
+    }
     #if 0//@TODO: delete/recycle
     _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);// sets the type to _KORL_RESOURCE_TYPE_FILE

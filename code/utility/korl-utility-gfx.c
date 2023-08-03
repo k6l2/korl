@@ -64,8 +64,8 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(Korl_Gfx_Material_P
                                                     ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
                                                              ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
                                                              ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
-                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
 }
 korl_internal Korl_Gfx_Camera korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp)
 {
@@ -492,7 +492,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
     }
     /* setup text-specific material/draw-state overrides */
     const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
-    result.subType.runtime.overrides.shaderVertex        = korl_resource_fromFile(KORL_RAW_CONST_UTF16(L"build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    result.subType.runtime.overrides.shaderVertex        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     result.subType.runtime.overrides.storageBufferVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     result.subType.runtime.overrides.materialMapBase     = fontResources.resourceHandleTexture;
     /**/
