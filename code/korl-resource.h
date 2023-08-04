@@ -70,6 +70,8 @@
 #include "utility/korl-utility-memory.h"
 typedef struct Korl_Audio_Format Korl_Audio_Format;
 korl_internal void                                           korl_resource_initialize(void);
+korl_internal void                                           korl_resource_transcodeFileAssets(void);
+korl_internal void*                                          korl_resource_getDescriptorStruct(Korl_Resource_Handle handle);
 korl_internal Korl_Resource_Handle                           korl_resource_createTexture(const struct Korl_Vulkan_CreateInfoTexture* createInfo);
 korl_internal u$                                             korl_resource_getByteSize(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount);
@@ -77,7 +79,6 @@ korl_internal void                                           korl_resource_flush
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle      korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat);
 korl_internal acu8                                           korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat);
-korl_internal Korl_Vulkan_ShaderHandle                       korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader);
 korl_internal void                                           korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, const Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, const Korl_Gfx_Material** o_meshMaterials);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);

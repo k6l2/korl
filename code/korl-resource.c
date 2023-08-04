@@ -97,10 +97,14 @@ typedef struct _Korl_Resource_Descriptor
         Korl_StringPool_String                            transcodeUtf8;
     } callbacks;
 } _Korl_Resource_Descriptor;
-typedef struct _Korl_Resource
+typedef struct _Korl_Resource_Item
 {
-    Korl_Resource_Handle handle;//@TODO: delete if we don't use this
-} _Korl_Resource;
+    u16                       descriptorIndex;
+    void*                     descriptorStruct;
+    Korl_StringPool_String    fileName;// if this member is != KORL_STRINGPOOL_STRING_NULL, then this Resource is considered to be backed by a file asset via korl-assetCache
+    Korl_AssetCache_Get_Flags fileAssetCacheGetFlags;
+    bool                      fileIsTranscoded;
+} _Korl_Resource_Item;
 typedef struct _Korl_Resource_Map
 {
     const char*          key;// raw UTF-8 asset file name
@@ -112,7 +116,7 @@ typedef struct _Korl_Resource_Context
     Korl_Memory_AllocatorHandle allocatorHandleTransient;// all cached data that can be retranscoded/reobtained is stored here, such as korl-asset transcodings or audio.resampledData; we do _not_ need to copy this data to korl-memoryState in order for that functionality to work, so we wont!
     _Korl_Resource_Descriptor*  stbDaDescriptors;
     Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store: Descriptor names, callback API names
-    Korl_Pool                   resourcePool;// stored in runtime memory
+    Korl_Pool                   resourcePool;// stored in runtime memory; pool of _Korl_Resource_Item
     _Korl_Resource_Map*         stbShFileResources;// stored in runtime memory; acceleration data structure allowing the user to more efficiently obtain the same file-backed Resource
     #if 0//@TODO: delete/recycle
     _Korl_Resource_Map*         stbHmResources;
@@ -530,14 +534,45 @@ korl_internal void korl_resource_initialize(void)
     context->stringPool               = korl_allocate(context->allocatorHandleRuntime, sizeof(*context->stringPool));
     *context->stringPool              = korl_stringPool_create(context->allocatorHandleRuntime);
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, 16);
-    korl_pool_initialize(&context->resourcePool, context->allocatorHandleRuntime, sizeof(_Korl_Resource), 256);
+    korl_pool_initialize(&context->resourcePool, context->allocatorHandleRuntime, sizeof(_Korl_Resource_Item), 256);
     mcsh_new_arena(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources);
-    #if 0//@TODO: delete/recycle
-    mchmdefault(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, 128);
-    #endif
     /* register KORL built-in Resource Descriptors */
     korl_resource_shader_register();
+}
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
+{
+    _Korl_Resource_Context*const context      = _korl_resource_context;
+    _Korl_Resource_Item*const    resourceItem = KORL_C_CAST(_Korl_Resource_Item*, item);
+    if(!resourceItem->fileName.handle)
+        return;// this is not a file-asset-backed resource
+    if(resourceItem->fileIsTranscoded)
+        return;// resource is already transcoded; move along
+    /* attempt to get the raw file data from korl-assetCache */
+    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
+    const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resourceItem->fileName), resourceItem->fileAssetCacheGetFlags, &assetData);
+    if(resourceItem->fileAssetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
+        korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
+    /* if we have the assetCache data, we can do the transcoding */
+    if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
+    {
+        korl_assert(resourceItem->descriptorIndex < arrlenu(context->stbDaDescriptors));
+        const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+        korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
+        descriptor->callbacks.transcode(resourceItem->descriptorStruct, assetData);
+        resourceItem->fileIsTranscoded = true;
+    }
+}
+korl_internal void korl_resource_transcodeFileAssets(void)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    korl_pool_forEach(&context->resourcePool, _korl_resource_transcodeFileAssets_forEach, NULL);
+}
+korl_internal void* korl_resource_getDescriptorStruct(Korl_Resource_Handle handle)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem);
+    return resourceItem->descriptorStruct;
 }
 korl_internal KORL_FUNCTION__korl_resource_descriptor_add(_korl_resource_descriptor_add)
 {
@@ -565,42 +600,32 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     /* find the resource descriptor index whose name matches the descriptor name param; the index of the descriptor will be the Resource's "type" */
-    //@TODO
+    const _Korl_Resource_Descriptor*const descriptorsEnd = context->stbDaDescriptors + arrlen(context->stbDaDescriptors);
+    _Korl_Resource_Descriptor* descriptor = context->stbDaDescriptors;
+    for(; descriptor < descriptorsEnd; descriptor++)
+        if(string_equalsAcu8(&descriptor->name, utf8DescriptorName))
+            break;
+    if(descriptor >= descriptorsEnd)
+    {
+        korl_log(ERROR, "resource descriptor \"%.*hs\" not found", utf8DescriptorName.size, utf8DescriptorName.data);
+        return 0;
+    }
+    const u16 resourceType = korl_checkCast_i$_to_u16(descriptor - context->stbDaDescriptors);
     /* if the file name is new, we need to add it to the database */
     ptrdiff_t hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);
     if(hashMapIndex < 0)
     {
-        // @TODO: we need to register "resource types" first, & derive the resource type from the utf8FileName
-        // korl_pool_add(&context->resourcePool, resourceType, &newResource);
-        // mcshput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data, );
+        _Korl_Resource_Item* newResource;
+        const Korl_Resource_Handle newResourceHandle = korl_pool_add(&context->resourcePool, resourceType, &newResource);
+        newResource->descriptorIndex        = resourceType;
+        newResource->descriptorStruct       = korl_allocate(context->allocatorHandleRuntime, descriptor->resourceBytes);
+        newResource->fileName               = string_newAcu8(utf8FileName);
+        newResource->fileAssetCacheGetFlags = assetCacheGetFlags;
+        mcshput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data, newResourceHandle);
+        hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);
     }
-    #if 0//@TODO: delete/recycle
-    _Korl_Resource_Graphics_Type         graphicsType   = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_fileNameToUnpackedHandle(fileName, &graphicsType);// sets the type to _KORL_RESOURCE_TYPE_FILE
-    /* we should now have all the info needed to create the packed resource handle */
-    const Korl_Resource_Handle handle = _korl_resource_handle_pack(unpackedHandle);
-    korl_assert(handle);
-    /* check if the resource was already added */
-    ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    /* if the resource is new, we need to add it to the database */
-    if(hashMapIndex < 0)
-    {
-        mchmput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource));
-        hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-        korl_assert(hashMapIndex >= 0);
-        _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-        resource->stringFileName     = string_newAcu16(fileName);
-        resource->assetCacheGetFlags = assetCacheGetFlags;
-        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-            resource->subType.graphics.type = graphicsType;
-    }
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    /* regardless of whether or not the resource was just added, we still need to make sure that the asset was loaded for it */
-    _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
-    /**/
-    return handle;
-    #endif
-    return 0;//@TODO
+    _Korl_Resource_Map*const resourceMapItem = context->stbShFileResources + hashMapIndex;
+    return resourceMapItem->value;
 }
 korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_create)
 {
@@ -997,10 +1022,10 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
     #endif
     return KORL_MATH_V2U32_ZERO;//@TODO
 }
+#if 0//@TODO: delete/recycle
 korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
     if(!handleResourceShader)
         return 0;
     const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceShader);
@@ -1012,9 +1037,9 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
     if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
         _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
     return resource->subType.graphics.subType.shader.handle;
-    #endif
     return 0;//@TODO
 }
+#endif
 korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, const Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, const Korl_Gfx_Material** o_meshMaterials)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;

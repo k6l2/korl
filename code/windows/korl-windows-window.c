@@ -793,6 +793,10 @@ korl_internal void korl_windows_window_loop(void)
                                  ,clientRect.bottom - clientRect.top);
         korl_vulkan_setSurfaceClearColor((f32[]){0.05f, 0.f, 0.05f});// set default clear color to ~purplish~
     }
+    /* now that the renderer's logical device is created, we can further 
+        initialize korl-gfx with global graphics device assets that could not be 
+        created before creating the renderer's logical device */
+    korl_gfx_initializePostRendererLogicalDevice();
     /* initialize game memory & game module */
     const KorlPlatformApi korlApi = _korl_windows_window_createPlatformApi();
     korl_time_probeStart(game_initialization);
@@ -954,11 +958,12 @@ korl_internal void korl_windows_window_loop(void)
         korl_gfx_text_draw(debugText, korl_math_aabb2f32_fromPoints(KORL_F32_MAX,KORL_F32_MAX, -KORL_F32_MAX,-KORL_F32_MAX));
 #endif
         korl_time_probeStop(game_update);
-        korl_time_probeStart(render_sound);           korl_sfx_mix();               korl_time_probeStop(render_sound);
-        korl_time_probeStart(gui_frame_end);          korl_gui_frameEnd();          korl_time_probeStop(gui_frame_end);
-        korl_time_probeStart(flush_glyph_pages);      korl_gfx_flushGlyphPages();   korl_time_probeStop(flush_glyph_pages);
-        korl_time_probeStart(flush_resource_updates); korl_resource_flushUpdates(); korl_time_probeStop(flush_resource_updates);
-        korl_time_probeStart(vulkan_frame_end);       korl_vulkan_frameEnd();       korl_time_probeStop(vulkan_frame_end);
+        korl_time_probeStart(resource_transcode_files); korl_resource_transcodeFileAssets(); korl_time_probeStop(resource_transcode_files);
+        korl_time_probeStart(render_sound);             korl_sfx_mix();                      korl_time_probeStop(render_sound);
+        korl_time_probeStart(gui_frame_end);            korl_gui_frameEnd();                 korl_time_probeStop(gui_frame_end);
+        korl_time_probeStart(flush_glyph_pages);        korl_gfx_flushGlyphPages();          korl_time_probeStop(flush_glyph_pages);
+        korl_time_probeStart(resource_flush_updates);   korl_resource_flushUpdates();        korl_time_probeStop(resource_flush_updates);
+        korl_time_probeStart(vulkan_frame_end);         korl_vulkan_frameEnd();              korl_time_probeStop(vulkan_frame_end);
         /* regulate frame rate to our game module's target frame rate */
         //KORL-ISSUE-000-000-059: window: find a frame timing solution that works if vulkan API blocks for some reason
         const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();

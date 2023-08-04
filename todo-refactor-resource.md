@@ -41,7 +41,7 @@
         - perhaps for SCENE3D Resources, we can remember the Resource Type Id of MESH & IMAGE Resources
   - register an extremely simple resource type to test functionality
     - let's start with SHADER, since this is needed for _all_ drawing operations, and should let us at least perform primitive drawing operations
-[ ] add UTF16=>Pool_Handle data structure
+[x] add UTF16=>Pool_Handle data structure
   - test obtaining Resource Pool_Handle using a file name string
 [ ] perform defragmentation on korl-resource persistent memory
 [ ] test korl-resource by drawing a bunch of korl-gfx primitives using simple SHADER Resources

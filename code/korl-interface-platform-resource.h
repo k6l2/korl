@@ -44,7 +44,7 @@ typedef struct Korl_Resource_CreateInfoBuffer
     u$  bytes;
     u32 usageFlags;// see: Korl_Resource_BufferUsageFlags
 } Korl_Resource_CreateInfoBuffer;
-#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)  void name(void* resource, Korl_AssetCache_AssetData assetData)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)  void name(void* resourceDescriptorStruct, Korl_AssetCache_AssetData assetData)
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_transcode(fnSig_korl_resource_descriptorCallback_transcode);
 #if 0//@TODO ?
 #define KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(name) void name(void)

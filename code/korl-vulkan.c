@@ -11,6 +11,7 @@
 #include "korl-stb-ds.h"
 #include "korl-time.h"
 #include "korl-resource.h"
+#include "korl-resource-shader.h"
 #include "utility/korl-utility-gfx.h"
 #if defined(KORL_PLATFORM_WINDOWS)
     #include <vulkan/vulkan_win32.h>
