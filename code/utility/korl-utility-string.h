@@ -61,6 +61,7 @@ korl_internal char* korl_string_formatUtf8(Korl_Memory_AllocatorHandle allocator
  */
 korl_internal i$ korl_string_formatBufferUtf16(wchar_t* buffer, u$ bufferBytes, const wchar_t* format, ...);
 korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle allocatorHandle, const wchar_t* format, ...);
+korl_internal acu8 korl_string_utf16_to_utf8(Korl_Memory_AllocatorHandle allocatorHandle, acu16 rawUtf16);
 /**
  * \return \c 0 if the two strings are equal
  */

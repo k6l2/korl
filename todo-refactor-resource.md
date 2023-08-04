@@ -43,11 +43,10 @@
     - let's start with SHADER, since this is needed for _all_ drawing operations, and should let us at least perform primitive drawing operations
 [x] add UTF16=>Pool_Handle data structure
   - test obtaining Resource Pool_Handle using a file name string
-[ ] perform defragmentation on korl-resource persistent memory
 [ ] test korl-resource by drawing a bunch of korl-gfx primitives using simple SHADER Resources
   - only pipelines that don't use images/samplers for now...
   - no BUFFER resources just yet
-  [ ] test SHADER resource hot-reloading
+  [x] test SHADER resource hot-reloading
   [ ] test SHADER resource compatibility with korl-memoryState
 [ ] add functionality for Resource hierarchy
   - compose a SCENE3D Resource out of MESH & IMAGE Resources
@@ -56,6 +55,7 @@
   - compose MATERIAL Resource out of SHADER & IMAGE Resources
     - MATERIAL Resources can reference IMAGE Resources; we want to use the same IMAGE Resource Handles that are children of the SCENE3D potentially
 [ ] finish implementation & registration of all current Resource types
+[ ] perform defragmentation on korl-resource persistent memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?
   - user defines a "resource-manifest.txt" file somewhere
   - KORL contains an internal tool "korl-inventory"

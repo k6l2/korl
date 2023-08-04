@@ -320,6 +320,31 @@ korl_internal wchar_t* korl_string_formatUtf16(Korl_Memory_AllocatorHandle alloc
     va_end(args);
     return result;
 }
+korl_internal acu8 korl_string_utf16_to_utf8(Korl_Memory_AllocatorHandle allocatorHandle, acu16 rawUtf16)
+{
+    /* prepare a result buffer as a heap allocation */
+    u$  resultBufferSize     = 0;
+    u$  resultBufferCapacity = rawUtf16.size;// just an estimate; we will realloc as-needed to fill the true result's size as we go...
+    u8* resultBuffer         = KORL_C_CAST(u8*, korl_allocateDirty(allocatorHandle, resultBufferCapacity * sizeof(*resultBuffer)));
+    /* perform the transcoding */
+    for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(rawUtf16.data, rawUtf16.size)
+       ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
+       ; korl_string_codepointIteratorUtf16_next(&codepointIt))
+    {
+        if(resultBufferSize + 4 > resultBufferCapacity)
+        {
+            resultBufferCapacity = KORL_MATH_MAX(2 * resultBufferCapacity, resultBufferCapacity + 4);
+            resultBuffer         = KORL_C_CAST(u8*, korl_reallocateDirty(allocatorHandle, resultBuffer, resultBufferCapacity * sizeof(*resultBuffer)));
+        }
+        const u8 utf8UnitsWritten = korl_string_codepoint_to_utf8(codepointIt._codepoint, resultBuffer + resultBufferSize);
+        resultBufferSize += utf8UnitsWritten;
+    }
+    /* shrink-wrap the result buffer allocation, making sure to include a 
+        null-terminator for C API compatibility */
+    resultBuffer = KORL_C_CAST(u8*, korl_reallocate(allocatorHandle, resultBuffer, (resultBufferSize + 1) * sizeof(*resultBuffer)));
+    resultBuffer[resultBufferSize] = 0;
+    return KORL_STRUCT_INITIALIZE(acu8){.size = resultBufferSize, .data = resultBuffer};
+}
 korl_internal int korl_string_compareUtf8(const char* a, const char* b, u$ arraySizeLimit)
 {
     u$ i = 0;

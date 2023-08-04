@@ -4,6 +4,12 @@ typedef struct _Korl_Resource_Shader
 {
     Korl_Vulkan_ShaderHandle vulkanShaderHandle;
 } _Korl_Resource_Shader;
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(korl_resource_shader_unload)
+{
+    _Korl_Resource_Shader*const shaderResource = KORL_C_CAST(_Korl_Resource_Shader*, resourceDescriptorStruct);
+    korl_vulkan_shader_destroy(shaderResource->vulkanShaderHandle);
+    shaderResource->vulkanShaderHandle = 0;
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(korl_resource_shader_transcode)
 {
     _Korl_Resource_Shader*const shaderResource = KORL_C_CAST(_Korl_Resource_Shader*, resourceDescriptorStruct);
@@ -14,9 +20,14 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(korl_resour
 }
 korl_internal void korl_resource_shader_register(void)
 {
-    korl_resource_descriptor_add(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME)
-                                ,sizeof(_Korl_Resource_Shader)
-                                ,korl_resource_shader_transcode);
+    KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
+    descriptorManifest.utf8DescriptorName    = KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME);
+    descriptorManifest.resourceBytes         = sizeof(_Korl_Resource_Shader);
+    descriptorManifest.callbackUnload        =                      korl_resource_shader_unload;
+    descriptorManifest.utf8CallbackUnload    = KORL_RAW_CONST_UTF8("korl_resource_shader_unload");
+    descriptorManifest.callbackTranscode     =                      korl_resource_shader_transcode;
+    descriptorManifest.utf8CallbackTranscode = KORL_RAW_CONST_UTF8("korl_resource_shader_transcode");
+    korl_resource_descriptor_add(&descriptorManifest);
 }
 korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)
 {
