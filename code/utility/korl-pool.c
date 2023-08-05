@@ -1,5 +1,6 @@
 #include "korl-pool.h"
 #include "korl-interface-platform.h"
+#include "utility/korl-checkCast.h"
 #define _KORL_POOL_ITEM_TYPE_MAX (KORL_C_CAST(Korl_Pool_ItemType, ~0) - 1)
 typedef struct _Korl_Pool_HandleUnpacked
 {
@@ -28,6 +29,11 @@ korl_internal void korl_pool_initialize(Korl_Pool* context, Korl_Memory_Allocato
     context->capacity    = capacity;
     context->items.metas = KORL_C_CAST(Korl_Pool_ItemMeta*, korl_allocate(context->allocator, context->capacity * sizeof(*context->items.metas)));
     context->items.datas =                                  korl_allocate(context->allocator, context->capacity * context->byteStride);
+}
+korl_internal void korl_pool_collectDefragmentPointers(Korl_Pool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
+{
+    KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->items.datas, parent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->items.metas, parent);
 }
 korl_internal void korl_pool_destroy(Korl_Pool* context)
 {
@@ -91,6 +97,18 @@ korl_internal void* korl_pool_get(Korl_Pool* context, Korl_Pool_Handle* handle)
         korl_log(WARNING, "invalid handle %llu", *handle);
         *handle = 0;
         return NULL;
+}
+korl_internal Korl_Pool_Handle korl_pool_itemHandle(Korl_Pool* context, const void* item)
+{
+    const i$ itemByteOffset = KORL_C_CAST(const u8*, item) - KORL_C_CAST(const u8*, context->items.datas);
+    korl_assert(item >= context->items.datas);
+    korl_assert(itemByteOffset % context->byteStride == 0);
+    korl_assert(itemByteOffset < context->capacity * context->byteStride);
+    const Korl_Pool_Index poolIndex = korl_checkCast_i$_to_u32(itemByteOffset / context->byteStride);
+    const Korl_Pool_ItemMeta*const itemMeta = context->items.metas + poolIndex;
+    if(itemMeta->type == 0)
+        return 0;
+    return _korl_pool_handle_pack(KORL_STRUCT_INITIALIZE(_Korl_Pool_HandleUnpacked){.index = poolIndex, .type = itemMeta->type, .salt = itemMeta->salt});
 }
 korl_internal void korl_pool_remove(Korl_Pool* context, Korl_Pool_Handle* handle)
 {

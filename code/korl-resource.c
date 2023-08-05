@@ -93,29 +93,33 @@ typedef struct _Korl_Resource_Descriptor
     u$                     resourceBytes;
     struct
     {
-        fnSig_korl_resource_descriptorCallback_unload*    unload;
-        Korl_StringPool_String                            unloadUtf8;
-        fnSig_korl_resource_descriptorCallback_transcode* transcode;
-        Korl_StringPool_String                            transcodeUtf8;
+        Korl_FunctionDynamo_FunctionHandle unload;   // fnSig_korl_resource_descriptorCallback_unload
+        Korl_FunctionDynamo_FunctionHandle transcode;// fnSig_korl_resource_descriptorCallback_transcode
     } callbacks;
 } _Korl_Resource_Descriptor;
-#if 0//@TODO
 typedef enum _Korl_Resource_Item_BackingType
     {_KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE
     ,_KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA
 } _Korl_Resource_Item_BackingType;
-#endif
 typedef struct _Korl_Resource_Item
 {
-    u16                       descriptorIndex;
-    void*                     descriptorStruct;// stored in runtime memory; this is where transcoded data references are stored, such as Vulkan_DeviceMemory_AllocationHandles, etc.; this data is opaque to korl-resource as the memory requirements for each resource descriptor struct will vary
-    Korl_StringPool_String    fileName;// if this member is != KORL_STRINGPOOL_STRING_NULL, then this Resource is considered to be backed by a file asset via korl-assetCache
-    Korl_AssetCache_Get_Flags fileAssetCacheGetFlags;
-    bool                      fileIsTranscoded;
-    #if 0//@TODO: shouldn't we just make _Korl_Resource_Item a PTU? I don't see a case where we have a Resource which is both assetCache-backed _and_ runtime-data-backed simultaneously
-    void*                     runtimeData;
-    u$                        runtimeDataBytes;
-    #endif
+    u16                             descriptorIndex;
+    void*                           descriptorStruct;// stored in runtime memory; this is where transcoded data references are stored, such as Vulkan_DeviceMemory_AllocationHandles, etc.; this data is opaque to korl-resource as the memory requirements for each resource descriptor struct will vary
+    _Korl_Resource_Item_BackingType backingType;
+    union
+    {
+        struct
+        {
+            Korl_StringPool_String    fileName;
+            Korl_AssetCache_Get_Flags assetCacheGetFlags;
+            bool                      isTranscoded;
+        } assetCache;
+        struct
+        {
+            void* data;
+            u$    dataBytes;
+        } runtime;
+    } backingSubType;
 } _Korl_Resource_Item;
 typedef struct _Korl_Resource_Map
 {
@@ -555,14 +559,14 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_for
 {
     _Korl_Resource_Context*const context      = _korl_resource_context;
     _Korl_Resource_Item*const    resourceItem = KORL_C_CAST(_Korl_Resource_Item*, item);
-    if(!resourceItem->fileName.handle)
-        return;// this is not a file-asset-backed resource
-    if(resourceItem->fileIsTranscoded)
-        return;// resource is already transcoded; move along
+    if(resourceItem->backingType != _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE)
+        return KORL_POOL_FOR_EACH_CONTINUE;// this is not a file-asset-backed resource
+    if(resourceItem->backingSubType.assetCache.isTranscoded)
+        return KORL_POOL_FOR_EACH_CONTINUE;// resource is already transcoded; move along
     /* attempt to get the raw file data from korl-assetCache */
     KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
-    const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resourceItem->fileName), resourceItem->fileAssetCacheGetFlags, &assetData);
-    if(resourceItem->fileAssetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
+    const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resourceItem->backingSubType.assetCache.fileName), resourceItem->backingSubType.assetCache.assetCacheGetFlags, &assetData);
+    if(resourceItem->backingSubType.assetCache.assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
         korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
     /* if we have the assetCache data, we can do the transcoding */
     if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
@@ -570,9 +574,11 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_for
         korl_assert(resourceItem->descriptorIndex < arrlenu(context->stbDaDescriptors));
         const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
         korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
-        descriptor->callbacks.transcode(resourceItem->descriptorStruct, assetData);
-        resourceItem->fileIsTranscoded = true;
+        fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
+        transcode(resourceItem->descriptorStruct, assetData);
+        resourceItem->backingSubType.assetCache.isTranscoded = true;
     }
+    return KORL_POOL_FOR_EACH_CONTINUE;
 }
 korl_internal void korl_resource_transcodeFileAssets(void)
 {
@@ -601,12 +607,10 @@ korl_internal KORL_FUNCTION_korl_resource_descriptor_add(korl_resource_descripto
     }
     /* add descriptor to the database */
     KORL_ZERO_STACK(_Korl_Resource_Descriptor, newDescriptor);
-    newDescriptor.name                    = string_newAcu8(descriptorManifest->utf8DescriptorName);
-    newDescriptor.resourceBytes           = descriptorManifest->resourceBytes;
-    newDescriptor.callbacks.unload        = descriptorManifest->callbackUnload;
-    newDescriptor.callbacks.unloadUtf8    = string_newAcu8(descriptorManifest->utf8CallbackUnload);
-    newDescriptor.callbacks.transcode     = descriptorManifest->callbackTranscode;
-    newDescriptor.callbacks.transcodeUtf8 = string_newAcu8(descriptorManifest->utf8CallbackTranscode);
+    newDescriptor.name                = string_newAcu8(descriptorManifest->utf8DescriptorName);
+    newDescriptor.resourceBytes       = descriptorManifest->resourceBytes;
+    newDescriptor.callbacks.unload    = descriptorManifest->callbackUnload;
+    newDescriptor.callbacks.transcode = descriptorManifest->callbackTranscode;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
     korl_log(INFO, "resource descriptor \"%.*hs\" added", descriptorManifest->utf8DescriptorName.size, descriptorManifest->utf8DescriptorName.data);
 }
@@ -631,10 +635,11 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
     {
         _Korl_Resource_Item* newResource;
         const Korl_Resource_Handle newResourceHandle = korl_pool_add(&context->resourcePool, resourceType, &newResource);
-        newResource->descriptorIndex        = resourceType;
-        newResource->descriptorStruct       = korl_allocate(context->allocatorHandleRuntime, descriptor->resourceBytes);
-        newResource->fileName               = string_newAcu8(utf8FileName);
-        newResource->fileAssetCacheGetFlags = assetCacheGetFlags;
+        newResource->descriptorIndex                              = resourceType;
+        newResource->descriptorStruct                             = korl_allocate(context->allocatorHandleRuntime, descriptor->resourceBytes);
+        newResource->backingType                                  = _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE;
+        newResource->backingSubType.assetCache.fileName           = string_newAcu8(utf8FileName);
+        newResource->backingSubType.assetCache.assetCacheGetFlags = assetCacheGetFlags;
         mcshput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data, newResourceHandle);
         hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);
     }
@@ -1130,8 +1135,35 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
 korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
 {
     const u32 byteOffset = korl_checkCast_u$_to_u32((*pByteBuffer)->size);
-    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.data = KORL_C_CAST(u8*, &_korl_resource_context), .size = sizeof(_korl_resource_context)});
+    korl_memory_byteBuffer_append(pByteBuffer, (acu8){.size = sizeof(_korl_resource_context), .data = KORL_C_CAST(u8*, &_korl_resource_context)});
     return byteOffset;
+}
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_memoryStateRead_forEach)
+{
+    _Korl_Resource_Context*const    context      = _korl_resource_context;
+    _Korl_Resource_Item*const       resourceItem = KORL_C_CAST(_Korl_Resource_Item*, item);
+    _Korl_Resource_Descriptor*const descriptor   = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    switch(resourceItem->backingType)
+    {
+    case _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE:{
+        /* if the resource is backed by an assetCache file, we can just reset 
+            the transcoded flag & clear the descriptorStruct */
+        resourceItem->backingSubType.assetCache.isTranscoded = false;
+        korl_memory_zero(resourceItem->descriptorStruct, descriptor->resourceBytes);
+        return KORL_POOL_FOR_EACH_CONTINUE;}
+    case _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA:{
+        /* so here's what we're going to do: we're going to just leave the 
+            resource descriptorStruct as-is, and we'll just call the descriptor's 
+            transcode function on this resource; if the user has written the 
+            descriptor's transcode function correctly, then it should be able to 
+            re-transcode into multimedia modules (such as korl-vulkan) while 
+            maintaining the same asset handles as needed */
+        fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
+        //@TODO: modify transcode to work with non-assetCache-backed resources & call it here
+        return KORL_POOL_FOR_EACH_CONTINUE;}
+    }
+    korl_log(ERROR, "invalid resourceItem backingType: %i", resourceItem->backingType);
+    return KORL_POOL_FOR_EACH_CONTINUE;
 }
 korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
 {
@@ -1144,6 +1176,7 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
     /* go through each Resource & re-create the transcoded multimedia assets, 
         since we should expect that when a memory state is loaded all multimedia 
         device assets are invalidated! */
+    korl_pool_forEach(&context->resourcePool, _korl_resource_memoryStateRead_forEach, NULL);
     #if 0//@TODO: delete/recycle
     for(u$ r = 0; r < hmlenu(context->stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
     {
@@ -1229,8 +1262,10 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
     _Korl_Resource_Item*const       resourceItem    = korl_pool_get(&context->resourcePool, &resourceHandle);
     const u16                       descriptorIndex = KORL_POOL_HANDLE_ITEM_TYPE(resourceHandle);
     _Korl_Resource_Descriptor*const descriptor      = context->stbDaDescriptors + descriptorIndex;
-    descriptor->callbacks.unload(resourceItem->descriptorStruct);
-    resourceItem->fileIsTranscoded = false;
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE);
+    fnSig_korl_resource_descriptorCallback_unload*const unload = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_unload*, korl_functionDynamo_get(descriptor->callbacks.unload));
+    unload(resourceItem->descriptorStruct);
+    resourceItem->backingSubType.assetCache.isTranscoded = false;
     cleanUp:
         korl_free(context->allocatorHandleRuntime, KORL_C_CAST(void*, utf8FileName.data));
 }

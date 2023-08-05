@@ -43,11 +43,12 @@
     - let's start with SHADER, since this is needed for _all_ drawing operations, and should let us at least perform primitive drawing operations
 [x] add UTF16=>Pool_Handle data structure
   - test obtaining Resource Pool_Handle using a file name string
-[ ] test korl-resource by drawing a bunch of korl-gfx primitives using simple SHADER Resources
+[x] test korl-resource by drawing a bunch of korl-gfx primitives using simple SHADER Resources
   - only pipelines that don't use images/samplers for now...
   - no BUFFER resources just yet
   [x] test SHADER resource hot-reloading
-  [ ] test SHADER resource compatibility with korl-memoryState
+  [x] test SHADER resource compatibility with korl-memoryState
+[ ] add BUFFER resource to test runtime-data-backed resources (same tests as above)
 [ ] add functionality for Resource hierarchy
   - compose a SCENE3D Resource out of MESH & IMAGE Resources
     - GLB files can contain IMAGE Resources!

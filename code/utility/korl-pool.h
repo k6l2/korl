@@ -35,13 +35,19 @@ typedef struct Korl_Pool
     } items;
     Korl_Pool_Index itemCount;// (de/in)cremented each time an item is added/removed from the Korl_Pool
 } Korl_Pool;
-#define KORL_POOL_CALLBACK_FOR_EACH(name) void name(void* userData, void* item)
+typedef enum Korl_Pool_ForEachResult
+    {KORL_POOL_FOR_EACH_CONTINUE
+    ,KORL_POOL_FOR_EACH_DONE
+} Korl_Pool_ForEachResult;
+#define KORL_POOL_CALLBACK_FOR_EACH(name) Korl_Pool_ForEachResult name(void* userData, void* item)
 typedef KORL_POOL_CALLBACK_FOR_EACH(korl_pool_callback_forEach);
 korl_internal void             korl_pool_initialize(Korl_Pool* context, Korl_Memory_AllocatorHandle allocator, u32 byteStride, Korl_Pool_Index capacity);
+korl_internal void             korl_pool_collectDefragmentPointers(Korl_Pool* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent);
 korl_internal void             korl_pool_destroy(Korl_Pool* context);
 korl_internal void             korl_pool_clear(Korl_Pool* context);
 korl_internal Korl_Pool_Handle korl_pool_add(Korl_Pool* context, Korl_Pool_ItemType itemType, void** o_newItem);// note that this API does not assume whether or not the Korl_Pool's items store their own copy of their handles
 korl_internal void*            korl_pool_get(Korl_Pool* context, Korl_Pool_Handle* handle);
+korl_internal Korl_Pool_Handle korl_pool_itemHandle(Korl_Pool* context, const void* item);
 korl_internal void             korl_pool_remove(Korl_Pool* context, Korl_Pool_Handle* handle);
 korl_internal bool             korl_pool_contains(Korl_Pool* context, Korl_Pool_Handle handle);
 korl_internal void             korl_pool_forEach(Korl_Pool* context, korl_pool_callback_forEach* callback, void* callbackUserData);

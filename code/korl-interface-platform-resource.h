@@ -43,15 +43,14 @@ typedef KORL_FUNCTION_korl_resource_descriptorCallback_transcode(fnSig_korl_reso
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(fnSig_korl_resource_descriptorCallback_preProcess);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_flush(fnSig_korl_resource_descriptorCallback_flush);
 #endif
+typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;
 typedef struct Korl_Resource_DescriptorManifest
 {
-    acu8                                              utf8DescriptorName;
-    u$                                                resourceBytes;
-    fnSig_korl_resource_descriptorCallback_unload*    callbackUnload;
-    acu8                                              utf8CallbackUnload;
+    acu8                               utf8DescriptorName;
+    u$                                 resourceBytes;
+    Korl_FunctionDynamo_FunctionHandle callbackUnload;// fnSig_korl_resource_descriptorCallback_unload
     /** OPTIONAL parameters */
-    fnSig_korl_resource_descriptorCallback_transcode* callbackTranscode;
-    acu8                                              utf8CallbackTranscode;
+    Korl_FunctionDynamo_FunctionHandle callbackTranscode;// fnSig_korl_resource_descriptorCallback_transcode
 } Korl_Resource_DescriptorManifest;
 typedef Korl_Pool_Handle Korl_Resource_Handle;
 enum Korl_Resource_BufferUsageFlags
