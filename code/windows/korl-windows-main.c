@@ -23,6 +23,7 @@
 #include "korl-audio.h"
 #include "korl-sfx.h"
 #include "korl-network.h"
+#include "korl-functionDynamo.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -62,24 +63,25 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         goto shutdownSuccess;
     }
     const acu8 platformModuleName = KORL_RAW_CONST_UTF8("korl-platform");
-    korl_time_probeStart(init_module_command);      korl_command_initialize(platformModuleName); korl_time_probeStop(init_module_command);
-    korl_time_probeStart(init_module_audio);        korl_audio_initialize();                     korl_time_probeStop(init_module_audio);
-    korl_time_probeStart(init_module_sfx);          korl_sfx_initialize();                       korl_time_probeStop(init_module_sfx);
-    korl_time_probeStart(init_module_resource);     korl_resource_initialize();                  korl_time_probeStop(init_module_resource);
-    korl_time_probeStart(init_module_bluetooth);    korl_bluetooth_initialize();                 korl_time_probeStop(init_module_bluetooth);
-    korl_time_probeStart(init_module_network);      korl_network_initialize();                   korl_time_probeStop(init_module_network);
-    korl_time_probeStart(init_module_gamepad);      korl_windows_gamepad_initialize();           korl_time_probeStop(init_module_gamepad);
-    korl_time_probeStart(init_module_window);       korl_windows_window_initialize();            korl_time_probeStop(init_module_window);
-    korl_time_probeStart(create_window);            korl_windows_window_create(1024, 576);       korl_time_probeStop(create_window);
-    korl_time_probeStart(init_module_log);          korl_log_initiateFile(!logFileDisable);      korl_time_probeStop(init_module_log);
-    korl_time_probeStart(init_module_stb_image);    korl_stb_image_initialize();                 korl_time_probeStop(init_module_stb_image);
-    korl_time_probeStart(init_module_stb_truetype); korl_stb_truetype_initialize();              korl_time_probeStop(init_module_stb_truetype);
-    korl_time_probeStart(init_module_stb_ds);       korl_stb_ds_initialize();                    korl_time_probeStop(init_module_stb_ds);
-    korl_time_probeStart(init_module_stb_vorbis);   korl_stb_vorbis_initialize();                korl_time_probeStop(init_module_stb_vorbis);
-    korl_time_probeStart(init_module_assetCache);   korl_assetCache_initialize();                korl_time_probeStop(init_module_assetCache);
-    korl_time_probeStart(init_module_vulkan);       korl_vulkan_construct();                     korl_time_probeStop(init_module_vulkan);
-    korl_time_probeStart(init_module_gfx);          korl_gfx_initialize();                       korl_time_probeStop(init_module_gfx);
-    korl_time_probeStart(init_module_gui);          korl_gui_initialize();                       korl_time_probeStop(init_module_gui);
+    korl_time_probeStart(init_module_functionDynamo); korl_functionDynamo_initialize(platformModuleName); korl_time_probeStop(init_module_functionDynamo);
+    korl_time_probeStart(init_module_command);        korl_command_initialize(platformModuleName);        korl_time_probeStop(init_module_command);
+    korl_time_probeStart(init_module_audio);          korl_audio_initialize();                            korl_time_probeStop(init_module_audio);
+    korl_time_probeStart(init_module_sfx);            korl_sfx_initialize();                              korl_time_probeStop(init_module_sfx);
+    korl_time_probeStart(init_module_resource);       korl_resource_initialize();                         korl_time_probeStop(init_module_resource);
+    korl_time_probeStart(init_module_bluetooth);      korl_bluetooth_initialize();                        korl_time_probeStop(init_module_bluetooth);
+    korl_time_probeStart(init_module_network);        korl_network_initialize();                          korl_time_probeStop(init_module_network);
+    korl_time_probeStart(init_module_gamepad);        korl_windows_gamepad_initialize();                  korl_time_probeStop(init_module_gamepad);
+    korl_time_probeStart(init_module_window);         korl_windows_window_initialize();                   korl_time_probeStop(init_module_window);
+    korl_time_probeStart(create_window);              korl_windows_window_create(1024, 576);              korl_time_probeStop(create_window);
+    korl_time_probeStart(init_module_log);            korl_log_initiateFile(!logFileDisable);             korl_time_probeStop(init_module_log);
+    korl_time_probeStart(init_module_stb_image);      korl_stb_image_initialize();                        korl_time_probeStop(init_module_stb_image);
+    korl_time_probeStart(init_module_stb_truetype);   korl_stb_truetype_initialize();                     korl_time_probeStop(init_module_stb_truetype);
+    korl_time_probeStart(init_module_stb_ds);         korl_stb_ds_initialize();                           korl_time_probeStop(init_module_stb_ds);
+    korl_time_probeStart(init_module_stb_vorbis);     korl_stb_vorbis_initialize();                       korl_time_probeStop(init_module_stb_vorbis);
+    korl_time_probeStart(init_module_assetCache);     korl_assetCache_initialize();                       korl_time_probeStop(init_module_assetCache);
+    korl_time_probeStart(init_module_vulkan);         korl_vulkan_construct();                            korl_time_probeStop(init_module_vulkan);
+    korl_time_probeStart(init_module_gfx);            korl_gfx_initialize();                              korl_time_probeStop(init_module_gfx);
+    korl_time_probeStart(init_module_gui);            korl_gui_initialize();                              korl_time_probeStop(init_module_gui);
     korl_time_probeStop(KORL_initialization);
     korl_windows_window_loop();
     korl_vulkan_destroy();
@@ -130,6 +132,8 @@ shutdownSuccess:
 #include "korl-codec-glb.c"
 #include "korl-math.c"
 #include "korl-network.c"
+#include "korl-resource-shader.c"
+#include "korl-functionDynamo.c"
 #include "utility/korl-stringPool.c"
 #include "utility/korl-utility-math.c"
 #include "utility/korl-checkCast.c"
@@ -138,4 +142,3 @@ shutdownSuccess:
 #include "utility/korl-utility-memory.c"
 #include "utility/korl-utility-gfx.c"
 #include "utility/korl-pool.c"
-#include "korl-resource-shader.c"

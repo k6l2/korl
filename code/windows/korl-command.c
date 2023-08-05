@@ -1,8 +1,10 @@
+//@TODO: refactor this to use korl-functionDynamo; move to korl/code folder since we shouldn't need platform-specific APIs to achieve this
 #include "korl-command.h"
 #include "korl-memory.h"
 #include "korl-string.h"
 #include "korl-stb-ds.h"
 #include "utility/korl-stringPool.h"
+#include "utility/korl-utility-string.h"
 #include "korl-windows-globalDefines.h"
 typedef struct _Korl_Command_Module
 {

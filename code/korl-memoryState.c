@@ -25,6 +25,7 @@ typedef struct _Korl_MemoryState_Manifest
 {
     KORL_MEMORY_POOL_DECLARE(_Korl_MemoryState_Manifest_Allocator, allocators, 32);
     u32 byteOffsetKorlCommand;
+    u32 byteOffsetKorlFunctionDynamo;
     u32 byteOffsetKorlWindow;
     u32 byteOffsetKorlGfx;
     u32 byteOffsetKorlSfx;
@@ -74,13 +75,14 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_create(Korl_Memory_Alloca
         note: we don't have to remember the byte offsets of each heap, as this information is implicit */
     korl_memory_allocator_enumerateAllocators(_korl_memoryState_create_enumerateAllocatorsCallback, &enumerateContext);
     /* call module-specific functions to write module-specific data to `result`, while remembering byte offsets for each module */
-    enumerateContext.manifest.byteOffsetKorlCommand    = korl_command_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
-    enumerateContext.manifest.byteOffsetKorlWindow     = korl_windows_window_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
-    enumerateContext.manifest.byteOffsetKorlGfx        = korl_gfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
-    enumerateContext.manifest.byteOffsetKorlSfx        = korl_sfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
-    enumerateContext.manifest.byteOffsetKorlGui        = korl_gui_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
-    enumerateContext.manifest.byteOffsetKorlResource   = korl_resource_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
-    enumerateContext.manifest.byteOffsetKorlAssetCache = korl_assetCache_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlCommand        = korl_command_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlFunctionDynamo = korl_functionDynamo_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlWindow         = korl_windows_window_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlGfx            = korl_gfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlSfx            = korl_sfx_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlGui            = korl_gui_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlResource       = korl_resource_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
+    enumerateContext.manifest.byteOffsetKorlAssetCache     = korl_assetCache_memoryStateWrite(KORL_STB_DS_MC_CAST(allocatorHandleResult), &result);
     /* write a manifest into `result` containing the heap offsets for each allocator & offsets to each module-specific data */
     korl_memory_byteBuffer_append(&result, (acu8){.data = KORL_C_CAST(u8*, &enumerateContext.manifest), .size = sizeof(enumerateContext.manifest)});
     return result;
@@ -161,6 +163,7 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_Allocato
     korl_memory_allocator_enumerateAllocators(_korl_memoryState_load_enumerateAllocatorsCallback, NULL);
     /* finally, we can perform module-specific memory state loading procedures */
     korl_command_memoryStateRead       (result->data + manifest->byteOffsetKorlCommand);
+    korl_functionDynamo_memoryStateRead(result->data + manifest->byteOffsetKorlFunctionDynamo);
     korl_windows_window_memoryStateRead(result->data + manifest->byteOffsetKorlWindow);
     korl_gfx_memoryStateRead           (result->data + manifest->byteOffsetKorlGfx);
     korl_sfx_memoryStateRead           (result->data + manifest->byteOffsetKorlSfx);

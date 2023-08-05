@@ -37,6 +37,12 @@ typedef KORL_FUNCTION_korl_command_callback(fnSig_korl_command_callback);
 /** use the \c korl_command_register convenience macro instead of this API directly! */
 #define KORL_FUNCTION__korl_command_register(name) void name(acu8 utf8CommandName, fnSig_korl_command_callback* callback, acu8 utf8Callback)
 #define KORL_FUNCTION_korl_command_invoke(name)    void name(acu8 rawUtf8, Korl_Memory_AllocatorHandle allocatorStack)
+/* korl-functionDynamo interface **********************************************/
+typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;
+#define korl_functionDynamo_register(function) _korl_functionDynamo_register(KORL_C_CAST(void*, function), KORL_RAW_CONST_UTF8(#function))
+/** use the \c korl_functionDynamo_register convenience macro instead of this API directly! */
+#define KORL_FUNCTION__korl_functionDynamo_register(name) Korl_FunctionDynamo_FunctionHandle name(void* function, acu8 utf8Function)
+#define KORL_FUNCTION_korl_functionDynamo_get(name)       void*                              name(Korl_FunctionDynamo_FunctionHandle functionHandle)
 /* korl-clipboard interface ***************************************************/
 typedef enum Korl_Clipboard_DataFormat
     { KORL_CLIPBOARD_DATA_FORMAT_UTF8// the size of the string returned from korl_clipboard_get _includes_ a null-terminator character

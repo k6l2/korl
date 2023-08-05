@@ -722,6 +722,7 @@ korl_internal void _korl_windows_window_dynamicGameLoad(const wchar_t*const utf1
                 korl_assert(context->gameDll);
                 korl_assert(korl_file_getDateStampLastWriteFileName(KORL_FILE_PATHTYPE_EXECUTABLE_DIRECTORY, utf16GameDllFileName, &context->gameDllLastWriteDateStamp));
                 korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
+                korl_functionDynamo_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
             }
             string_free(&stringGameDllTemp);
             if(resultRenameReplace == KORL_FILE_RESULT_RENAME_REPLACE_SUCCESS)
@@ -900,6 +901,7 @@ korl_internal void korl_windows_window_loop(void)
         }korl_time_probeStop(asset_cache_check_obsolescence);
         korl_time_probeStart(defragmentation);{
             korl_command_defragment(context->allocatorHandleStack);
+            korl_functionDynamo_defragment(context->allocatorHandleStack);
             _korl_windows_window_defragment(context->allocatorHandleStack);
             korl_gfx_defragment(context->allocatorHandleStack);
             korl_gui_defragment(context->allocatorHandleStack);
@@ -928,7 +930,10 @@ korl_internal void korl_windows_window_loop(void)
             context->memoryStateLast = korl_memoryState_load(context->allocatorHandleMemoryState, KORL_FILE_PATHTYPE_LOCAL_DATA, L"memory-states/0.kms");
             // korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             if(context->gameDll)
+            {
                 korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
+                korl_functionDynamo_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
+            }
             if(context->gameApi.korl_game_onReload)
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             korl_time_probeStop(save_state_load);
