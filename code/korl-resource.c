@@ -9,6 +9,7 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-pool.h"
+#include "korl-resource-shader.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
@@ -93,8 +94,12 @@ typedef struct _Korl_Resource_Descriptor
     u$                     resourceBytes;
     struct
     {
-        Korl_FunctionDynamo_FunctionHandle unload;   // fnSig_korl_resource_descriptorCallback_unload
-        Korl_FunctionDynamo_FunctionHandle transcode;// fnSig_korl_resource_descriptorCallback_transcode
+        Korl_FunctionDynamo_FunctionHandle unload;            // fnSig_korl_resource_descriptorCallback_unload
+        Korl_FunctionDynamo_FunctionHandle transcode;         // fnSig_korl_resource_descriptorCallback_transcode
+        Korl_FunctionDynamo_FunctionHandle createRuntimeData; // fnSig_korl_resource_descriptorCallback_createRuntimeData
+        Korl_FunctionDynamo_FunctionHandle createRuntimeMedia;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia
+        Korl_FunctionDynamo_FunctionHandle runtimeBytes;      // fnSig_korl_resource_descriptorCallback_runtimeBytes
+        Korl_FunctionDynamo_FunctionHandle runtimeResize;     // fnSig_korl_resource_descriptorCallback_runtimeResize
     } callbacks;
 } _Korl_Resource_Descriptor;
 typedef enum _Korl_Resource_Item_BackingType
@@ -116,8 +121,12 @@ typedef struct _Korl_Resource_Item
         } assetCache;
         struct
         {
+            /** NOTE: although we _could_ potentially just use graphics update buffers exclusively 
+             * for graphics resources, we still do _need_ to store the resource in CPU memory since 
+             * we need a way to fully restore the resource at any time from, for example, a 
+             * memoryState load operation */
             void* data;
-            u$    dataBytes;
+            bool  transcodingIsUpdated;
         } runtime;
     } backingSubType;
 } _Korl_Resource_Item;
@@ -575,7 +584,7 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_for
         const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
         korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
         fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
-        transcode(resourceItem->descriptorStruct, assetData);
+        transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes);
         resourceItem->backingSubType.assetCache.isTranscoded = true;
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
@@ -587,8 +596,8 @@ korl_internal void korl_resource_transcodeFileAssets(void)
 }
 korl_internal void* korl_resource_getDescriptorStruct(Korl_Resource_Handle handle)
 {
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    _Korl_Resource_Context*const context      = _korl_resource_context;
+    _Korl_Resource_Item*const    resourceItem = korl_pool_get(&context->resourcePool, &handle);
     korl_assert(resourceItem);
     return resourceItem->descriptorStruct;
 }
@@ -607,10 +616,13 @@ korl_internal KORL_FUNCTION_korl_resource_descriptor_add(korl_resource_descripto
     }
     /* add descriptor to the database */
     KORL_ZERO_STACK(_Korl_Resource_Descriptor, newDescriptor);
-    newDescriptor.name                = string_newAcu8(descriptorManifest->utf8DescriptorName);
-    newDescriptor.resourceBytes       = descriptorManifest->resourceBytes;
-    newDescriptor.callbacks.unload    = descriptorManifest->callbackUnload;
-    newDescriptor.callbacks.transcode = descriptorManifest->callbackTranscode;
+    newDescriptor.name                        = string_newAcu8(descriptorManifest->utf8DescriptorName);
+    newDescriptor.resourceBytes               = descriptorManifest->resourceBytes;
+    newDescriptor.callbacks.unload            = descriptorManifest->callbackUnload;
+    newDescriptor.callbacks.transcode         = descriptorManifest->callbackTranscode;
+    newDescriptor.callbacks.createRuntimeData = descriptorManifest->callbackCreateRuntimeData;
+    newDescriptor.callbacks.runtimeBytes      = descriptorManifest->callbackRuntimeBytes;
+    newDescriptor.callbacks.runtimeResize     = descriptorManifest->callbackRuntimeResize;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
     korl_log(INFO, "resource descriptor \"%.*hs\" added", descriptorManifest->utf8DescriptorName.size, descriptorManifest->utf8DescriptorName.data);
 }
@@ -646,10 +658,38 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
     _Korl_Resource_Map*const resourceMapItem = context->stbShFileResources + hashMapIndex;
     return resourceMapItem->value;
 }
+korl_internal KORL_FUNCTION_korl_resource_create(korl_resource_create)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    /* find the resource descriptor index whose name matches the descriptor name param; the index of the descriptor will be the Resource's "type" */
+    const _Korl_Resource_Descriptor*const descriptorsEnd = context->stbDaDescriptors + arrlen(context->stbDaDescriptors);
+    _Korl_Resource_Descriptor* descriptor = context->stbDaDescriptors;
+    for(; descriptor < descriptorsEnd; descriptor++)
+        if(string_equalsAcu8(&descriptor->name, utf8DescriptorName))
+            break;
+    if(descriptor >= descriptorsEnd)
+    {
+        korl_log(ERROR, "resource descriptor \"%.*hs\" not found", utf8DescriptorName.size, utf8DescriptorName.data);
+        return 0;
+    }
+    const u16 resourceType = korl_checkCast_i$_to_u16(descriptor - context->stbDaDescriptors);
+    /* add a new resource item & run the create function with the provided create info */
+    _Korl_Resource_Item* newResource;
+    const Korl_Resource_Handle newResourceHandle = korl_pool_add(&context->resourcePool, resourceType, &newResource);
+    newResource->descriptorIndex  = resourceType;
+    newResource->descriptorStruct = korl_allocate(context->allocatorHandleRuntime, descriptor->resourceBytes);
+    newResource->backingType      = _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA;
+    fnSig_korl_resource_descriptorCallback_createRuntimeData*const  createRuntimeData  = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_createRuntimeData* , korl_functionDynamo_get(descriptor->callbacks.createRuntimeData));
+    fnSig_korl_resource_descriptorCallback_createRuntimeMedia*const createRuntimeMedia = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_createRuntimeMedia*, korl_functionDynamo_get(descriptor->callbacks.createRuntimeMedia));
+    createRuntimeData(newResource->descriptorStruct, descriptorCreateInfo, context->allocatorHandleRuntime
+                     ,&newResource->backingSubType.runtime.data);
+    createRuntimeMedia(newResource->descriptorStruct);
+    return newResourceHandle;
+}
+#if 0//@TODO: delete/recycle
 korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_create)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
     korl_assert(context->nextUniqueId <= _KORL_RESOURCE_UNIQUE_ID_MAX);// assuming this ever fires under normal circumstances (_highly_ unlikely), we will need to implement a system to recycle old unused UIDs or something
     /* construct the new resource handle */
     KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
@@ -673,9 +713,8 @@ korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_cre
     resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createBuffer(createInfo, 0/*0 => generate new handle*/);
     resource->subType.graphics.subType.buffer.createInfo                   = *createInfo;
     return handle;
-    #endif
-    return 0;//@TODO
 }
+#endif
 korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
@@ -708,7 +747,15 @@ korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan
 }
 korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
 {
-    _Korl_Resource_Context*const context = _korl_resource_context;
+    _Korl_Resource_Context*const context      = _korl_resource_context;
+    _Korl_Resource_Item*const    resourceItem = korl_pool_get(&context->resourcePool, &resourceHandle);
+    korl_assert(resourceItem);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_unload*const unload = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_unload*, korl_functionDynamo_get(descriptor->callbacks.unload));
+    unload(resourceItem->descriptorStruct);
+    korl_free(context->allocatorHandleRuntime, resourceItem->backingSubType.runtime.data);
+    korl_pool_remove(&context->resourcePool, &resourceHandle);
     #if 0//@TODO: delete/recycle
     if(!resourceHandle)
         return;// silently do nothing for NULL handles
@@ -1152,14 +1199,12 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_memoryStateRead_forEach
         korl_memory_zero(resourceItem->descriptorStruct, descriptor->resourceBytes);
         return KORL_POOL_FOR_EACH_CONTINUE;}
     case _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA:{
-        /* so here's what we're going to do: we're going to just leave the 
-            resource descriptorStruct as-is, and we'll just call the descriptor's 
-            transcode function on this resource; if the user has written the 
-            descriptor's transcode function correctly, then it should be able to 
-            re-transcode into multimedia modules (such as korl-vulkan) while 
-            maintaining the same asset handles as needed */
-        fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
-        //@TODO: modify transcode to work with non-assetCache-backed resources & call it here
+        /* for runtime-data-backed resources, all we have to do is re-create 
+            multimedia assets & raise a flag to ensure the multimedia assets are 
+            updated at the next end-of-frame */
+        resourceItem->backingSubType.runtime.transcodingIsUpdated = false;
+        fnSig_korl_resource_descriptorCallback_createRuntimeMedia*const createRuntimeMedia = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_createRuntimeMedia*, korl_functionDynamo_get(descriptor->callbacks.createRuntimeMedia));
+        createRuntimeMedia(resourceItem->descriptorStruct);
         return KORL_POOL_FOR_EACH_CONTINUE;}
     }
     korl_log(ERROR, "invalid resourceItem backingType: %i", resourceItem->backingType);

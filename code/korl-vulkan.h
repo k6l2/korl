@@ -44,6 +44,7 @@
 #include "korl-memory.h"
 #include "korl-assetCache.h"
 #include "korl-interface-platform-gfx.h"
+#include "utility/korl-utility-resource.h"
 #define KORL_VULKAN_MAX_LIGHTS 8
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef u64 Korl_Vulkan_ShaderHandle;
@@ -71,7 +72,7 @@ korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingReall
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Resource_CreateInfoBuffer* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Resource_GfxBuffer_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Gfx_Color4u8* pixelData);
 korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getSize(const Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle);

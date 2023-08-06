@@ -1,6 +1,7 @@
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
+#include "utility/korl-utility-resource.h"
 #include "korl-interface-platform.h"
 korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
 /** used for Korl_Gfx_StagingAllocation reallocation procedures, as we need to 
@@ -64,8 +65,8 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(Korl_Gfx_Material_P
                                                     ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
                                                              ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
                                                              ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
-                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
-                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
 }
 korl_internal Korl_Gfx_Camera korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp)
 {
@@ -358,10 +359,10 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable(const Korl_Gfx_CreateI
         result.subType.runtime.subType.singleFrame.stagingAllocation = korl_gfx_stagingAllocate(&result.subType.runtime.vertexStagingMeta);
         break;
     case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
-        KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBuffer);
+        KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoBuffer);
         createInfoBuffer.bytes      = createInfo->interleavedAttributes ? attributeCount * interleavedByteStride : byteOffsetBuffer;
-        createInfoBuffer.usageFlags = KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX;
-        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_buffer_create(&createInfoBuffer);
+        createInfoBuffer.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX;
+        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBuffer);
         break;
     }
     return result;
@@ -492,7 +493,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
     }
     /* setup text-specific material/draw-state overrides */
     const Korl_Gfx_Font_Resources fontResources = korl_gfx_font_getResources(utf16FontAssetName, textPixelHeight);
-    result.subType.runtime.overrides.shaderVertex        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    result.subType.runtime.overrides.shaderVertex        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     result.subType.runtime.overrides.storageBufferVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     result.subType.runtime.overrides.materialMapBase     = fontResources.resourceHandleTexture;
     /**/

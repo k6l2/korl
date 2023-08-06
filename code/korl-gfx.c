@@ -12,7 +12,7 @@
 #include "korl-resource.h"
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
-#include "korl-resource-shader.h"
+#include "utility/korl-utility-resource.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
@@ -602,10 +602,10 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
         createInfoTexture.size = (Korl_Math_V2u32){glyphPage->dataSquareSize, glyphPage->dataSquareSize};
         glyphPage->resourceHandleTexture = korl_resource_createTexture(&createInfoTexture);
-        KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfo);
-        createInfo.usageFlags = KORL_RESOURCE_BUFFER_USAGE_FLAG_STORAGE;
+        KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfo);
+        createInfo.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_STORAGE;
         createInfo.bytes      = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
-        glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_buffer_create(&createInfo);
+        glyphPage->resourceHandleSsboGlyphMeshVertices = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfo);
         /**/
         korl_time_probeStop(create_font_cache);
     }
@@ -651,17 +651,17 @@ korl_internal void korl_gfx_initializePostRendererLogicalDevice(void)
     korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
     #endif
     /* initiate loading of all built-in shaders */
-    _korl_gfx_context->resourceShaderKorlVertex2d             = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-2d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertex2dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-2d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertex2dUv           = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-2d-uv.vert.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertex3d             = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-3d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertex3dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-3d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertex3dUv           = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-3d-uv.vert.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertexLit            = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlVertexText           = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-text.vert.spv"         ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlFragmentColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-color.frag.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlFragmentColorTexture = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-color-texture.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    _korl_gfx_context->resourceShaderKorlFragmentLit          = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_SHADER_DESCRIPTOR_NAME), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertex2d             = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-2d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertex2dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-2d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertex2dUv           = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-2d-uv.vert.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertex3d             = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-3d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertex3dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-3d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertex3dUv           = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-3d-uv.vert.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertexLit            = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlVertexText           = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-text.vert.spv"         ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlFragmentColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-color.frag.spv"        ), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlFragmentColorTexture = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-color-texture.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    _korl_gfx_context->resourceShaderKorlFragmentLit          = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"          ), KORL_ASSETCACHE_GET_FLAG_LAZY);
 }
 korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds)
 {
@@ -757,10 +757,10 @@ korl_internal void korl_gfx_flushGlyphPages(void)
 }
 korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
 {
-    KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBufferText);
+    KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoBufferText);
     createInfoBufferText.bytes      = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
-    createInfoBufferText.usageFlags =   KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX
-                                      | KORL_RESOURCE_BUFFER_USAGE_FLAG_INDEX;
+    createInfoBufferText.usageFlags =   KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX
+                                      | KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_INDEX;
     const u$ bytesRequired                  = sizeof(Korl_Gfx_Text) + (utf16AssetNameFont.size + 1/*for null-terminator*/)*sizeof(*utf16AssetNameFont.data);
     Korl_Gfx_Text*const result              = korl_allocate(allocator, bytesRequired);
     u16*const           resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
@@ -770,7 +770,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->assetNameFontRawUtf16Size       = korl_checkCast_u$_to_u32(utf16AssetNameFont.size);
     result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
     result->modelScale                      = KORL_MATH_V3F32_ONE;
-    result->resourceHandleBufferText        = korl_resource_buffer_create(&createInfoBufferText);
+    result->resourceHandleBufferText        = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBufferText);
     // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
     result->vertexStagingMeta.indexCount = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
     result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*KORL_GFX_TRI_QUAD_INDICES) == sizeof(u16));

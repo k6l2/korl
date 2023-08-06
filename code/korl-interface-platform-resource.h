@@ -32,42 +32,42 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-pool.h"
-korl_global_const char*const KORL_RESOURCE_SHADER_DESCRIPTOR_NAME = "korl-rd-shader";
-#define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)     void name(void* resourceDescriptorStruct)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)  void name(void* resourceDescriptorStruct, Korl_AssetCache_AssetData assetData)
-typedef KORL_FUNCTION_korl_resource_descriptorCallback_unload(   fnSig_korl_resource_descriptorCallback_unload);
-typedef KORL_FUNCTION_korl_resource_descriptorCallback_transcode(fnSig_korl_resource_descriptorCallback_transcode);
+#define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)             void name(void* resourceDescriptorStruct)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)          void name(void* resourceDescriptorStruct, const void* data, u$ dataBytes)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(name)  void name(void* resourceDescriptorStruct, const void* descriptorCreateInfo, Korl_Memory_AllocatorHandle allocator, void** o_data)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(name) void name(void* resourceDescriptorStruct)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes(name)       u$   name(const void* resourceDescriptorStruct)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(name)      void name(void* resourceDescriptorStruct, u$ bytes)
+typedef KORL_FUNCTION_korl_resource_descriptorCallback_unload            (fnSig_korl_resource_descriptorCallback_unload);
+typedef KORL_FUNCTION_korl_resource_descriptorCallback_transcode         (fnSig_korl_resource_descriptorCallback_transcode);
+typedef KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData (fnSig_korl_resource_descriptorCallback_createRuntimeData);
+typedef KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(fnSig_korl_resource_descriptorCallback_createRuntimeMedia);
+typedef KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes      (fnSig_korl_resource_descriptorCallback_runtimeBytes);
+typedef KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize     (fnSig_korl_resource_descriptorCallback_runtimeResize);
 #if 0//@TODO ?
 #define KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(name) void name(void)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_flush(name)      void name(void)
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(fnSig_korl_resource_descriptorCallback_preProcess);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_flush(fnSig_korl_resource_descriptorCallback_flush);
 #endif
-typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;
+typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;// re-declare, to prevent the need to include `korl-interface-platform.h`
 typedef struct Korl_Resource_DescriptorManifest
 {
     acu8                               utf8DescriptorName;
     u$                                 resourceBytes;
     Korl_FunctionDynamo_FunctionHandle callbackUnload;// fnSig_korl_resource_descriptorCallback_unload
-    /** OPTIONAL parameters */
     Korl_FunctionDynamo_FunctionHandle callbackTranscode;// fnSig_korl_resource_descriptorCallback_transcode
+    Korl_FunctionDynamo_FunctionHandle callbackCreateRuntimeData;// fnSig_korl_resource_descriptorCallback_createRuntimeData; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle callbackCreateRuntimeMedia;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle callbackRuntimeBytes;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle callbackRuntimeResize;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
 } Korl_Resource_DescriptorManifest;
 typedef Korl_Pool_Handle Korl_Resource_Handle;
-enum Korl_Resource_BufferUsageFlags
-    {KORL_RESOURCE_BUFFER_USAGE_FLAG_INDEX   = 1 << 0
-    ,KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX  = 1 << 1
-    ,KORL_RESOURCE_BUFFER_USAGE_FLAG_STORAGE = 1 << 2
-};
-typedef struct Korl_Resource_CreateInfoBuffer
-{
-    u$  bytes;
-    u32 usageFlags;// see: Korl_Resource_BufferUsageFlags
-} Korl_Resource_CreateInfoBuffer;
-#define KORL_FUNCTION_korl_resource_descriptor_add(name)  void                 name(const Korl_Resource_DescriptorManifest* descriptorManifest)
-#define KORL_FUNCTION_korl_resource_fromFile(name)        Korl_Resource_Handle name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
-#define KORL_FUNCTION_korl_resource_buffer_create(name)   Korl_Resource_Handle name(const struct Korl_Resource_CreateInfoBuffer* createInfo)
-#define KORL_FUNCTION_korl_resource_resize(name)          void                 name(Korl_Resource_Handle handle, u$ newByteSize)
-#define KORL_FUNCTION_korl_resource_destroy(name)         void                 name(Korl_Resource_Handle resourceHandle)
-#define KORL_FUNCTION_korl_resource_update(name)          void                 name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
-#define KORL_FUNCTION_korl_resource_getUpdateBuffer(name) void*                name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
-#define KORL_FUNCTION_korl_resource_texture_getSize(name) Korl_Math_V2u32      name(Korl_Resource_Handle resourceHandleTexture)
+#define KORL_FUNCTION_korl_resource_descriptor_add(name)        void                 name(const Korl_Resource_DescriptorManifest* descriptorManifest)
+#define KORL_FUNCTION_korl_resource_fromFile(name)              Korl_Resource_Handle name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
+#define KORL_FUNCTION_korl_resource_create(name)                Korl_Resource_Handle name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
+#define KORL_FUNCTION_korl_resource_resize(name)                void                 name(Korl_Resource_Handle handle, u$ newByteSize)
+#define KORL_FUNCTION_korl_resource_destroy(name)               void                 name(Korl_Resource_Handle resourceHandle)
+#define KORL_FUNCTION_korl_resource_update(name)                void                 name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
+#define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)       void*                name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
+#define KORL_FUNCTION_korl_resource_texture_getSize(name)       Korl_Math_V2u32      name(Korl_Resource_Handle resourceHandleTexture)
