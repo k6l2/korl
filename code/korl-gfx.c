@@ -600,7 +600,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), glyphPage->stbDaGlyphMeshVertices, 512);
         korl_assert(korl_checkCast_u$_to_i$(assetNameFontBufferSize) == korl_string_copyUtf16(utf16AssetNameFont.data, (au16){assetNameFontBufferSize, _korl_gfx_fontCache_getFontAssetName(fontCache)}));
         /* initialize render device memory allocations */
-        KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
+        KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoTexture);
         createInfoTexture.size = (Korl_Math_V2u32){glyphPage->dataSquareSize, glyphPage->dataSquareSize};
         glyphPage->resourceHandleTexture = korl_resource_createTexture(&createInfoTexture);
         KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfo);
@@ -645,7 +645,7 @@ korl_internal void korl_gfx_initializePostRendererLogicalDevice(void)
         korl_gfx_initialize happens, korl-vulkan is not yet fully initialized!  
         we can't actually configure graphics device assets when the graphics 
         device has not even been created */
-    KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoBlankTexture);
+    KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoBlankTexture);
     createInfoBlankTexture.size = KORL_MATH_V2U32_ONE;
     _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
     const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;

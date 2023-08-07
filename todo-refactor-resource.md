@@ -23,10 +23,10 @@
     - resource type id : u16
     - file transcoder : function*, codeModule, C API string
       - this is _optional_, as not all Resources will be decoded from raw file data!
-        - needed for: IMAGE, SHADER, SCENE3D, AUDIO
+        - needed for: TEXTURE, SHADER, SCENE3D, AUDIO
     - pre-process : function*, codeModule, C API string
       - _optional_, as not all Resources need pre-processing
-        - needed for: IMAGE (pre-multiply alpha)
+        - needed for: TEXTURE (pre-multiply alpha)
         - pre-processed assets should be saved/cached on the hard drive in "build/data/" directory
           - fuck... I don't think stb-image has an encoder... ☹
             - https://github.com/lvandeve/lodepng
@@ -34,11 +34,11 @@
           - can we write the saved asset with the same metadata (last-write timestamp)?
     - flush : function*, codeModule, C API string
       - _optional_, as not all Resources need to be transcoded into a multimedia module
-        - needed for: IMAGE, BUFFER, AUDIO (? for resampling?)
+        - needed for: TEXTURE, BUFFER, AUDIO (? for resampling?)
     - perhaps a global context of some kind?
       - useful for: 
         - global AUDIO resampling
-        - perhaps for SCENE3D Resources, we can remember the Resource Type Id of MESH & IMAGE Resources
+        - perhaps for SCENE3D Resources, we can remember the Resource Type Id of MESH & TEXTURE Resources
   - register an extremely simple resource type to test functionality
     - let's start with SHADER, since this is needed for _all_ drawing operations, and should let us at least perform primitive drawing operations
 [x] add UTF16=>Pool_Handle data structure
@@ -49,18 +49,18 @@
   [x] test SHADER resource hot-reloading
   [x] test SHADER resource compatibility with korl-memoryState
 [x] add BUFFER resource to test runtime-data-backed resources (same tests as above)
-[ ] add IMAGE resource
+[x] add TEXTURE resource
 [ ] add functionality for Resource hierarchy
   [ ] add FONT resource
-  [ ] add BUFFER & IMAGE child RUNTIME resources
+  [ ] add BUFFER & TEXTURE child RUNTIME resources
   [ ] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
 [ ] add SCENE3D Resource
-  - compose a SCENE3D Resource out of MESH & IMAGE Resources
-    - GLB files can contain IMAGE Resources!
+  - compose a SCENE3D Resource out of MESH & TEXTURE Resources
+    - GLB files can contain TEXTURE Resources!
   - compose MESH Resource out of BUFFER & MATERIAL Resources
-  - compose MATERIAL Resource out of SHADER & IMAGE Resources
-    - MATERIAL Resources can reference IMAGE Resources; we want to use the same IMAGE Resource Handles that are children of the SCENE3D potentially
+  - compose MATERIAL Resource out of SHADER & TEXTURE Resources
+    - MATERIAL Resources can reference TEXTURE Resources; we want to use the same TEXTURE Resource Handles that are children of the SCENE3D potentially
 [ ] finish implementation & registration of all current Resource types
 [ ] perform defragmentation on korl-resource persistent memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?

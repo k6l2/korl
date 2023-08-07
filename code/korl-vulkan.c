@@ -13,6 +13,7 @@
 #include "korl-resource.h"
 #include "korl-resource-shader.h"
 #include "korl-resource-gfx-buffer.h"
+#include "korl-resource-texture.h"
 #include "utility/korl-utility-gfx.h"
 #if defined(KORL_PLATFORM_WINDOWS)
     #include <vulkan/vulkan_win32.h>
@@ -1570,7 +1571,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _korl_vulkan_frameBegin();
     /* create default texture */
     {
-        KORL_ZERO_STACK(Korl_Vulkan_CreateInfoTexture, createInfoTexture);
+        KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoTexture);
         createInfoTexture.size = KORL_MATH_V2U32_ONE;
         surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(&createInfoTexture, 0/*0 => generate new handle*/);
         Korl_Gfx_Color4u8 defaultTextureColor = (Korl_Gfx_Color4u8){255, 0, 255, 255};
@@ -1834,14 +1835,14 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
         surfaceContext->drawState.uboMaterialProperties = state->material->fragmentShaderUniform;
         if(state->material->maps.resourceHandleTextureBase)
         {
-            if(!(surfaceContext->drawState.materialMaps.base = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureBase)))
+            if(!(surfaceContext->drawState.materialMaps.base = korl_resource_texture_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureBase)))
                 surfaceContext->drawState.materialMaps.base = surfaceContext->defaultTexture;
         }
         else 
             surfaceContext->drawState.materialMaps.base = 0;
-        if(!(surfaceContext->drawState.materialMaps.specular = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureSpecular)))
+        if(!(surfaceContext->drawState.materialMaps.specular = korl_resource_texture_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureSpecular)))
             surfaceContext->drawState.materialMaps.specular = surfaceContext->defaultTexture;
-        if(!(surfaceContext->drawState.materialMaps.emissive = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureEmissive)))
+        if(!(surfaceContext->drawState.materialMaps.emissive = korl_resource_texture_getVulkanDeviceMemoryAllocationHandle(state->material->maps.resourceHandleTextureEmissive)))
             surfaceContext->drawState.materialMaps.emissive = surfaceContext->defaultTexture;
         const Korl_Vulkan_ShaderHandle shaderHandleVertex   = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderVertex);
         const Korl_Vulkan_ShaderHandle shaderHandleFragment = korl_resource_shader_getHandle(state->material->shaders.resourceHandleShaderFragment);
@@ -2324,7 +2325,7 @@ korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_Allocat
     /**/
     _korl_vulkan_draw(bufferAllocation->subType.buffer.vulkanBuffer, vertexBufferByteOffset, stagingMeta);
 }
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Resource_Texture_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     return _korl_vulkan_deviceMemory_allocateTexture(&surfaceContext->deviceMemoryDeviceLocal

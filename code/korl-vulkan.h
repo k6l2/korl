@@ -48,10 +48,6 @@
 #define KORL_VULKAN_MAX_LIGHTS 8
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
 typedef u64 Korl_Vulkan_ShaderHandle;
-typedef struct Korl_Vulkan_CreateInfoTexture
-{
-    Korl_Math_V2u32 size;
-} Korl_Vulkan_CreateInfoTexture;
 typedef struct Korl_Vulkan_CreateInfoShader
 {
     const void* data;
@@ -71,7 +67,7 @@ korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAlloc
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingReallocate(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation);
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal void                                      korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta);
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
+korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Resource_Texture_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createBuffer(const Korl_Resource_GfxBuffer_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle);
 korl_internal void                                      korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_AllocationHandle deviceAssetHandle);
 korl_internal void                                      korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Gfx_Color4u8* pixelData);

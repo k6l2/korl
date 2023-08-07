@@ -134,6 +134,7 @@ shutdownSuccess:
 #include "korl-network.c"
 #include "korl-resource-shader.c"
 #include "korl-resource-gfx-buffer.c"
+#include "korl-resource-texture.c"
 #include "korl-functionDynamo.c"
 #include "utility/korl-stringPool.c"
 #include "utility/korl-utility-math.c"

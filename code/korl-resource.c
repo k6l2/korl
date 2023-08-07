@@ -11,6 +11,7 @@
 #include "utility/korl-pool.h"
 #include "korl-resource-shader.h"
 #include "korl-resource-gfx-buffer.h"
+#include "korl-resource-texture.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
@@ -565,6 +566,7 @@ korl_internal void korl_resource_initialize(void)
     /* register KORL built-in Resource Descriptors */
     korl_resource_shader_register();
     korl_resource_gfxBuffer_register();
+    korl_resource_texture_register();
 }
 korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
 {
@@ -718,7 +720,7 @@ korl_internal KORL_FUNCTION_korl_resource_buffer_create(korl_resource_buffer_cre
     return handle;
 }
 #endif
-korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Vulkan_CreateInfoTexture* createInfo)
+korl_internal Korl_Resource_Handle korl_resource_createTexture(const Korl_Resource_Texture_CreateInfo* createInfo)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     #if 0//@TODO: delete/recycle
@@ -980,31 +982,6 @@ korl_internal void korl_resource_flushUpdates(void)
         korl_log(VERBOSE, "resampledResources=%llu", resampledResources);
     }
     #endif
-}
-korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handle)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    if(!handle)
-        return 0;// silently return a NULL device memory allocation handle if the resource handle is NULL
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
-    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
-        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
-    switch(resource->subType.graphics.type)
-    {
-    case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-        return resource->subType.graphics.subType.image.deviceMemoryAllocationHandle;}
-    case _KORL_RESOURCE_GRAPHICS_TYPE_BUFFER:{
-        return resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle;}
-    default:
-        korl_log(ERROR, "invalid resource graphics type");
-    }
-    #endif
-    return 0;
 }
 korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat)
 {
