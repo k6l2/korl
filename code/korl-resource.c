@@ -10,6 +10,7 @@
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-pool.h"
 #include "korl-resource-shader.h"
+#include "korl-resource-gfx-buffer.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
@@ -563,6 +564,7 @@ korl_internal void korl_resource_initialize(void)
     mcsh_new_arena(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources);
     /* register KORL built-in Resource Descriptors */
     korl_resource_shader_register();
+    korl_resource_gfxBuffer_register();
 }
 korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
 {
@@ -616,13 +618,14 @@ korl_internal KORL_FUNCTION_korl_resource_descriptor_add(korl_resource_descripto
     }
     /* add descriptor to the database */
     KORL_ZERO_STACK(_Korl_Resource_Descriptor, newDescriptor);
-    newDescriptor.name                        = string_newAcu8(descriptorManifest->utf8DescriptorName);
-    newDescriptor.resourceBytes               = descriptorManifest->resourceBytes;
-    newDescriptor.callbacks.unload            = descriptorManifest->callbackUnload;
-    newDescriptor.callbacks.transcode         = descriptorManifest->callbackTranscode;
-    newDescriptor.callbacks.createRuntimeData = descriptorManifest->callbackCreateRuntimeData;
-    newDescriptor.callbacks.runtimeBytes      = descriptorManifest->callbackRuntimeBytes;
-    newDescriptor.callbacks.runtimeResize     = descriptorManifest->callbackRuntimeResize;
+    newDescriptor.name                         = string_newAcu8(descriptorManifest->utf8DescriptorName);
+    newDescriptor.resourceBytes                = descriptorManifest->resourceBytes;
+    newDescriptor.callbacks.unload             = descriptorManifest->callbackUnload;
+    newDescriptor.callbacks.transcode          = descriptorManifest->callbackTranscode;
+    newDescriptor.callbacks.createRuntimeData  = descriptorManifest->callbackCreateRuntimeData;
+    newDescriptor.callbacks.createRuntimeMedia = descriptorManifest->callbackCreateRuntimeMedia;
+    newDescriptor.callbacks.runtimeBytes       = descriptorManifest->callbackRuntimeBytes;
+    newDescriptor.callbacks.runtimeResize      = descriptorManifest->callbackRuntimeResize;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
     korl_log(INFO, "resource descriptor \"%.*hs\" added", descriptorManifest->utf8DescriptorName.size, descriptorManifest->utf8DescriptorName.data);
 }
@@ -803,127 +806,102 @@ korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
 korl_internal KORL_FUNCTION_korl_resource_update(korl_resource_update)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
-    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
-    korl_assert(destinationByteOffset + sourceDataBytes <= resource->dataBytes);
-    korl_memory_copy(KORL_C_CAST(u8*, resource->data) + destinationByteOffset, sourceData, sourceDataBytes);
-    if(!resource->dirty)
-    {
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
-        resource->dirty = true;
-    }
-    #endif
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+    const u$ resourceBytes = runtimeBytes(resourceItem->descriptorStruct);
+    korl_assert(destinationByteOffset + sourceDataBytes <= resourceBytes);
+    korl_memory_copy(KORL_C_CAST(u8*, resourceItem->backingSubType.runtime.data) + destinationByteOffset, sourceData, sourceDataBytes);
+    resourceItem->backingSubType.runtime.transcodingIsUpdated = false;
 }
 korl_internal KORL_FUNCTION_korl_resource_getUpdateBuffer(korl_resource_getUpdateBuffer)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
-    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
-    korl_assert(byteOffset < resource->dataBytes);
-    *io_bytesRequested_bytesAvailable = KORL_MATH_MIN(resource->dataBytes - byteOffset, *io_bytesRequested_bytesAvailable);
-    if(!resource->dirty)
-    {
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
-        resource->dirty = true;
-    }
-    return KORL_C_CAST(u8*, resource->data) + byteOffset;
-    #endif
-    return NULL;//@TODO
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+    const u$ resourceBytes = runtimeBytes(resourceItem->descriptorStruct);
+    korl_assert(byteOffset < resourceBytes);
+    *io_bytesRequested_bytesAvailable = KORL_MATH_MIN(resourceBytes - byteOffset, *io_bytesRequested_bytesAvailable);
+    resourceItem->backingSubType.runtime.transcodingIsUpdated = false;
+    return KORL_C_CAST(u8*, resourceItem->backingSubType.runtime.data) + byteOffset;
 }
 korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    return resource->dataBytes;
-    #endif
-    return 0;//@TODO
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+    return runtimeBytes(resourceItem->descriptorStruct);
 }
 korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
-    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
-    if(resource->dataBytes == newByteSize)
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+    if(runtimeBytes(resourceItem->descriptorStruct) == newByteSize)
         return;// silently do nothing if we're not actually resizing
     korl_assert(newByteSize);// for now, ensure that the user is requesting a non-zero # of bytes
-    switch(unpackedHandle.multimediaType)
-    {
-    case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-        switch(resource->subType.graphics.type)
-        {
-        case _KORL_RESOURCE_GRAPHICS_TYPE_BUFFER:{
-            korl_vulkan_buffer_resize(&resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle, newByteSize);
-            resource->subType.graphics.subType.buffer.createInfo.bytes = newByteSize;
-            break;}
-        default:{
-            korl_log(ERROR, "invalid graphics type: %i", resource->subType.graphics.type);
-            break;}
-        }
-        break;}
-    default:{
-        korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
-        break;}
-    }
-    resource->data      = korl_reallocate(context->allocatorHandleRuntime, resource->data, newByteSize);
-    resource->dataBytes = newByteSize;
-    korl_assert(resource->data);
-    #endif
+    fnSig_korl_resource_descriptorCallback_runtimeResize*const runtimeResize = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeResize*, korl_functionDynamo_get(descriptor->callbacks.runtimeResize));
+    runtimeResize(resourceItem->descriptorStruct, newByteSize, context->allocatorHandleRuntime, &resourceItem->backingSubType.runtime.data);
 }
 korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount)
 {
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
-    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
     if(byteShiftCount == 0)
         return;// silently do nothing else if the user doesn't provide a non-zero byte shift amount
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+    const u$ resourceBytes = runtimeBytes(resourceItem->descriptorStruct);
     if(byteShiftCount < 0)
     {
-        const u$ remainingBytes = korl_checkCast_u$_to_i$(resource->dataBytes) >= (-1*byteShiftCount) 
-                                ? resource->dataBytes + byteShiftCount
+        const u$ remainingBytes = korl_checkCast_u$_to_i$(resourceBytes) >= -byteShiftCount 
+                                ? resourceBytes + byteShiftCount 
                                 : 0;
         if(remainingBytes)
-            korl_memory_move(resource->data, KORL_C_CAST(u8*, resource->data) + -byteShiftCount, remainingBytes);
-        korl_memory_zero(KORL_C_CAST(u8*, resource->data) + remainingBytes, -byteShiftCount);
+            korl_memory_move(resourceItem->backingSubType.runtime.data, KORL_C_CAST(u8*, resourceItem->backingSubType.runtime.data) + -byteShiftCount, remainingBytes);
+        korl_memory_zero(KORL_C_CAST(u8*, resourceItem->backingSubType.runtime.data) + remainingBytes, -byteShiftCount);
     }
     else
     {
-        const u$ remainingBytes = korl_checkCast_u$_to_i$(resource->dataBytes) >= byteShiftCount 
-                                ? resource->dataBytes - byteShiftCount 
+        korl_assert(byteShiftCount > 0);
+        const u$ remainingBytes = korl_checkCast_u$_to_i$(resourceBytes) >= byteShiftCount 
+                                ? resourceBytes - byteShiftCount 
                                 : 0;
         if(remainingBytes)
-            korl_memory_move(KORL_C_CAST(u8*, resource->data) + byteShiftCount, resource->data, remainingBytes);
-        korl_memory_zero(resource->data, byteShiftCount);
+            korl_memory_move(KORL_C_CAST(u8*, resourceItem->backingSubType.runtime.data) + byteShiftCount, resourceItem->backingSubType.runtime.data, remainingBytes);
+        korl_memory_zero(resourceItem->backingSubType.runtime.data, byteShiftCount);
     }
     /* shifting data by a non-zero amount => the resource must be flushed */
-    if(!resource->dirty)
-    {
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, handle);
-        resource->dirty = true;
-    }
-    #endif
+    resourceItem->backingSubType.runtime.transcodingIsUpdated = false;
+}
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_flushUpdates_forEach)
+{
+    _Korl_Resource_Context*const context      = _korl_resource_context;
+    _Korl_Resource_Item*const    resourceItem = KORL_C_CAST(_Korl_Resource_Item*, item);
+    if(resourceItem->backingType != _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA)
+        return KORL_POOL_FOR_EACH_CONTINUE;
+    if(resourceItem->backingSubType.runtime.transcodingIsUpdated)
+        return KORL_POOL_FOR_EACH_CONTINUE;
+    _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_transcode*const    transcode    = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*   , korl_functionDynamo_get(descriptor->callbacks.transcode));
+    fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+    const u$ resourceBytes = runtimeBytes(resourceItem->descriptorStruct);
+    transcode(resourceItem->descriptorStruct, resourceItem->backingSubType.runtime.data, resourceBytes);
+    resourceItem->backingSubType.runtime.transcodingIsUpdated = true;
+    return KORL_POOL_FOR_EACH_CONTINUE;
 }
 korl_internal void korl_resource_flushUpdates(void)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
+    korl_pool_forEach(&context->resourcePool, _korl_resource_flushUpdates_forEach, NULL);
     #if 0//@TODO: delete/recycle
     const Korl_Resource_Handle*const dirtyHandlesEnd = context->stbDsDirtyResourceHandles + arrlen(context->stbDsDirtyResourceHandles);
     for(const Korl_Resource_Handle* dirtyHandle = context->stbDsDirtyResourceHandles; dirtyHandle < dirtyHandlesEnd; dirtyHandle++)

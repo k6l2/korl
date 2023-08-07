@@ -48,8 +48,14 @@
   - no BUFFER resources just yet
   [x] test SHADER resource hot-reloading
   [x] test SHADER resource compatibility with korl-memoryState
-[ ] add BUFFER resource to test runtime-data-backed resources (same tests as above)
+[x] add BUFFER resource to test runtime-data-backed resources (same tests as above)
+[ ] add IMAGE resource
 [ ] add functionality for Resource hierarchy
+  [ ] add FONT resource
+  [ ] add BUFFER & IMAGE child RUNTIME resources
+  [ ] refactor & test korl-utility-gfx text drawing APIs
+    - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
+[ ] add SCENE3D Resource
   - compose a SCENE3D Resource out of MESH & IMAGE Resources
     - GLB files can contain IMAGE Resources!
   - compose MESH Resource out of BUFFER & MATERIAL Resources

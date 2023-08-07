@@ -13,6 +13,7 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-utility-resource.h"
+#include "korl-resource-gfx-buffer.h"
 #if defined(_LOCAL_STRING_POOL_POINTER)
 #   undef _LOCAL_STRING_POOL_POINTER
 #endif
@@ -973,7 +974,7 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
             const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_FontGlyphInstance);
             context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
             context->vertexStagingMeta.instanceCount         = line->visibleCharacters;
-            korl_vulkan_drawVertexBuffer(korl_resource_getVulkanDeviceMemoryAllocationHandle(context->resourceHandleBufferText), textLineByteOffset, &context->vertexStagingMeta);
+            korl_vulkan_drawVertexBuffer(korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(context->resourceHandleBufferText), textLineByteOffset, &context->vertexStagingMeta);
         }
         modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
@@ -1476,7 +1477,7 @@ korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingA
 }
 korl_internal KORL_FUNCTION_korl_gfx_drawVertexBuffer(korl_gfx_drawVertexBuffer)
 {
-    const Korl_Vulkan_DeviceMemory_AllocationHandle bufferDeviceMemoryAllocationHandle = korl_resource_getVulkanDeviceMemoryAllocationHandle(resourceHandleBuffer);
+    const Korl_Vulkan_DeviceMemory_AllocationHandle bufferDeviceMemoryAllocationHandle = korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(resourceHandleBuffer);
     korl_vulkan_drawVertexBuffer(bufferDeviceMemoryAllocationHandle, bufferByteOffset, stagingMeta);
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)

@@ -37,18 +37,20 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(_korl_r
 {
     _Korl_Resource_GfxBuffer*const gfxBuffer = resourceDescriptorStruct;
     gfxBuffer->createInfo.bytes = bytes;
+    *io_data                    = korl_reallocate(allocator, *io_data, bytes);
     korl_vulkan_buffer_resize(&gfxBuffer->deviceMemoryAllocationHandle, bytes);
 }
 korl_internal void korl_resource_gfxBuffer_register(void)
 {
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName        = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER);
-    descriptorManifest.resourceBytes             = sizeof(_Korl_Resource_GfxBuffer);
-    descriptorManifest.callbackTranscode         = korl_functionDynamo_register(_korl_resource_gfxBuffer_transcode);
-    descriptorManifest.callbackUnload            = korl_functionDynamo_register(_korl_resource_gfxBuffer_unload);
-    descriptorManifest.callbackCreateRuntimeData = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeData);
-    descriptorManifest.callbackRuntimeBytes      = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeBytes);
-    descriptorManifest.callbackRuntimeResize     = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeResize);
+    descriptorManifest.utf8DescriptorName         = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER);
+    descriptorManifest.resourceBytes              = sizeof(_Korl_Resource_GfxBuffer);
+    descriptorManifest.callbackTranscode          = korl_functionDynamo_register(_korl_resource_gfxBuffer_transcode);
+    descriptorManifest.callbackUnload             = korl_functionDynamo_register(_korl_resource_gfxBuffer_unload);
+    descriptorManifest.callbackCreateRuntimeData  = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeData);
+    descriptorManifest.callbackCreateRuntimeMedia = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeMedia);
+    descriptorManifest.callbackRuntimeBytes       = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeBytes);
+    descriptorManifest.callbackRuntimeResize      = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeResize);
     korl_resource_descriptor_add(&descriptorManifest);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handleResourceGfxBuffer)

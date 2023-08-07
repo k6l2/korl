@@ -1,34 +1,3 @@
-/**
- * Example code of user file asset registration:
- * @TODO: do we want to include this?  this does not cover, for example, the user generating a \c "korl-resource-manifest.h" file by enumerating all the files of a directory, like what we needed to do for the \c farm project, although it doesn't _prevent_ this functionality as well...
- * 
- * // "korl-resource-manifest.h"
- * 
- * #ifndef KORL_RESOURCE_MACRO_OPERATION
- * #    define KORL_RESOURCE_MACRO_OPERATION(projectRootPath, enumerationIdentifier)
- * #endif
- * KORL_RESOURCE_MACRO_OPERATION("build/shaders/korl-2d.vert.spv", BUILD_SHADERS_KORL_2D_VERT_SPV)
- * // more lines like the one above this comment ...
- * #undef KORL_RESOURCE_MACRO_OPERATION
- * 
- * // somewhere in user code
- * 
- * enum
- * {
- *     #define KORL_RESOURCE_MACRO_OPERATION(projectRootPath, enumerationIdentifier) KORL_RESOURCE_##enumerationIdentifier,
- *     #include "korl-resource-manifest.h"
- *     #undef KORL_RESOURCE_MACRO_OPERATION
- *     KORL_RESOURCE_ENUM_COUNT
- * };
- * 
- * // elsewhere in user code
- * Korl_Resource_Handle resourceHandles[KORL_RESOURCE_ENUM_COUNT];// stored in persistent (code module or heap) memory somewhere
- * 
- * // elsewhere in user code; perhaps during program initialization
- * #define KORL_RESOURCE_MACRO_OPERATION(projectRootPath, enumerationIdentifier) resourceHandles[KORL_RESOURCE_##enumerationIdentifier] = korl_resource_fromFile(L""##projectRootPath);
- * #include "korl-resource-manifest.h"
- * #undef KORL_RESOURCE_MACRO_OPERATION
- */
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-pool.h"
@@ -37,7 +6,7 @@
 #define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(name)  void name(void* resourceDescriptorStruct, const void* descriptorCreateInfo, Korl_Memory_AllocatorHandle allocator, void** o_data)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(name) void name(void* resourceDescriptorStruct)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes(name)       u$   name(const void* resourceDescriptorStruct)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(name)      void name(void* resourceDescriptorStruct, u$ bytes)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(name)      void name(void* resourceDescriptorStruct, u$ bytes, Korl_Memory_AllocatorHandle allocator, void** io_data)
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_unload            (fnSig_korl_resource_descriptorCallback_unload);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_transcode         (fnSig_korl_resource_descriptorCallback_transcode);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData (fnSig_korl_resource_descriptorCallback_createRuntimeData);
@@ -45,10 +14,9 @@ typedef KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(fnSig_
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes      (fnSig_korl_resource_descriptorCallback_runtimeBytes);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize     (fnSig_korl_resource_descriptorCallback_runtimeResize);
 #if 0//@TODO ?
+/** if we want to be able to perform any desired pre-processing to a file-backed resource & cache the resulting file to dramatically speed up future application runs, we might need something like this */
 #define KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(name) void name(void)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_flush(name)      void name(void)
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(fnSig_korl_resource_descriptorCallback_preProcess);
-typedef KORL_FUNCTION_korl_resource_descriptorCallback_flush(fnSig_korl_resource_descriptorCallback_flush);
 #endif
 typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;// re-declare, to prevent the need to include `korl-interface-platform.h`
 typedef struct Korl_Resource_DescriptorManifest

@@ -12,6 +12,7 @@
 #include "korl-time.h"
 #include "korl-resource.h"
 #include "korl-resource-shader.h"
+#include "korl-resource-gfx-buffer.h"
 #include "utility/korl-utility-gfx.h"
 #if defined(KORL_PLATFORM_WINDOWS)
     #include <vulkan/vulkan_win32.h>
@@ -1852,7 +1853,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state)
                                                                               : VK_NULL_HANDLE;
     }
     if(state->storageBuffers)
-        surfaceContext->drawState.vertexStorageBuffer = korl_resource_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
+        surfaceContext->drawState.vertexStorageBuffer = korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(state->storageBuffers->resourceHandleVertex);
     if(state->lighting)
     {
         KORL_MEMORY_POOL_RESIZE(surfaceContext->drawState.lights, state->lighting->lightsCount);
