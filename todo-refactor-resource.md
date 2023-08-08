@@ -52,6 +52,7 @@
 [x] add TEXTURE resource
 [ ] add functionality for Resource hierarchy
   [ ] add FONT resource
+    [ ] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource
   [ ] add BUFFER & TEXTURE child RUNTIME resources
   [ ] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName

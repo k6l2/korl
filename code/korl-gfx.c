@@ -44,7 +44,7 @@ typedef struct _Korl_Gfx_FontBakedGlyph
 } _Korl_Gfx_FontBakedGlyph;
 typedef struct _Korl_Gfx_FontBakedGlyphMap
 {
-    u32 key;// unicode codepoint
+    u32                      key;// unicode codepoint
     _Korl_Gfx_FontBakedGlyph value;
 } _Korl_Gfx_FontBakedGlyphMap;
 typedef struct _Korl_Gfx_FontGlyphBitmapPackRow
@@ -81,7 +81,7 @@ typedef struct _Korl_Gfx_FontCache
 {
     stbtt_fontinfo               fontInfo;
     bool                         fontInfoInitialized;
-    f32                          fontScale;// scale calculated from fontInfo & pixelHeight
+    f32                          fontScale;// cached result from stbtt_ScaleForPixelHeight(fontInfo, pixelHeight)
     /** From STB TrueType documentation: 
      * you should advance the vertical position by "*ascent - *descent + *lineGap" */
     f32                          fontAscent; // adjusted by pixelHeight already; relative to the text baseline; generally positive
@@ -93,8 +93,8 @@ typedef struct _Korl_Gfx_FontCache
     _Korl_Gfx_FontBakedGlyphMap* stbHmGlyphs;
     u32                          byteOffsetGlyphPage;// _Korl_Gfx_FontGlyphPage*
 } _Korl_Gfx_FontCache;
-#define _korl_gfx_fontCache_getFontAssetName(pFontCache) KORL_C_CAST(wchar_t*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetFontAssetNameU16)
-#define _korl_gfx_fontCache_getGlyphPage(pFontCache) KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetGlyphPage)
+#define _korl_gfx_fontCache_getFontAssetName(pFontCache) KORL_C_CAST(wchar_t*                , KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetFontAssetNameU16)
+#define _korl_gfx_fontCache_getGlyphPage(pFontCache)     KORL_C_CAST(_Korl_Gfx_FontGlyphPage*, KORL_C_CAST(u8*, (pFontCache)) + (pFontCache)->byteOffsetGlyphPage)
 typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */

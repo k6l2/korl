@@ -1,8 +1,8 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-pool.h"
-#define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)             void name(void* resourceDescriptorStruct)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)          void name(void* resourceDescriptorStruct, const void* data, u$ dataBytes)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)             void name(void* resourceDescriptorStruct, Korl_Memory_AllocatorHandle allocatorRuntime)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)          void name(void* resourceDescriptorStruct, const void* data, u$ dataBytes, Korl_Memory_AllocatorHandle allocatorRuntime)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(name)  void name(void* resourceDescriptorStruct, const void* descriptorCreateInfo, Korl_Memory_AllocatorHandle allocator, void** o_data)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(name) void name(void* resourceDescriptorStruct)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes(name)       u$   name(const void* resourceDescriptorStruct)

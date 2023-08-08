@@ -12,6 +12,7 @@
 #include "korl-resource-shader.h"
 #include "korl-resource-gfx-buffer.h"
 #include "korl-resource-texture.h"
+#include "korl-resource-font.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
@@ -567,6 +568,7 @@ korl_internal void korl_resource_initialize(void)
     korl_resource_shader_register();
     korl_resource_gfxBuffer_register();
     korl_resource_texture_register();
+    korl_resource_font_register();
 }
 korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
 {
@@ -588,7 +590,7 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_for
         const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
         korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
         fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
-        transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes);
+        transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes, context->allocatorHandleRuntime);
         resourceItem->backingSubType.assetCache.isTranscoded = true;
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
@@ -758,7 +760,7 @@ korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
     korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
     const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
     fnSig_korl_resource_descriptorCallback_unload*const unload = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_unload*, korl_functionDynamo_get(descriptor->callbacks.unload));
-    unload(resourceItem->descriptorStruct);
+    unload(resourceItem->descriptorStruct, context->allocatorHandleRuntime);
     korl_free(context->allocatorHandleRuntime, resourceItem->backingSubType.runtime.data);
     korl_pool_remove(&context->resourcePool, &resourceHandle);
     #if 0//@TODO: delete/recycle
@@ -896,7 +898,7 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_flushUpdates_forEach)
     fnSig_korl_resource_descriptorCallback_transcode*const    transcode    = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*   , korl_functionDynamo_get(descriptor->callbacks.transcode));
     fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
     const u$ resourceBytes = runtimeBytes(resourceItem->descriptorStruct);
-    transcode(resourceItem->descriptorStruct, resourceItem->backingSubType.runtime.data, resourceBytes);
+    transcode(resourceItem->descriptorStruct, resourceItem->backingSubType.runtime.data, resourceBytes, context->allocatorHandleRuntime);
     resourceItem->backingSubType.runtime.transcodingIsUpdated = true;
     return KORL_POOL_FOR_EACH_CONTINUE;
 }
@@ -1264,7 +1266,7 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
     _Korl_Resource_Descriptor*const descriptor      = context->stbDaDescriptors + descriptorIndex;
     korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE);
     fnSig_korl_resource_descriptorCallback_unload*const unload = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_unload*, korl_functionDynamo_get(descriptor->callbacks.unload));
-    unload(resourceItem->descriptorStruct);
+    unload(resourceItem->descriptorStruct, context->allocatorHandleRuntime);
     resourceItem->backingSubType.assetCache.isTranscoded = false;
     cleanUp:
         korl_free(context->allocatorHandleRuntime, KORL_C_CAST(void*, utf8FileName.data));
