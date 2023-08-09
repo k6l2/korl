@@ -72,7 +72,6 @@ typedef struct Korl_Audio_Format Korl_Audio_Format;
 korl_internal void                                           korl_resource_initialize(void);
 korl_internal void                                           korl_resource_transcodeFileAssets(void);
 korl_internal void*                                          korl_resource_getDescriptorStruct(Korl_Resource_Handle handle);
-korl_internal Korl_Resource_Handle                           korl_resource_createTexture(const struct Korl_Resource_Texture_CreateInfo* createInfo);
 korl_internal u$                                             korl_resource_getByteSize(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount);
 korl_internal void                                           korl_resource_flushUpdates(void);

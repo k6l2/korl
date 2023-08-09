@@ -5,6 +5,21 @@ typedef struct _Korl_Resource_Texture
     Korl_Resource_Texture_CreateInfo          createInfo;
     Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
 } _Korl_Resource_Texture;
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_texture_descriptorStructCreate)
+{
+    return korl_allocate(allocator, sizeof(_Korl_Resource_Texture));
+}
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_texture_descriptorStructDestroy)
+{
+    korl_free(allocator, resourceDescriptorStruct);
+}
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_texture_clearTransientData)
+{
+    _Korl_Resource_Texture*const texture = resourceDescriptorStruct;
+    // we do _not_ call `korl_vulkan_deviceAsset_destroy` here, since vulkan deviceAssets are transient, so they should already be destroyed
+    // all we have to do is wipe our device memory allocation handle:
+    texture->deviceMemoryAllocationHandle = 0;
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource_texture_unload)
 {
     _Korl_Resource_Texture*const texture = resourceDescriptorStruct;
@@ -64,14 +79,16 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(_korl_r
 korl_internal void korl_resource_texture_register(void)
 {
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName         = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE);
-    descriptorManifest.resourceBytes              = sizeof(_Korl_Resource_Texture);
-    descriptorManifest.callbackUnload             = korl_functionDynamo_register(_korl_resource_texture_unload);
-    descriptorManifest.callbackTranscode          = korl_functionDynamo_register(_korl_resource_texture_transcode);
-    descriptorManifest.callbackCreateRuntimeData  = korl_functionDynamo_register(_korl_resource_texture_createRuntimeData);
-    descriptorManifest.callbackCreateRuntimeMedia = korl_functionDynamo_register(_korl_resource_texture_createRuntimeMedia);
-    descriptorManifest.callbackRuntimeBytes       = korl_functionDynamo_register(_korl_resource_texture_runtimeBytes);
-    descriptorManifest.callbackRuntimeResize      = korl_functionDynamo_register(_korl_resource_texture_runtimeResize);
+    descriptorManifest.utf8DescriptorName           = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE);
+    descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_texture_descriptorStructCreate);
+    descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_texture_descriptorStructDestroy);
+    descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_texture_clearTransientData);
+    descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_texture_unload);
+    descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_texture_transcode);
+    descriptorManifest.callbacks.createRuntimeData       = korl_functionDynamo_register(_korl_resource_texture_createRuntimeData);
+    descriptorManifest.callbacks.createRuntimeMedia      = korl_functionDynamo_register(_korl_resource_texture_createRuntimeMedia);
+    descriptorManifest.callbacks.runtimeBytes            = korl_functionDynamo_register(_korl_resource_texture_runtimeBytes);
+    descriptorManifest.callbacks.runtimeResize           = korl_functionDynamo_register(_korl_resource_texture_runtimeResize);
     korl_resource_descriptor_add(&descriptorManifest);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_texture_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handleResourceTexture)

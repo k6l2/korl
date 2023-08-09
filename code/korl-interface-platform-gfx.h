@@ -370,6 +370,7 @@ typedef struct Korl_Gfx_Drawable
         } mesh;
     } subType;
 } Korl_Gfx_Drawable;
+//@TODO: rewrite all these `korl_gfx_font*` APIs as `korl_resource_font*` APIs
 #define KORL_FUNCTION_korl_gfx_font_getMetrics(name)                         Korl_Gfx_Font_Metrics      name(acu16 utf16AssetNameFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_gfx_font_getResources(name)                       Korl_Gfx_Font_Resources    name(acu16 utf16AssetNameFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_gfx_font_getUtf8Metrics(name)                     Korl_Gfx_Font_TextMetrics  name(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text)

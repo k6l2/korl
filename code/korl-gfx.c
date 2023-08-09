@@ -602,7 +602,7 @@ korl_internal _Korl_Gfx_FontCache* _korl_gfx_matchFontCache(acu16 utf16AssetName
         /* initialize render device memory allocations */
         KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoTexture);
         createInfoTexture.size = (Korl_Math_V2u32){glyphPage->dataSquareSize, glyphPage->dataSquareSize};
-        glyphPage->resourceHandleTexture = korl_resource_createTexture(&createInfoTexture);
+        glyphPage->resourceHandleTexture = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfoTexture);
         KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfo);
         createInfo.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_STORAGE;
         createInfo.bytes      = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
@@ -640,17 +640,15 @@ korl_internal void korl_gfx_initialize(void)
 }
 korl_internal void korl_gfx_initializePostRendererLogicalDevice(void)
 {
-    #if 0//@TODO: uncomment later; temporary disable korl-resource APIs
     /* why don't we do this in korl_gfx_initialize?  It's because when 
         korl_gfx_initialize happens, korl-vulkan is not yet fully initialized!  
         we can't actually configure graphics device assets when the graphics 
         device has not even been created */
     KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoBlankTexture);
     createInfoBlankTexture.size = KORL_MATH_V2U32_ONE;
-    _korl_gfx_context->blankTexture = korl_resource_createTexture(&createInfoBlankTexture);
+    _korl_gfx_context->blankTexture = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfoBlankTexture);
     const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
     korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
-    #endif
     /* initiate loading of all built-in shaders */
     _korl_gfx_context->resourceShaderKorlVertex2d             = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-2d.vert.spv"           ), KORL_ASSETCACHE_GET_FLAG_LAZY);
     _korl_gfx_context->resourceShaderKorlVertex2dColor        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-2d-color.vert.spv"     ), KORL_ASSETCACHE_GET_FLAG_LAZY);
