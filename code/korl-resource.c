@@ -600,7 +600,7 @@ korl_internal void korl_resource_transcodeFileAssets(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_pool_forEach(&context->resourcePool, _korl_resource_transcodeFileAssets_forEach, NULL);
 }
-korl_internal void* korl_resource_getDescriptorStruct(Korl_Resource_Handle handle)
+korl_internal KORL_FUNCTION_korl_resource_getDescriptorStruct(korl_resource_getDescriptorStruct)
 {
     _Korl_Resource_Context*const context      = _korl_resource_context;
     _Korl_Resource_Item*const    resourceItem = korl_pool_get(&context->resourcePool, &handle);
@@ -966,42 +966,6 @@ korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audi
     #endif
     return (acu8){0};//@TODO
 }
-korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_getSize)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    if(!resourceHandleTexture)
-        return KORL_MATH_V2U32_ZERO;
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceHandleTexture);
-    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandleTexture);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE);
-    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
-        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
-    return resource->subType.graphics.subType.image.createInfo.size;
-    #endif
-    return KORL_MATH_V2U32_ZERO;//@TODO
-}
-#if 0//@TODO: delete/recycle
-korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    if(!handleResourceShader)
-        return 0;
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceShader);
-    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceShader);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SHADER);
-    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
-        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
-    return resource->subType.graphics.subType.shader.handle;
-    return 0;//@TODO
-}
-#endif
 korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, const Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, const Korl_Gfx_Material** o_meshMaterials)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;

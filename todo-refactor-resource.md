@@ -50,10 +50,11 @@
   [x] test SHADER resource compatibility with korl-memoryState
 [x] add BUFFER resource to test runtime-data-backed resources (same tests as above)
 [x] add TEXTURE resource
-[ ] add functionality for Resource hierarchy
+[~] add functionality for Resource hierarchy
   [ ] add FONT resource
     [ ] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource
-  [ ] add BUFFER & TEXTURE child RUNTIME resources
+  [x] add BUFFER & TEXTURE child RUNTIME resources
+    - this kinda already works without any special "Resource_Item DAG" support, so...
   [ ] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
 [ ] add SCENE3D Resource

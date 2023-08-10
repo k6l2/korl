@@ -1,6 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-pool.h"
+#include "utility/korl-utility-math.h"
 #define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(name)  void* name(Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(name) void  name(void* resourceDescriptorStruct, Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)                  void  name(void* resourceDescriptorStruct)
@@ -43,11 +44,35 @@ typedef struct Korl_Resource_DescriptorManifest
     Korl_Resource_DescriptorManifest_Callbacks callbacks;
 } Korl_Resource_DescriptorManifest;
 typedef Korl_Pool_Handle Korl_Resource_Handle;
-#define KORL_FUNCTION_korl_resource_descriptor_add(name)        void                 name(const Korl_Resource_DescriptorManifest* descriptorManifest)
-#define KORL_FUNCTION_korl_resource_fromFile(name)              Korl_Resource_Handle name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
-#define KORL_FUNCTION_korl_resource_create(name)                Korl_Resource_Handle name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
-#define KORL_FUNCTION_korl_resource_resize(name)                void                 name(Korl_Resource_Handle handle, u$ newByteSize)
-#define KORL_FUNCTION_korl_resource_destroy(name)               void                 name(Korl_Resource_Handle resourceHandle)
-#define KORL_FUNCTION_korl_resource_update(name)                void                 name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
-#define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)       void*                name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
-#define KORL_FUNCTION_korl_resource_texture_getSize(name)       Korl_Math_V2u32      name(Korl_Resource_Handle resourceHandleTexture)
+/** to calculate the total spacing between two lines, use the formula: (ascent - decent) + lineGap */
+typedef struct Korl_Resource_Font_Metrics
+{
+    f32 ascent;
+    f32 decent;
+    f32 lineGap;
+} Korl_Resource_Font_Metrics;
+typedef struct Korl_Resource_Font_Resources
+{
+    Korl_Resource_Handle resourceHandleTexture;
+    Korl_Resource_Handle resourceHandleSsboGlyphMeshVertices;
+} Korl_Resource_Font_Resources;
+typedef struct Korl_Resource_Font_TextMetrics
+{
+    Korl_Math_V2f32 aabbSize;
+    u32             visibleGlyphCount;
+} Korl_Resource_Font_TextMetrics;
+#define KORL_FUNCTION_korl_resource_descriptor_add(name)        void                            name(const Korl_Resource_DescriptorManifest* descriptorManifest)
+#define KORL_FUNCTION_korl_resource_fromFile(name)              Korl_Resource_Handle            name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
+#define KORL_FUNCTION_korl_resource_create(name)                Korl_Resource_Handle            name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
+#define KORL_FUNCTION_korl_resource_getDescriptorStruct(name)   void*                           name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_resize(name)                void                            name(Korl_Resource_Handle handle, u$ newByteSize)
+#define KORL_FUNCTION_korl_resource_destroy(name)               void                            name(Korl_Resource_Handle resourceHandle)
+#define KORL_FUNCTION_korl_resource_update(name)                void                            name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
+#define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)       void*                           name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
+#define KORL_FUNCTION_korl_resource_texture_getSize(name)       Korl_Math_V2u32                 name(Korl_Resource_Handle handleResourceTexture)
+#define KORL_FUNCTION_korl_resource_font_getMetrics(name)       Korl_Resource_Font_Metrics      name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
+#define KORL_FUNCTION_korl_resource_font_getResources(name)     Korl_Resource_Font_Resources    name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
+#define KORL_FUNCTION_korl_resource_font_getUtf8Metrics(name)   Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text)
+#define KORL_FUNCTION_korl_resource_font_generateUtf8(name)     void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+#define KORL_FUNCTION_korl_resource_font_getUtf16Metrics(name)  Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text)
+#define KORL_FUNCTION_korl_resource_font_generateUtf16(name)    void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)

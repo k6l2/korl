@@ -99,3 +99,11 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_texture_ge
     _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
     return texture->deviceMemoryAllocationHandle;
 }
+korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_getSize)
+{
+    if(!handleResourceTexture)
+        return KORL_MATH_V2U32_ZERO;
+    //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a TEXTURE resource
+    _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
+    return texture->createInfo.size;
+}

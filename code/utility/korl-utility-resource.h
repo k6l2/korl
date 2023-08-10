@@ -1,3 +1,4 @@
+/** utilities for KORL built-in resource descriptors */
 #pragma once
 #include "korl-globalDefines.h"
 /** KORL built-in resource descriptor names ***********************************/

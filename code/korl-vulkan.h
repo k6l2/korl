@@ -53,6 +53,7 @@ typedef struct Korl_Vulkan_CreateInfoShader
     const void* data;
     u$          dataBytes;
 } Korl_Vulkan_CreateInfoShader;
+typedef struct Korl_Resource_Texture_CreateInfo Korl_Resource_Texture_CreateInfo;
 korl_internal void                                      korl_vulkan_construct(void);
 korl_internal void                                      korl_vulkan_destroy(void);
 korl_internal void                                      korl_vulkan_createSurface(void* createSurfaceUserData, u32 sizeX, u32 sizeY);
