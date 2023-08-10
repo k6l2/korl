@@ -771,7 +771,7 @@ korl_internal KORL_FUNCTION_korl_resource_getUpdateBuffer(korl_resource_getUpdat
     resourceItem->backingSubType.runtime.transcodingIsUpdated = false;
     return KORL_C_CAST(u8*, resourceItem->backingSubType.runtime.data) + byteOffset;
 }
-korl_internal u$ korl_resource_getByteSize(Korl_Resource_Handle handle)
+korl_internal KORL_FUNCTION_korl_resource_getByteSize(korl_resource_getByteSize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);

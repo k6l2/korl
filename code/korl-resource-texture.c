@@ -36,9 +36,12 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     {
         int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
         ///KORL-PERFORMANCE-000-000-032: resource: stbi API unfortunately doesn't seem to have the ability for the user to provide their own allocator, so we need an extra alloc/copy/free here
+        // this is lacking; we're assuming all texture file assets are loaded optimally as R8G8B8A8 data
         stbi_uc*const stbiPixels = stbi_load_from_memory(data, korl_checkCast_u$_to_i32(dataBytes), &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
         korl_assert(stbiPixels);
-        texture->createInfo.size = KORL_STRUCT_INITIALIZE(Korl_Math_V2u32){imageSizeX, imageSizeY};
+        korl_assert(imageChannels == 4);// ensure that our data is R8G8B8A8
+        texture->createInfo.size        = KORL_STRUCT_INITIALIZE(Korl_Math_V2u32){imageSizeX, imageSizeY};
+        texture->createInfo.formatImage = KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_SRGB;// this is lacking; we're assuming all texture assets are loaded as SRGB
         texture->deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&texture->createInfo, texture->deviceMemoryAllocationHandle);
         Korl_Gfx_Color4u8*const colorData = KORL_C_CAST(Korl_Gfx_Color4u8*, stbiPixels);
         /* pre-multiply alpha channel into all file images by default */
@@ -59,7 +62,8 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(_ko
     _Korl_Resource_Texture*const texture = resourceDescriptorStruct;
     const Korl_Resource_Texture_CreateInfo*const createInfo = descriptorCreateInfo;
     texture->createInfo = *createInfo;
-    *o_data = korl_allocate(allocator, createInfo->size.x * createInfo->size.y * sizeof(Korl_Gfx_Color4u8));
+    korl_assert(createInfo->formatImage != KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED);
+    *o_data = korl_allocate(allocator, createInfo->size.x * createInfo->size.y * KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[texture->createInfo.formatImage]);
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(_korl_resource_texture_createRuntimeMedia)
 {
@@ -69,7 +73,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(_k
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes(_korl_resource_texture_runtimeBytes)
 {
     const _Korl_Resource_Texture*const texture = resourceDescriptorStruct;
-    return texture->createInfo.size.x * texture->createInfo.size.y * sizeof(Korl_Gfx_Color4u8);
+    return texture->createInfo.size.x * texture->createInfo.size.y * KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[texture->createInfo.formatImage];
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(_korl_resource_texture_runtimeResize)
 {
@@ -106,4 +110,12 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
     //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a TEXTURE resource
     _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
     return texture->createInfo.size;
+}
+korl_internal KORL_FUNCTION_korl_resource_texture_getRowByteStride(korl_resource_texture_getRowByteStride)
+{
+    if(!handleResourceTexture)
+        return 0;
+    //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a TEXTURE resource
+    _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
+    return texture->createInfo.size.x * KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[texture->createInfo.formatImage];
 }

@@ -17,7 +17,29 @@ typedef struct Korl_Resource_GfxBuffer_CreateInfo
     u$  bytes;
     u32 usageFlags;// see: Korl_Resource_GfxBuffer_UsageFlags
 } Korl_Resource_GfxBuffer_CreateInfo;
+typedef enum Korl_Resource_Texture_Format
+    {KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED
+    ,KORL_RESOURCE_TEXTURE_FORMAT_R8_UNORM
+    ,KORL_RESOURCE_TEXTURE_FORMAT_R8_SRGB
+    ,KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM
+    ,KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_SRGB
+} Korl_Resource_Texture_Format;
+korl_global_const u8 KORL_RESOURCE_TEXTURE_FORMAT_COMPONENTS[] = 
+    {0//KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED
+    ,1//KORL_RESOURCE_TEXTURE_FORMAT_R8_UNORM
+    ,1//KORL_RESOURCE_TEXTURE_FORMAT_R8_SRGB
+    ,4//KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM
+    ,4//KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_SRGB
+    };
+korl_global_const u8 KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[] = 
+    {0//KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED
+    ,1//KORL_RESOURCE_TEXTURE_FORMAT_R8_UNORM
+    ,1//KORL_RESOURCE_TEXTURE_FORMAT_R8_SRGB
+    ,4//KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM
+    ,4//KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_SRGB
+    };
 typedef struct Korl_Resource_Texture_CreateInfo
 {
-    Korl_Math_V2u32 size;
+    Korl_Math_V2u32              size;
+    Korl_Resource_Texture_Format formatImage;
 } Korl_Resource_Texture_CreateInfo;

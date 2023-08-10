@@ -1572,7 +1572,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     /* create default texture */
     {
         KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoTexture);
-        createInfoTexture.size = KORL_MATH_V2U32_ONE;
+        createInfoTexture.size        = KORL_MATH_V2U32_ONE;
+        createInfoTexture.formatImage = KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM;
         surfaceContext->defaultTexture = korl_vulkan_deviceAsset_createTexture(&createInfoTexture, 0/*0 => generate new handle*/);
         Korl_Gfx_Color4u8 defaultTextureColor = (Korl_Gfx_Color4u8){255, 0, 255, 255};
         korl_vulkan_texture_update(surfaceContext->defaultTexture, &defaultTextureColor);
@@ -2328,8 +2329,18 @@ korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_Allocat
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Resource_Texture_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    VkFormat vkFormatImage = VK_FORMAT_UNDEFINED;
+    switch(createInfo->formatImage)
+    {
+    case KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED     : break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8_UNORM      : vkFormatImage = VK_FORMAT_R8_UNORM;       break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8_SRGB       : vkFormatImage = VK_FORMAT_R8_SRGB;        break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM: vkFormatImage = VK_FORMAT_R8G8B8A8_UNORM; break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_SRGB : vkFormatImage = VK_FORMAT_R8G8B8A8_SRGB;  break;
+    }
     return _korl_vulkan_deviceMemory_allocateTexture(&surfaceContext->deviceMemoryDeviceLocal
                                                     ,createInfo->size.x, createInfo->size.y
+                                                    ,vkFormatImage, KORL_RESOURCE_TEXTURE_FORMAT_COMPONENTS[createInfo->formatImage]
                                                     ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT 
                                                      | VK_IMAGE_USAGE_SAMPLED_BIT
                                                     ,requiredHandle

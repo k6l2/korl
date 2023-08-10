@@ -95,9 +95,12 @@ typedef struct _Korl_Vulkan_DeviceMemory_Alloctation
     int            line;
     bool           freeQueued;
 } _Korl_Vulkan_DeviceMemory_Alloctation;
-#define _korl_vulkan_deviceMemory_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation)                                                     _korl_vulkan_deviceMemory_allocator_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation, __FILEW__, __LINE__)
-#define _korl_vulkan_deviceMemory_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, requiredHandle, out_allocation)                                                 _korl_vulkan_deviceMemory_allocator_allocateTexture(allocator, imageSizeX, imageSizeY, imageUsageFlags, requiredHandle, out_allocation, __FILEW__, __LINE__)
-#define _korl_vulkan_deviceMemory_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, requiredHandle, out_allocation) _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, requiredHandle, out_allocation, __FILEW__, __LINE__)
+#define _korl_vulkan_deviceMemory_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation) \
+    _korl_vulkan_deviceMemory_allocator_allocateBuffer(allocator, bytes, bufferUsageFlags, sharingMode, requiredHandle, out_allocation, __FILEW__, __LINE__)
+#define _korl_vulkan_deviceMemory_allocateTexture(allocator, imageSizeX, imageSizeY, vkFormatImage, imageFormatComponents, imageUsageFlags, requiredHandle, out_allocation) \
+    _korl_vulkan_deviceMemory_allocator_allocateTexture(allocator, imageSizeX, imageSizeY, vkFormatImage, imageFormatComponents, imageUsageFlags, requiredHandle, out_allocation, __FILEW__, __LINE__)
+#define _korl_vulkan_deviceMemory_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, requiredHandle, out_allocation) \
+    _korl_vulkan_deviceMemory_allocator_allocateImageBuffer(allocator, imageSizeX, imageSizeY, imageUsageFlags, imageAspectFlags, imageFormat, imageTiling, requiredHandle, out_allocation, __FILEW__, __LINE__)
 korl_internal _Korl_Vulkan_DeviceMemory_Allocator _korl_vulkan_deviceMemory_allocator_create(Korl_Memory_AllocatorHandle             allocatorHandle
                                                                                             ,_Korl_Vulkan_DeviceMemory_AllocatorType type
                                                                                             ,VkMemoryPropertyFlagBits                memoryPropertyFlags
@@ -111,7 +114,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
                                                                                                           ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
                                                                                                           ,const wchar_t* file, int line);
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateTexture(_Korl_Vulkan_DeviceMemory_Allocator* allocator
-                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags
+                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkFormat imageFormat, u8 imageFormatComponents, VkImageUsageFlags imageUsageFlags
                                                                                                            ,Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle
                                                                                                            ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
                                                                                                            ,const wchar_t* file, int line);

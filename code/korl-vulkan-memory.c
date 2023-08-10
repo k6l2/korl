@@ -502,7 +502,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
     return result;
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateTexture(_Korl_Vulkan_DeviceMemory_Allocator* allocator
-                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkImageUsageFlags imageUsageFlags
+                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkFormat imageFormat, u8 imageFormatComponents, VkImageUsageFlags imageUsageFlags
                                                                                                            ,Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle
                                                                                                            ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
                                                                                                            ,const wchar_t* file, int line)
@@ -519,7 +519,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
     imageCreateInfo.extent.depth  = 1;
     imageCreateInfo.mipLevels     = 1;
     imageCreateInfo.arrayLayers   = 1;
-    imageCreateInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+    imageCreateInfo.format        = imageFormat;
     imageCreateInfo.usage         = imageUsageFlags;
     imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
     #if 0// all these options are already defaulted to 0 //
@@ -548,12 +548,16 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
     createInfoImageView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     createInfoImageView.image                           = image;
     createInfoImageView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    createInfoImageView.format                          = VK_FORMAT_R8G8B8A8_SRGB;
+    createInfoImageView.format                          = imageFormat;
     createInfoImageView.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     createInfoImageView.subresourceRange.baseMipLevel   = 0;
     createInfoImageView.subresourceRange.levelCount     = 1;
     createInfoImageView.subresourceRange.baseArrayLayer = 0;
     createInfoImageView.subresourceRange.layerCount     = 1;
+    createInfoImageView.components.r                    = VK_COMPONENT_SWIZZLE_R + (0 % imageFormatComponents);
+    createInfoImageView.components.g                    = VK_COMPONENT_SWIZZLE_R + (1 % imageFormatComponents);
+    createInfoImageView.components.b                    = VK_COMPONENT_SWIZZLE_R + (2 % imageFormatComponents);
+    createInfoImageView.components.a                    = VK_COMPONENT_SWIZZLE_R + (3 % imageFormatComponents);
     _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &imageView));
     /* create the sampler for the image */
     // first obtain physical device properties to get the max anisotropy value
