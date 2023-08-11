@@ -58,7 +58,7 @@
     [x] KORL-PERFORMANCE-000-000-001: gfx: inefficient texture upload process
   [x] add BUFFER & TEXTURE child RUNTIME resources
     - this kinda already works without any special "Resource_Item DAG" support, so...
-  [ ] refactor & test korl-utility-gfx text drawing APIs
+  [x] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
 [ ] add SCENE3D Resource
   - compose a SCENE3D Resource out of MESH & TEXTURE Resources

@@ -502,7 +502,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
     return result;
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemory_allocator_allocateTexture(_Korl_Vulkan_DeviceMemory_Allocator* allocator
-                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkFormat imageFormat, u8 imageFormatComponents, VkImageUsageFlags imageUsageFlags
+                                                                                                           ,u32 imageSizeX, u32 imageSizeY, VkFormat imageFormat, u8 imageFormatComponents, u8 pixelByteStride, VkImageUsageFlags imageUsageFlags
                                                                                                            ,Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle
                                                                                                            ,_Korl_Vulkan_DeviceMemory_Alloctation** out_allocation
                                                                                                            ,const wchar_t* file, int line)
@@ -583,11 +583,12 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle _korl_vulkan_deviceMemor
     createInfoSampler.maxLod                  = 0.0f;
     _KORL_VULKAN_CHECK(vkCreateSampler(context->device, &createInfoSampler, context->allocator, &sampler));
     /* record the vulkan device objects in our new allocation */
-    newAllocation->subType.texture.image     = image;
-    newAllocation->subType.texture.imageView = imageView;
-    newAllocation->subType.texture.sampler   = sampler;
-    newAllocation->subType.texture.sizeX     = imageSizeX;
-    newAllocation->subType.texture.sizeY     = imageSizeY;
+    newAllocation->subType.texture.image           = image;
+    newAllocation->subType.texture.imageView       = imageView;
+    newAllocation->subType.texture.sampler         = sampler;
+    newAllocation->subType.texture.sizeX           = imageSizeX;
+    newAllocation->subType.texture.sizeY           = imageSizeY;
+    newAllocation->subType.texture.pixelByteStride = pixelByteStride;
     /* if the caller requires a specific handle value, we need to ensure that 
         requirement is satisfied */
     const Korl_Vulkan_DeviceMemory_AllocationHandle result = _korl_vulkan_deviceMemory_allocationHandle_pack(unpackedResult);

@@ -50,6 +50,8 @@ typedef struct Korl_Resource_Font_Metrics
     f32 ascent;
     f32 decent;
     f32 lineGap;
+    f32 nearestSupportedPixelHeight;
+    u8  _nearestSupportedPixelHeightIndex;
 } Korl_Resource_Font_Metrics;
 typedef struct Korl_Resource_Font_Resources
 {

@@ -30,8 +30,10 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 {
     _Korl_Resource_Texture*const texture = resourceDescriptorStruct;
     if(texture->deviceMemoryAllocationHandle)
+    {
         /* if the device memory allocation already exists, this must be a RUNTIME resource, so the data is just a pixel array to upload to the graphics device */
         korl_vulkan_texture_update(texture->deviceMemoryAllocationHandle, data);
+    }
     else/* otherwise, this must be a file-asset-backed resource, so we need to decode the file data into pixel data first */
     {
         int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;

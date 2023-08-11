@@ -2342,7 +2342,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
     }
     return _korl_vulkan_deviceMemory_allocateTexture(&surfaceContext->deviceMemoryDeviceLocal
                                                     ,createInfo->size.x, createInfo->size.y
-                                                    ,vkFormatImage, KORL_RESOURCE_TEXTURE_FORMAT_COMPONENTS[createInfo->formatImage]
+                                                    ,vkFormatImage, KORL_RESOURCE_TEXTURE_FORMAT_COMPONENTS[createInfo->formatImage], KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[createInfo->formatImage]
                                                     ,  VK_IMAGE_USAGE_TRANSFER_DST_BIT 
                                                      | VK_IMAGE_USAGE_SAMPLED_BIT
                                                     ,requiredHandle
@@ -2383,7 +2383,7 @@ korl_internal void korl_vulkan_deviceAsset_destroy(Korl_Vulkan_DeviceMemory_Allo
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->stbDaDeviceLocalFreeQueue, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation));
     arrlast(surfaceContext->stbDaDeviceLocalFreeQueue).allocationHandle = deviceAssetHandle;
 }
-korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const Korl_Gfx_Color4u8* pixelData)
+korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_AllocationHandle textureHandle, const void* pixelData)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -2394,7 +2394,7 @@ korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_Allocatio
         transfer from staging => device memory */
     const VkDeviceSize imageBytes = deviceMemoryAllocation->subType.texture.sizeX
                                   * deviceMemoryAllocation->subType.texture.sizeY
-                                  * sizeof(*pixelData);
+                                  * deviceMemoryAllocation->subType.texture.pixelByteStride;
     VkBuffer bufferStaging;
     VkDeviceSize bufferStagingOffset;
     void*const pixelDataStagingMemory = _korl_vulkan_getStagingPool(imageBytes, 0/*alignment*/, &bufferStaging, &bufferStagingOffset);

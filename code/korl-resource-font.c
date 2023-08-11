@@ -17,8 +17,8 @@
 #include "utility/korl-utility-stb-ds.h"
 #include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
-#define _KORL_RESOURCE_FONT_SUPPORTED_PIXEL_HEIGHTS 11
-korl_global_const f32 _KORL_RESOURCE_FONT_PIXEL_HEIGHTS[_KORL_RESOURCE_FONT_SUPPORTED_PIXEL_HEIGHTS] = {10, 14, 16, 18, 24, 30, 36, 48, 60, 72, 84};// just an arbitrary list of common text pixel heights
+#define _KORL_RESOURCE_FONT_SUPPORTED_PIXEL_HEIGHTS 6
+korl_global_const f32 _KORL_RESOURCE_FONT_PIXEL_HEIGHTS[] = {10, 16, 24, 36, 60, 84};// just an arbitrary list of common text pixel heights
 typedef struct _Korl_Resource_Font_BakedGlyph_BoundingBox
 {
     u32             bakeOrder;// used to determine the "glyph instance index", which allows a vertex shader to choose this glyph's vertices from _Korl_Resource_Font::resourceHandleSsboGlyphMeshVertices
@@ -173,7 +173,7 @@ korl_internal const _Korl_Resource_Font_BakedGlyph* _korl_resource_font_getGlyph
         stbtt_GetGlyphHMetrics(&font->stbtt_info, glyph->stbtt_glyphIndex, &advanceX, &bearingLeft);
         _Korl_Resource_Font_BakedGlyph_BoundingBox*const bbox = glyph->boxes + nearestSupportedPixelHeightIndex;
         bbox->glyphPageIndex = _korl_resource_font_glyphPage_insert(font, w, h, &bbox->x0, &bbox->y0, &bbox->x1, &bbox->y1);
-        bbox->offset.x =  KORL_C_CAST(f32, bearingLeft);
+        bbox->offset.x = fontScale * KORL_C_CAST(f32, bearingLeft);
         bbox->offset.y = -KORL_C_CAST(f32, iy1);
         /* actually write the glyph bitmap in the glyph page data */
         _Korl_Resource_Font_GlyphPage*const glyphPage = font->stbDaGlyphPages + bbox->glyphPageIndex;
@@ -183,18 +183,19 @@ korl_internal const _Korl_Resource_Font_BakedGlyph* _korl_resource_font_getGlyph
         const u32             glyphPageTextureRowByteStride = korl_resource_texture_getRowByteStride(glyphPage->resourceHandleTexture);
         stbtt_MakeGlyphBitmap(&font->stbtt_info
                              ,glyphPageUpdateBuffer + (bbox->y0 * glyphPageTextureRowByteStride + bbox->x0)
-                             ,glyphPageTextureSize.x, glyphPageTextureSize.y, glyphPageTextureRowByteStride
+                             ,w, h, glyphPageTextureRowByteStride
                              ,fontScale, fontScale, glyph->stbtt_glyphIndex);
         /* determine the glyph's bakeOrder, & reallocate the font's GlyphVertex SSBO if necessary */
-        bbox->bakeOrder = font->ssboGlyphMeshVerticesSize;
+        bbox->bakeOrder = font->ssboGlyphMeshVerticesSize / 4;
         u$ ssboGlyphMeshVerticesCapacity = korl_resource_getByteSize(font->resourceHandleSsboGlyphMeshVertices) / sizeof(_Korl_Resource_Font_GlyphVertex);
         if(font->ssboGlyphMeshVerticesSize + 4 > ssboGlyphMeshVerticesCapacity)
         {
             ssboGlyphMeshVerticesCapacity = KORL_MATH_MAX(font->ssboGlyphMeshVerticesSize + 4, 2 * ssboGlyphMeshVerticesCapacity);
             korl_resource_resize(font->resourceHandleSsboGlyphMeshVertices, ssboGlyphMeshVerticesCapacity * sizeof(_Korl_Resource_Font_GlyphVertex));
         }
+        font->ssboGlyphMeshVerticesSize += 4;
         bytesRequested_bytesAvailable = 4 * sizeof(_Korl_Resource_Font_GlyphVertex);
-        _Korl_Resource_Font_GlyphVertex*const glyphVertexUpdateBuffer = korl_resource_getUpdateBuffer(font->resourceHandleSsboGlyphMeshVertices, bbox->bakeOrder * sizeof(_Korl_Resource_Font_GlyphVertex), &bytesRequested_bytesAvailable);
+        _Korl_Resource_Font_GlyphVertex*const glyphVertexUpdateBuffer = korl_resource_getUpdateBuffer(font->resourceHandleSsboGlyphMeshVertices, bbox->bakeOrder * 4 * sizeof(_Korl_Resource_Font_GlyphVertex), &bytesRequested_bytesAvailable);
         korl_assert(bytesRequested_bytesAvailable == 4 * sizeof(_Korl_Resource_Font_GlyphVertex));
         /* append the GlyphVertex data to the font's GlyphVertex SSBO */
         const f32 x0 = 0.f/*start glyph at baseline cursor origin*/ + bbox->offset.x;
@@ -297,10 +298,28 @@ korl_internal void korl_resource_font_register(void)
     descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_font_transcode);
     korl_resource_descriptor_add(&descriptorManifest);
 }
+korl_internal u8 _korl_resource_font_nearestSupportedPixelHeightIndex(f32 pixelHeight)
+{
+    f32 smallestDelta = KORL_F32_MAX;
+    u8  result        = korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS);
+    for(u8 i = 0; i < korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS); i++)
+    {
+        const f32 delta = korl_math_f32_positive(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS[i] - pixelHeight);
+        if(delta < smallestDelta)
+        {
+            smallestDelta = delta;
+            result        = i;
+        }
+    }
+    korl_assert(result < korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS));
+    return result;
+}
 korl_internal Korl_Resource_Font_Metrics _korl_resource_font_getMetrics(_Korl_Resource_Font*const font, f32 textPixelHeight)
 {
     KORL_ZERO_STACK(Korl_Resource_Font_Metrics, result);
-    f32 fontScale = stbtt_ScaleForPixelHeight(&font->stbtt_info, textPixelHeight);
+    result._nearestSupportedPixelHeightIndex = _korl_resource_font_nearestSupportedPixelHeightIndex(textPixelHeight);
+    result.nearestSupportedPixelHeight       = _KORL_RESOURCE_FONT_PIXEL_HEIGHTS[result._nearestSupportedPixelHeightIndex];
+    f32 fontScale = stbtt_ScaleForPixelHeight(&font->stbtt_info, result.nearestSupportedPixelHeight);
     int ascent;
     int descent;
     int lineGap;
@@ -336,25 +355,9 @@ korl_internal KORL_FUNCTION_korl_resource_font_getResources(korl_resource_font_g
         result.resourceHandleTexture = font->stbDaGlyphPages[0].resourceHandleTexture;
     return result;
 }
-korl_internal u8 _korl_resource_font_nearestSupportedPixelHeightIndex(f32 pixelHeight)
+korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Math_Aabb2f32* aabb, Korl_Resource_Font_TextMetrics* textMetrics)
 {
-    f32 smallestDelta = KORL_F32_MAX;
-    u8  result        = korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS);
-    for(u8 i = 0; i < korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS); i++)
-    {
-        const f32 delta = korl_math_f32_positive(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS[i] - pixelHeight);
-        if(delta < smallestDelta)
-        {
-            smallestDelta = delta;
-            result        = i;
-        }
-    }
-    korl_assert(result < korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS));
-    return result;
-}
-korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u8 nearestSupportedPixelHeightIndex, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Math_Aabb2f32* aabb, Korl_Resource_Font_TextMetrics* textMetrics)
-{
-    const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, nearestSupportedPixelHeightIndex);
+    const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, fontMetrics._nearestSupportedPixelHeightIndex);
     int advanceX;
     int bearingLeft;
     stbtt_GetGlyphHMetrics(&font->stbtt_info, bakedGlyph->stbtt_glyphIndex, &advanceX, &bearingLeft);
@@ -367,8 +370,7 @@ korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*
             the user code cares more about visual alignment of rendered text, 
             and this is a lot easier to achieve API-wise when we are calculating 
             text AABBs relatvie to font metrics */
-        const _Korl_Resource_Font_BakedGlyph_BoundingBox*const bbox = bakedGlyph->boxes + nearestSupportedPixelHeightIndex;
-        //@TODO: adjust this bbox by the `textPixelHeight / nearestSupportedPixelHeight` ratio?
+        const _Korl_Resource_Font_BakedGlyph_BoundingBox*const bbox = bakedGlyph->boxes + fontMetrics._nearestSupportedPixelHeightIndex;
         const f32 x0 = textBaselineCursor->x;
         const f32 y0 = textBaselineCursor->y + fontMetrics.ascent;
         const f32 x1 = x0 + bbox->offset.x + (bbox->x1 - bbox->x0);
@@ -397,10 +399,9 @@ korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*
 }
 korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_Korl_Resource_Font*const font, f32 textPixelHeight, const void* utfTextData, u$ utfTextSize, u8 utfEncoding, u$ graphemeLimit, Korl_Math_V2f32* o_textBaselineCursorFinal)
 {
-    const f32                        fontScale                        = stbtt_ScaleForPixelHeight(&font->stbtt_info, textPixelHeight);
-    const Korl_Resource_Font_Metrics fontMetrics                      = _korl_resource_font_getMetrics(font, textPixelHeight);
-    const u8                         nearestSupportedPixelHeightIndex = _korl_resource_font_nearestSupportedPixelHeightIndex(textPixelHeight);
-    const f32                        lineDeltaY                       = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
+    const Korl_Resource_Font_Metrics fontMetrics = _korl_resource_font_getMetrics(font, textPixelHeight);
+    const f32                        fontScale   = stbtt_ScaleForPixelHeight(&font->stbtt_info, fontMetrics.nearestSupportedPixelHeight);
+    const f32                        lineDeltaY  = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
     Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontMetrics.ascent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
     int             glyphIndexPrevious = -1;
     Korl_Math_Aabb2f32 aabb = KORL_MATH_AABB2F32_EMPTY;
@@ -410,16 +411,16 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
     case 8:
         //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
         for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utfTextData, utfTextSize)
-           ;!korl_string_codepointIteratorUtf8_done(&codepointIt) && codepointIt.codepointIndex
+           ;!korl_string_codepointIteratorUtf8_done(&codepointIt) && codepointIt.codepointIndex < graphemeLimit
            ; korl_string_codepointIteratorUtf8_next(&codepointIt))
-            _korl_resource_font_getUtfMetrics_common(font, fontScale, fontMetrics, nearestSupportedPixelHeightIndex, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
+            _korl_resource_font_getUtfMetrics_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
         break;
     case 16:
         //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
         for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utfTextData, utfTextSize)
-           ;!korl_string_codepointIteratorUtf16_done(&codepointIt) && codepointIt.codepointIndex
+           ;!korl_string_codepointIteratorUtf16_done(&codepointIt) && codepointIt.codepointIndex < graphemeLimit
            ; korl_string_codepointIteratorUtf16_next(&codepointIt))
-            _korl_resource_font_getUtfMetrics_common(font, fontScale, fontMetrics, nearestSupportedPixelHeightIndex, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
+            _korl_resource_font_getUtfMetrics_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
         break;
     default:
         korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
@@ -430,16 +431,16 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
     textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
     return textMetrics;
 }
-korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const u8 nearestSupportedPixelHeightIndex, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
 {
-    const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, nearestSupportedPixelHeightIndex);
+    const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, fontMetrics._nearestSupportedPixelHeightIndex);
     int advanceX;
     int bearingLeft;
     stbtt_GetGlyphHMetrics(&font->stbtt_info, bakedGlyph->stbtt_glyphIndex, &advanceX, &bearingLeft);
     if(!bakedGlyph->isEmpty)
     {
         o_glyphInstancePositions[textMetrics->visibleGlyphCount] = korl_math_v2f32_add(*textBaselineCursor, instancePositionOffset);
-        o_glyphInstanceIndices  [textMetrics->visibleGlyphCount] = bakedGlyph->boxes[nearestSupportedPixelHeightIndex].bakeOrder;
+        o_glyphInstanceIndices  [textMetrics->visibleGlyphCount] = bakedGlyph->boxes[fontMetrics._nearestSupportedPixelHeightIndex].bakeOrder;
         textMetrics->visibleGlyphCount++;
     }
     if(textBaselineCursor->x > 0.f)
@@ -461,10 +462,9 @@ korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*co
 }
 korl_internal void _korl_resource_font_generateUtf(_Korl_Resource_Font*const font, f32 textPixelHeight, const void* utfText, u$ utfTextSize, u8 utfEncoding, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
 {
-    const f32                        fontScale                        = stbtt_ScaleForPixelHeight(&font->stbtt_info, textPixelHeight);
-    const Korl_Resource_Font_Metrics fontMetrics                      = _korl_resource_font_getMetrics(font, textPixelHeight);
-    const u8                         nearestSupportedPixelHeightIndex = _korl_resource_font_nearestSupportedPixelHeightIndex(textPixelHeight);
-    const f32                        lineDeltaY                       = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
+    const Korl_Resource_Font_Metrics fontMetrics = _korl_resource_font_getMetrics(font, textPixelHeight);
+    const f32                        fontScale   = stbtt_ScaleForPixelHeight(&font->stbtt_info, fontMetrics.nearestSupportedPixelHeight);
+    const f32                        lineDeltaY  = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
     Korl_Math_V2f32 textBaselineCursor = (Korl_Math_V2f32){0.f, -fontMetrics.ascent};// default the baseline cursor such that our local origin is placed at _exactly_ the upper-left corner of the text's local AABB based on font metrics, as we know a glyph will never rise _above_ the fontAscent
     int             glyphIndexPrevious = -1;
     KORL_ZERO_STACK(Korl_Resource_Font_TextMetrics, textMetrics);
@@ -475,14 +475,14 @@ korl_internal void _korl_resource_font_generateUtf(_Korl_Resource_Font*const fon
         for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utfText, utfTextSize)
            ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
            ; korl_string_codepointIteratorUtf8_next(&codepointIt))
-            _korl_resource_font_generateUtf_common(font, fontScale, nearestSupportedPixelHeightIndex, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+            _korl_resource_font_generateUtf_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
         break;
     case 16:
         //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
         for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utfText, utfTextSize)
            ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
            ; korl_string_codepointIteratorUtf16_next(&codepointIt))
-            _korl_resource_font_generateUtf_common(font, fontScale, nearestSupportedPixelHeightIndex, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+            _korl_resource_font_generateUtf_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
         break;
     default:
         korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
