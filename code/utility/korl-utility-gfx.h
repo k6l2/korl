@@ -42,10 +42,10 @@ typedef enum Korl_Gfx_RuntimeDrawableAttributeDatatype
 } Korl_Gfx_RuntimeDrawableAttributeDatatype;
 typedef struct Korl_Gfx_CreateInfoRuntimeDrawable
 {
-    Korl_Gfx_Drawable_Runtime_Type            type;
-    Korl_Gfx_VertexIndexType                  vertexIndexType;
-    Korl_Gfx_RuntimeDrawableAttributeDatatype attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
-    bool                                      interleavedAttributes;
+    Korl_Gfx_Drawable_Runtime_Type            type;// if set to KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME, you _must_ call `korl_gfx_drawable_destroy` on the resulting Korl_Gfx_Drawable, or resources will be leaked
+    Korl_Gfx_VertexIndexType                  vertexIndexType;// only set this to non-zero if you want to draw indexed geometry
+    Korl_Gfx_RuntimeDrawableAttributeDatatype attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];// by default (the {0} struct), all attributes are INVALID (even BINDING_POSITION), and thus wont be allocated; you must configure each attribute datatype you want to have allocated for this Drawable
+    bool                                      interleavedAttributes;// only set this to true if you plan on reallocating vertex attributes, since interleaving data will likely have negative performance impact (wide-instruction optimizations more difficult, kill cache hits when operating on only certain attributes)
 } Korl_Gfx_CreateInfoRuntimeDrawable;
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableLineStrip(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount);
