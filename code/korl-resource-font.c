@@ -18,7 +18,7 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
 #define _KORL_RESOURCE_FONT_SUPPORTED_PIXEL_HEIGHTS 6
-korl_global_const f32 _KORL_RESOURCE_FONT_PIXEL_HEIGHTS[] = {10, 16, 24, 36, 60, 84};// just an arbitrary list of common text pixel heights
+korl_global_const f32 _KORL_RESOURCE_FONT_PIXEL_HEIGHTS[_KORL_RESOURCE_FONT_SUPPORTED_PIXEL_HEIGHTS] = {10, 16, 24, 36, 60, 84};// just an arbitrary list of common text pixel heights
 typedef struct _Korl_Resource_Font_BakedGlyph_BoundingBox
 {
     u32             bakeOrder;// used to determine the "glyph instance index", which allows a vertex shader to choose this glyph's vertices from _Korl_Resource_Font::resourceHandleSsboGlyphMeshVertices
@@ -241,21 +241,48 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_font_clearTransientData)
 {
     _Korl_Resource_Font*const font = resourceDescriptorStruct;
+    //@TODO: we can't do this, because korl-resource will attempt to call `unload` on this gfx-buffer resource, which will attempt to destroy the buffer's vulkan_deviceAsset, and that is impossible since all device assets are wiped already
+    //           mitigation strategies:
+    //           - we could tell the resources we create in this resource that this resource is their "parent"
+    //             - this would allow us to sort & process resources topologically in korl_resource_memoryStateRead
+    //             - ???
+    //           - just don't destroy child resources in here?...
+    //             - what do we do then? lol
     korl_resource_destroy(font->resourceHandleSsboGlyphMeshVertices);
     font->resourceHandleSsboGlyphMeshVertices = 0;
-    {
+    {/* our GlyphPages are all transient data; we should just destroy all of them */
         const _Korl_Resource_Font_GlyphPage*const glyphPageEnd = font->stbDaGlyphPages + arrlen(font->stbDaGlyphPages);
         for(_Korl_Resource_Font_GlyphPage* glyphPage = font->stbDaGlyphPages; glyphPage < glyphPageEnd; glyphPage++)
         {
             korl_resource_destroy(glyphPage->resourceHandleTexture);
             glyphPage->resourceHandleTexture = 0;
+            mcarrfree(KORL_STB_DS_MC_CAST(font->allocator), glyphPage->stbDaPackRows);
         }
+        mcarrsetlen(KORL_STB_DS_MC_CAST(font->allocator), font->stbDaGlyphPages, 0);
     }
     korl_memory_zero(&font->stbtt_info, sizeof(font->stbtt_info));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource_font_unload)
 {
     _korl_resource_font_clearTransientData(resourceDescriptorStruct);
+}
+/** A temporary struct used to sort the current runtime collection of baked 
+ * glyphs in ascending bakeOrder, so that we can re-bake them all in the exact 
+ * same order. */
+typedef struct _Korl_Resource_Font_TempBakedGlyph
+{
+    u32 codePoint;
+    u32 bakeOrder;
+    u8  nearestSupportedPixelHeightIndex;
+} _Korl_Resource_Font_TempBakedGlyph;
+korl_internal KORL_ALGORITHM_COMPARE(_korl_resource_font_tempBakedGlyph_sort_ascendingBakeOrder)
+{
+    const _Korl_Resource_Font_TempBakedGlyph*const tempBakedGlyphA = a;
+    const _Korl_Resource_Font_TempBakedGlyph*const tempBakedGlyphB = b;
+    korl_assert(tempBakedGlyphA->bakeOrder != tempBakedGlyphB->bakeOrder);
+    return tempBakedGlyphA->bakeOrder < tempBakedGlyphB->bakeOrder ? -1 
+           : tempBakedGlyphA->bakeOrder > tempBakedGlyphB->bakeOrder ? 1
+             : 0;
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resource_font_transcode)
 {
@@ -277,16 +304,35 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         - sort the array by ascending bakeOrder
         - call `_korl_resource_font_getGlyph` on each element in order; remember, we don't actually care if they end up in the same GlyphPage location; the only thing that matters is the bakeOrder!
         - discard the temp array */
-    ///@TODO: finish this to support korl-memoryState functionality
-    #if 0//@TODO: figure this out
+    _Korl_Resource_Font_TempBakedGlyph* stbDaTempBakedGlyphs = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(font->allocator), stbDaTempBakedGlyphs, korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS) * hmlen(font->stbHmBakedGlyphs));
     const _Korl_Resource_Font_BakedGlyphMap*const bakedGlyphMapEnd = font->stbHmBakedGlyphs + hmlen(font->stbHmBakedGlyphs);
     for(_Korl_Resource_Font_BakedGlyphMap* bakedGlyphMap = font->stbHmBakedGlyphs; bakedGlyphMap < bakedGlyphMapEnd; bakedGlyphMap++)
     {
         for(u8 i = 0; i < korl_arraySize(_KORL_RESOURCE_FONT_PIXEL_HEIGHTS); i++)
         {
+            if(!(bakedGlyphMap->value.boxUsedFlags & (1 << i)))
+                continue;
+            const _Korl_Resource_Font_BakedGlyph_BoundingBox*const bbox = bakedGlyphMap->value.boxes + i;
+            mcarrpush(KORL_STB_DS_MC_CAST(font->allocator), stbDaTempBakedGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource_Font_TempBakedGlyph));
+            _Korl_Resource_Font_TempBakedGlyph*const newTempBakedGlyph = &arrlast(stbDaTempBakedGlyphs);
+            newTempBakedGlyph->codePoint                        = bakedGlyphMap->key;
+            newTempBakedGlyph->nearestSupportedPixelHeightIndex = i;
+            newTempBakedGlyph->bakeOrder                        = bbox->bakeOrder;
         }
     }
-    #endif
+    mchmfree   (KORL_STB_DS_MC_CAST(font->allocator), font->stbHmBakedGlyphs);
+    mchmdefault(KORL_STB_DS_MC_CAST(font->allocator), font->stbHmBakedGlyphs, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Resource_Font_BakedGlyph));
+    korl_algorithm_sort_quick(stbDaTempBakedGlyphs, arrlenu(stbDaTempBakedGlyphs), sizeof(*stbDaTempBakedGlyphs), _korl_resource_font_tempBakedGlyph_sort_ascendingBakeOrder);
+    {
+        const _Korl_Resource_Font_TempBakedGlyph*const tempBakedGlyphsEnd = stbDaTempBakedGlyphs + arrlen(stbDaTempBakedGlyphs);
+        for(const _Korl_Resource_Font_TempBakedGlyph* tempBakedGlyph = stbDaTempBakedGlyphs; tempBakedGlyph < tempBakedGlyphsEnd; tempBakedGlyph++)
+        {
+            const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, tempBakedGlyph->codePoint, tempBakedGlyph->nearestSupportedPixelHeightIndex);
+            korl_assert(bakedGlyph->boxes[tempBakedGlyph->nearestSupportedPixelHeightIndex].bakeOrder == tempBakedGlyph->bakeOrder);
+        }
+    }
+    mcarrfree(KORL_STB_DS_MC_CAST(font->allocator), stbDaTempBakedGlyphs);
 }
 korl_internal void korl_resource_font_register(void)
 {
@@ -294,6 +340,7 @@ korl_internal void korl_resource_font_register(void)
     descriptorManifest.utf8DescriptorName                = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_FONT);
     descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_font_descriptorStructCreate);
     descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_font_descriptorStructDestroy);
+    descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_font_clearTransientData);
     descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_font_unload);
     descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_font_transcode);
     korl_resource_descriptor_add(&descriptorManifest);
