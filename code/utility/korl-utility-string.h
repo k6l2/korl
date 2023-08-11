@@ -28,6 +28,7 @@ typedef struct Korl_String_CodepointIteratorUtf16
     const u16* _rawUtf16End;
     u32       _codepoint;// the decoded codepoint of the current iterator position; only valid after calling `initialize`, and after each call to `next` (assuming `done` returns false!)
     u8        _codepointSize;
+    u$        codepointIndex;
 } Korl_String_CodepointIteratorUtf16;
 korl_internal Korl_String_CodepointIteratorUtf16 korl_string_codepointIteratorUtf16_initialize(const u16* rawUtf16, u$ rawUtf16Size);
 korl_internal bool                               korl_string_codepointIteratorUtf16_done(const Korl_String_CodepointIteratorUtf16* iterator);

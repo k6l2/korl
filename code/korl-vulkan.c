@@ -1948,14 +1948,16 @@ korl_internal Korl_Gfx_StagingAllocation korl_vulkan_stagingAllocate(const Korl_
 {
     KORL_ZERO_STACK(Korl_Gfx_StagingAllocation, result);
     result.bytes  = _korl_vulkan_vertexStagingMeta_bytes(stagingMeta);
-    result.buffer = _korl_vulkan_getStagingPool(result.bytes, /*alignment*/0, KORL_C_CAST(VkBuffer*, &result.deviceBuffer), &result.deviceBufferOffset);
+    //KORL-ISSUE-000-000-178: vulkan: (MAJOR) respect Vulkan spec 22.4.1. Vertex Input Extraction alignment requirements
+    result.buffer = _korl_vulkan_getStagingPool(result.bytes, /*alignment*/4, KORL_C_CAST(VkBuffer*, &result.deviceBuffer), &result.deviceBufferOffset);
     return result;
 }
 korl_internal Korl_Gfx_StagingAllocation korl_vulkan_stagingReallocate(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
 {
     Korl_Gfx_StagingAllocation result = *stagingAllocation;
     result.bytes  = _korl_vulkan_vertexStagingMeta_bytes(stagingMeta);
-    result.buffer = _korl_vulkan_resizeStagingPool(result.bytes, stagingAllocation->bytes, /*alignment*/0, KORL_C_CAST(VkBuffer*, &result.deviceBuffer), &result.deviceBufferOffset);
+    //KORL-ISSUE-000-000-178: vulkan: (MAJOR) respect Vulkan spec 22.4.1. Vertex Input Extraction alignment requirements
+    result.buffer = _korl_vulkan_resizeStagingPool(result.bytes, stagingAllocation->bytes, /*alignment*/4, KORL_C_CAST(VkBuffer*, &result.deviceBuffer), &result.deviceBufferOffset);
     return result;
 }
 korl_internal void _korl_vulkan_flushPipelineState(const Korl_Gfx_VertexStagingMeta* stagingMeta)

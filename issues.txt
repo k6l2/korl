@@ -92,6 +92,7 @@
 [ ] KORL-ISSUE-000-000-175: interface-game: API rectification: create a Korl_KeyEvent
 [ ] KORL-ISSUE-000-000-176: command: remove platform-specific HMODULE datatype
 [ ] KORL-ISSUE-000-000-177: gltf: support interleaved MeshPrimitive attributes; we are assuming that all our attributes are tightly-packed/disjoint!
+[ ] KORL-ISSUE-000-000-178: vulkan: (MAJOR) respect Vulkan spec 22.4.1. Vertex Input Extraction alignment requirements; we need to determine vertex attribute buffer + byteOffset potentially on a per-attribute basis; this API needs to be changed so that we can guarantee that each vertex attribute's attribAddress is "a multiple of the size in bytes of the component type indicated by format"; if we don't do this, we could easily get into a random crash situation in the future; an easy way to simulate this is by changing the `_korl_vulkan_getStagingPool` `alignmentRequired` parameter to 0, and create a 1-byte korl-resource-gfx-buffer early in any given frame
 [ ] KORL-PERFORMANCE-000-000-002: memory: you will never have a texture & font asset at the same time, so we could potentially overload this to the same string pointer
 [ ] KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
 [ ] KORL-PERFORMANCE-000-000-004: speed: most likely there is a MUCH more efficient way to build a matrix using these parameters

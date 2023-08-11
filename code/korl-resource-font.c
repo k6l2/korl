@@ -395,7 +395,7 @@ korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*
         textBaselineCursor->y -= lineDeltaY;
     }
 }
-korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_Korl_Resource_Font*const font, f32 textPixelHeight, const void* utfTextData, u$ utfTextSize, u8 utfEncoding)
+korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_Korl_Resource_Font*const font, f32 textPixelHeight, const void* utfTextData, u$ utfTextSize, u8 utfEncoding, u$ graphemeLimit, Korl_Math_V2f32* o_textBaselineCursorFinal)
 {
     const f32                        fontScale                        = stbtt_ScaleForPixelHeight(&font->stbtt_info, textPixelHeight);
     const Korl_Resource_Font_Metrics fontMetrics                      = _korl_resource_font_getMetrics(font, textPixelHeight);
@@ -410,14 +410,14 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
     case 8:
         //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
         for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utfTextData, utfTextSize)
-           ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
+           ;!korl_string_codepointIteratorUtf8_done(&codepointIt) && codepointIt.codepointIndex
            ; korl_string_codepointIteratorUtf8_next(&codepointIt))
             _korl_resource_font_getUtfMetrics_common(font, fontScale, fontMetrics, nearestSupportedPixelHeightIndex, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
         break;
     case 16:
         //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
         for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utfTextData, utfTextSize)
-           ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
+           ;!korl_string_codepointIteratorUtf16_done(&codepointIt) && codepointIt.codepointIndex
            ; korl_string_codepointIteratorUtf16_next(&codepointIt))
             _korl_resource_font_getUtfMetrics_common(font, fontScale, fontMetrics, nearestSupportedPixelHeightIndex, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &aabb, &textMetrics);
         break;
@@ -425,6 +425,8 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
         korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
         break;
     }
+    if(o_textBaselineCursorFinal)
+        *o_textBaselineCursorFinal = textBaselineCursor;
     textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
     return textMetrics;
 }
@@ -496,7 +498,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getUtf8Metrics(korl_resource_font
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
-    return _korl_resource_font_getUtfMetrics(font, textPixelHeight, utf8Text.data, utf8Text.size, 8);
+    return _korl_resource_font_getUtfMetrics(font, textPixelHeight, utf8Text.data, utf8Text.size, 8, KORL_U$_MAX, NULL);
 }
 korl_internal KORL_FUNCTION_korl_resource_font_generateUtf8(korl_resource_font_generateUtf8)
 {
@@ -517,7 +519,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getUtf16Metrics(korl_resource_fon
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
-    return _korl_resource_font_getUtfMetrics(font, textPixelHeight, utf16Text.data, utf16Text.size, 16);
+    return _korl_resource_font_getUtfMetrics(font, textPixelHeight, utf16Text.data, utf16Text.size, 16, KORL_U$_MAX, NULL);
 }
 korl_internal KORL_FUNCTION_korl_resource_font_generateUtf16(korl_resource_font_generateUtf16)
 {
@@ -528,4 +530,16 @@ korl_internal KORL_FUNCTION_korl_resource_font_generateUtf16(korl_resource_font_
     if(!font->stbtt_info.data)
         return;
     _korl_resource_font_generateUtf(font, textPixelHeight, utf16Text.data, utf16Text.size, 16, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+}
+korl_internal KORL_FUNCTION_korl_resource_font_textGraphemePosition(korl_resource_font_textGraphemePosition)
+{
+    Korl_Math_V2f32 textBaselineCursor = KORL_MATH_V2F32_ZERO;
+    if(!handleResourceFont)
+        return textBaselineCursor;
+    //@TODO: validate the underlying korl-resource-item descriptor type
+    _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
+    if(!font->stbtt_info.data)
+        return textBaselineCursor;
+    _korl_resource_font_getUtfMetrics(font, textPixelHeight, utf8Text.data, utf8Text.size, 8, graphemeIndex, &textBaselineCursor);
+    return textBaselineCursor;
 }

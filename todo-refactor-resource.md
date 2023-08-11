@@ -51,9 +51,11 @@
 [x] add BUFFER resource to test runtime-data-backed resources (same tests as above)
 [x] add TEXTURE resource
 [~] add functionality for Resource hierarchy
-  [ ] add FONT resource
+  [x] add FONT resource
     [ ] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource
-    [ ] KORL-PERFORMANCE-000-000-001: gfx: inefficient texture upload process
+      [x] create korl-resource-font out of recycled code
+      [ ] delete all font stuff in korl-gfx
+    [x] KORL-PERFORMANCE-000-000-001: gfx: inefficient texture upload process
   [x] add BUFFER & TEXTURE child RUNTIME resources
     - this kinda already works without any special "Resource_Item DAG" support, so...
   [ ] refactor & test korl-utility-gfx text drawing APIs

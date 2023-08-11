@@ -141,6 +141,7 @@ korl_internal void korl_string_codepointIteratorUtf16_next(Korl_String_Codepoint
 {
     iterator->_currentRawUtf16 += iterator->_codepointSize;
     _korl_string_codepointIteratorUtf16_decode(iterator);
+    iterator->codepointIndex++;
 }
 korl_internal u8 korl_string_codepoint_to_utf8(u32 codepoint, u8* o_buffer)
 {

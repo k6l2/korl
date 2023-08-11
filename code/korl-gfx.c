@@ -756,22 +756,20 @@ korl_internal void korl_gfx_flushGlyphPages(void)
         korl_time_probeStop(update_glyph_mesh_ssbo);
     }
 }
-korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, acu16 utf16AssetNameFont, f32 textPixelHeight)
+korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight)
 {
     KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoBufferText);
     createInfoBufferText.bytes      = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
     createInfoBufferText.usageFlags =   KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX
                                       | KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_INDEX;
-    const u$ bytesRequired                  = sizeof(Korl_Gfx_Text) + (utf16AssetNameFont.size + 1/*for null-terminator*/)*sizeof(*utf16AssetNameFont.data);
-    Korl_Gfx_Text*const result              = korl_allocate(allocator, bytesRequired);
-    u16*const           resultAssetNameFont = KORL_C_CAST(u16*, result + 1);
-    result->allocator                       = allocator;
-    result->textPixelHeight                 = textPixelHeight;
-    result->assetNameFontRawUtf16ByteOffset = sizeof(*result);
-    result->assetNameFontRawUtf16Size       = korl_checkCast_u$_to_u32(utf16AssetNameFont.size);
-    result->modelRotate                     = KORL_MATH_QUATERNION_IDENTITY;
-    result->modelScale                      = KORL_MATH_V3F32_ONE;
-    result->resourceHandleBufferText        = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBufferText);
+    const u$ bytesRequired           = sizeof(Korl_Gfx_Text);
+    Korl_Gfx_Text*const result       = korl_allocate(allocator, bytesRequired);
+    result->allocator                = allocator;
+    result->textPixelHeight          = textPixelHeight;
+    result->resourceHandleFont       = resourceHandleFont;
+    result->modelRotate              = KORL_MATH_QUATERNION_IDENTITY;
+    result->modelScale               = KORL_MATH_V3F32_ONE;
+    result->resourceHandleBufferText = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBufferText);
     // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
     result->vertexStagingMeta.indexCount = korl_arraySize(KORL_GFX_TRI_QUAD_INDICES);
     result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*KORL_GFX_TRI_QUAD_INDICES) == sizeof(u16));
@@ -786,7 +784,6 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = VK_VERTEX_INPUT_RATE_INSTANCE;
     result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize       = 1;
     mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
-    korl_memory_copy(resultAssetNameFont, utf16AssetNameFont.data, utf16AssetNameFont.size*sizeof(*utf16AssetNameFont.data));
     return result;
 }
 korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
@@ -801,6 +798,7 @@ korl_internal void korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* contex
 }
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, Korl_Memory_AllocatorHandle stackAllocator, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
+    #if 0//@TODO: refactor
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
@@ -898,9 +896,11 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     context->_modelAabb.min.y = arrlenu(context->stbDaLines) * -lineDeltaY;
     /* clean up */
     korl_free(stackAllocator, currentLineBuffer);
+    #endif
 }
 korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
 {
+    #if 0//refactor
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     korl_assert(fontCache);
@@ -923,9 +923,11 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
     korl_resource_shift(context->resourceHandleBufferText, -1/*shift to the left; remove the glyphs instances at the beginning of the buffer*/ * glyphsToRemove*sizeof(_Korl_Gfx_FontGlyphInstance));
     const f32 lineDeltaY = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
     context->_modelAabb.min.y = arrlenu(context->stbDaLines) * -lineDeltaY;
+    #endif
 }
 korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
+    #if 0//@TODO: refactor
     /* get the font asset matching the provided asset name */
     _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(korl_gfx_text_getUtf16AssetNameFont(context), context->textPixelHeight, 0.f/*textPixelOutline*/);
     if(!fontCache)
@@ -979,6 +981,7 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
         modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
     }
+    #endif
 }
 korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context)
 {
@@ -1151,44 +1154,6 @@ korl_internal KORL_FUNCTION_korl_gfx_font_generateUtf8(korl_gfx_font_generateUtf
 korl_internal KORL_FUNCTION_korl_gfx_font_generateUtf16(korl_gfx_font_generateUtf16)
 {
     _korl_gfx_font_generateUtf(utf16AssetNameFont, textPixelHeight, utf16Text.data, utf16Text.size, 16, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
-}
-korl_internal Korl_Math_V2f32 korl_gfx_font_textGraphemePosition(acu16 utf16AssetNameFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
-{
-    KORL_ZERO_STACK(Korl_Gfx_Font_Metrics, metrics);
-    _Korl_Gfx_FontCache*const fontCache = _korl_gfx_matchFontCache(utf16AssetNameFont, textPixelHeight, 0.f/*textPixelOutline*/);
-    if(!fontCache)
-        return KORL_MATH_V2F32_ZERO;// silently return 0 if font is not loaded
-    const f32       lineDeltaY         = (fontCache->fontAscent - fontCache->fontDescent) + fontCache->fontLineGap;
-    Korl_Math_V2f32 textBaselineCursor = KORL_MATH_V2F32_ZERO;
-    int             glyphIndexPrevious = -1;
-    //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
-    for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utf8Text.data, utf8Text.size)
-       ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
-       ; korl_string_codepointIteratorUtf8_next(&codepointIt))
-    {
-        if(codepointIt.codepointIndex >= graphemeIndex)
-            break;
-        const _Korl_Gfx_FontBakedGlyph*const bakedGlyph = _korl_gfx_fontCache_getGlyph(fontCache, codepointIt._codepoint);
-        if(textBaselineCursor.x > 0.f)
-        {
-            const int kernAdvance = stbtt_GetGlyphKernAdvance(&fontCache->fontInfo
-                                                             ,glyphIndexPrevious
-                                                             ,bakedGlyph->glyphIndex);
-            glyphIndexPrevious = bakedGlyph->glyphIndex;
-            textBaselineCursor.x += fontCache->fontScale*kernAdvance;
-        }
-        textBaselineCursor.x += bakedGlyph->advanceX;
-        if(codepointIt._codepoint == L'\n')
-        {
-            textBaselineCursor.x  = 0.f;
-            textBaselineCursor.y -= lineDeltaY;
-            glyphIndexPrevious = -1;
-            continue;
-        }
-        if(bakedGlyph->isEmpty)
-            continue;
-    }
-    return textBaselineCursor;
 }
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
