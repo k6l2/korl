@@ -80,7 +80,7 @@ korl_internal u8 _korl_resource_font_glyphPage_insert(_Korl_Resource_Font*const 
             const Korl_Math_V2u32 textureSize = korl_resource_texture_getSize(glyphPage->resourceHandleTexture);
             if(   sizeX + 2 * PACK_ROW_PADDING > korl_checkCast_u$_to_i32(textureSize.x) 
                || sizeY + 2 * PACK_ROW_PADDING > korl_checkCast_u$_to_i32(textureSize.y))
-                continue;
+                continue;// continue searching other GlyphPages
             /* iterate over all PackRows with valid sizeY & check their remaining sizeX; 
                 we want to find the PackRow with the smallest sizeY to minimize wasted space */
             const _Korl_Resource_Font_GlyphPage_PackRow*const packRowsEnd = glyphPage->stbDaPackRows + arrlen(glyphPage->stbDaPackRows);
@@ -103,9 +103,10 @@ korl_internal u8 _korl_resource_font_glyphPage_insert(_Korl_Resource_Font*const 
             if(arrlenu(glyphPage->stbDaPackRows))
             {
                 const u16 lastPackRowEndY = arrlast(glyphPage->stbDaPackRows).offsetY + arrlast(glyphPage->stbDaPackRows).sizeY;
-                if(textureSize.y - lastPackRowEndY >= korl_checkCast_i$_to_u32(sizeY + 2 * PACK_ROW_PADDING))
-                    break;
+                if(textureSize.y - lastPackRowEndY < korl_checkCast_i$_to_u32(sizeY + 2 * PACK_ROW_PADDING))
+                    continue;// continue searching other GlyphPages
             }
+            break;// if we made it to this point, we can be sure that `glyphPage` can be used to cache the glyph of sizeX/Y; we're done
         }
         /* if no GlyphPage can satisfy our requirements, we need to make a new one */
         if(glyphPage >= glyphPageEnd)
@@ -229,11 +230,15 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreat
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_font_descriptorStructDestroy)
 {
     _Korl_Resource_Font*const font = resourceDescriptorStruct;
+    korl_resource_destroy(font->resourceHandleSsboGlyphMeshVertices);
     mchmfree(KORL_STB_DS_MC_CAST(allocator), font->stbHmBakedGlyphs);
     {
         const _Korl_Resource_Font_GlyphPage*const glyphPageEnd = font->stbDaGlyphPages + arrlen(font->stbDaGlyphPages);
         for(_Korl_Resource_Font_GlyphPage* glyphPage = font->stbDaGlyphPages; glyphPage < glyphPageEnd; glyphPage++)
+        {
+            korl_resource_destroy(glyphPage->resourceHandleTexture);
             mcarrfree(KORL_STB_DS_MC_CAST(allocator), glyphPage->stbDaPackRows);
+        }
     }
     mcarrfree(KORL_STB_DS_MC_CAST(allocator), font->stbDaGlyphPages);
     korl_free(allocator, font);
@@ -241,25 +246,19 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_font_clearTransientData)
 {
     _Korl_Resource_Font*const font = resourceDescriptorStruct;
-    //@TODO: we can't do this, because korl-resource will attempt to call `unload` on this gfx-buffer resource, which will attempt to destroy the buffer's vulkan_deviceAsset, and that is impossible since all device assets are wiped already
-    //           mitigation strategies:
-    //           - we could tell the resources we create in this resource that this resource is their "parent"
-    //             - this would allow us to sort & process resources topologically in korl_resource_memoryStateRead
-    //             - ???
-    //           - just don't destroy child resources in here?...
-    //             - what do we do then? lol
-    korl_resource_destroy(font->resourceHandleSsboGlyphMeshVertices);
-    font->resourceHandleSsboGlyphMeshVertices = 0;
-    {/* our GlyphPages are all transient data; we should just destroy all of them */
+    {/* reset all our glyphPages, but keep all the dynamic memory around */
         const _Korl_Resource_Font_GlyphPage*const glyphPageEnd = font->stbDaGlyphPages + arrlen(font->stbDaGlyphPages);
         for(_Korl_Resource_Font_GlyphPage* glyphPage = font->stbDaGlyphPages; glyphPage < glyphPageEnd; glyphPage++)
         {
-            korl_resource_destroy(glyphPage->resourceHandleTexture);
-            glyphPage->resourceHandleTexture = 0;
-            mcarrfree(KORL_STB_DS_MC_CAST(font->allocator), glyphPage->stbDaPackRows);
+            /* clearing the GlyphPage packing information will allow new glyphs to be baked anywhere, overwriting previous GlyphPage data */
+            mcarrsetlen(KORL_STB_DS_MC_CAST(font->allocator), glyphPage->stbDaPackRows, 0);
+            /* clear the GlyphPage texture; redundant, since new BakedGlyphs will always overwrite previous texture data, but might as well */
+            u$ bytesRequested_bytesAvailable = KORL_U$_MAX;
+            void*const textureUpdateBuffer = korl_resource_getUpdateBuffer(glyphPage->resourceHandleTexture, 0, &bytesRequested_bytesAvailable);
+            korl_memory_zero(textureUpdateBuffer, bytesRequested_bytesAvailable);
         }
-        mcarrsetlen(KORL_STB_DS_MC_CAST(font->allocator), font->stbDaGlyphPages, 0);
     }
+    font->ssboGlyphMeshVerticesSize = 0;// bake new glyph vertices at the start of our buffer (overwrite data, but leaves the buffer size/contents as-is)
     korl_memory_zero(&font->stbtt_info, sizeof(font->stbtt_info));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource_font_unload)
@@ -289,14 +288,15 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     _Korl_Resource_Font*const font = resourceDescriptorStruct;
     /* sanity-check that the font is currently in an "unloaded" state (no transient data) */
     korl_assert(!font->stbtt_info.data);
-    korl_assert(!font->resourceHandleSsboGlyphMeshVertices);
+    korl_assert(font->ssboGlyphMeshVerticesSize == 0);
     /* load transient data */
     //KORL-ISSUE-000-000-130: gfx/font: (MAJOR) `font->stbtt_info` sets up pointers to data within `data`; if that data ever moves or gets wiped (defragment, memoryState-load, etc.), then `font->stbtt_info` will contain dangling pointers!
     korl_assert(stbtt_InitFont(&font->stbtt_info, data, 0/*font offset*/));
     KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfo);
     createInfo.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_STORAGE;
     createInfo.bytes      = 1/*placeholder non-zero size, since we don't know how many glyphs we are going to cache*/;
-    font->resourceHandleSsboGlyphMeshVertices = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfo);
+    if(!font->resourceHandleSsboGlyphMeshVertices)
+        font->resourceHandleSsboGlyphMeshVertices = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfo);
     /* if this font resource has BakedGlyphs, we need to re-bake them all 
         - in order to keep all RUNTIME korl-resource-buffers that contain glyph instance data valid, 
           we need to re-bake each BakedGlyph_BoundingBox in the _same_ bakeOrder that currently exists
