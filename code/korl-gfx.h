@@ -7,7 +7,6 @@
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_initializePostRendererLogicalDevice(void);
 korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds);
-korl_internal void korl_gfx_flushGlyphPages(void);
 typedef struct Korl_Gfx_Text
 {
     Korl_Memory_AllocatorHandle allocator;

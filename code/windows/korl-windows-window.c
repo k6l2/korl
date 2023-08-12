@@ -966,7 +966,6 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(resource_transcode_files); korl_resource_transcodeFileAssets(); korl_time_probeStop(resource_transcode_files);
         korl_time_probeStart(render_sound);             korl_sfx_mix();                      korl_time_probeStop(render_sound);
         korl_time_probeStart(gui_frame_end);            korl_gui_frameEnd();                 korl_time_probeStop(gui_frame_end);
-        korl_time_probeStart(flush_glyph_pages);        korl_gfx_flushGlyphPages();          korl_time_probeStop(flush_glyph_pages);
         korl_time_probeStart(resource_flush_updates);   korl_resource_flushUpdates();        korl_time_probeStop(resource_flush_updates);
         korl_time_probeStart(vulkan_frame_end);         korl_vulkan_frameEnd();              korl_time_probeStop(vulkan_frame_end);
         /* regulate frame rate to our game module's target frame rate */
