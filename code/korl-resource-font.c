@@ -478,7 +478,7 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
     textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
     return textMetrics;
 }
-korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
 {
     const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, fontMetrics._nearestSupportedPixelHeightIndex);
     int advanceX;
@@ -486,8 +486,8 @@ korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*co
     stbtt_GetGlyphHMetrics(&font->stbtt_info, bakedGlyph->stbtt_glyphIndex, &advanceX, &bearingLeft);
     if(!bakedGlyph->isEmpty)
     {
-        o_glyphInstancePositions[textMetrics->visibleGlyphCount] = korl_math_v2f32_add(*textBaselineCursor, instancePositionOffset);
-        o_glyphInstanceIndices  [textMetrics->visibleGlyphCount] = bakedGlyph->boxes[fontMetrics._nearestSupportedPixelHeightIndex].bakeOrder;
+        *KORL_C_CAST(Korl_Math_V2f32*, KORL_C_CAST(u8*, o_glyphInstancePositions) + glyphInstancePositionsByteStride * textMetrics->visibleGlyphCount) = korl_math_v2f32_add(*textBaselineCursor, instancePositionOffset);
+        *KORL_C_CAST(u32*            , KORL_C_CAST(u8*, o_glyphInstanceIndices  ) + glyphInstanceIndicesByteStride   * textMetrics->visibleGlyphCount) = bakedGlyph->boxes[fontMetrics._nearestSupportedPixelHeightIndex].bakeOrder;
         textMetrics->visibleGlyphCount++;
     }
     if(textBaselineCursor->x > 0.f)
@@ -507,7 +507,7 @@ korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*co
         textBaselineCursor->y -= lineDeltaY;
     }
 }
-korl_internal void _korl_resource_font_generateUtf(_Korl_Resource_Font*const font, f32 textPixelHeight, const void* utfText, u$ utfTextSize, u8 utfEncoding, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+korl_internal void _korl_resource_font_generateUtf(_Korl_Resource_Font*const font, f32 textPixelHeight, const void* utfText, u$ utfTextSize, u8 utfEncoding, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
 {
     const Korl_Resource_Font_Metrics fontMetrics = _korl_resource_font_getMetrics(font, textPixelHeight);
     const f32                        fontScale   = stbtt_ScaleForPixelHeight(&font->stbtt_info, fontMetrics.nearestSupportedPixelHeight);
@@ -522,14 +522,14 @@ korl_internal void _korl_resource_font_generateUtf(_Korl_Resource_Font*const fon
         for(Korl_String_CodepointIteratorUtf8 codepointIt = korl_string_codepointIteratorUtf8_initialize(utfText, utfTextSize)
            ;!korl_string_codepointIteratorUtf8_done(&codepointIt)
            ; korl_string_codepointIteratorUtf8_next(&codepointIt))
-            _korl_resource_font_generateUtf_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+            _korl_resource_font_generateUtf_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, glyphInstancePositionsByteStride, o_glyphInstanceIndices, glyphInstanceIndicesByteStride);
         break;
     case 16:
         //KORL-ISSUE-000-000-112: stringPool: incorrect grapheme detection; we are assuming 1 codepoint == 1 grapheme; in order to get true grapheme size, we have to detect unicode grapheme clusters; http://unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries; implementation example: https://stackoverflow.com/q/35962870/4526664; existing project which can achieve this (though, not sure about if it can be built in pure C, but the license seems permissive enough): https://github.com/unicode-org/icu, usage example: http://byronlai.com/jekyll/update/2014/03/20/unicode.html
         for(Korl_String_CodepointIteratorUtf16 codepointIt = korl_string_codepointIteratorUtf16_initialize(utfText, utfTextSize)
            ;!korl_string_codepointIteratorUtf16_done(&codepointIt)
            ; korl_string_codepointIteratorUtf16_next(&codepointIt))
-            _korl_resource_font_generateUtf_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+            _korl_resource_font_generateUtf_common(font, fontScale, fontMetrics, codepointIt._codepoint, lineDeltaY, &glyphIndexPrevious, &textBaselineCursor, &textMetrics, instancePositionOffset, o_glyphInstancePositions, glyphInstancePositionsByteStride, o_glyphInstanceIndices, glyphInstanceIndicesByteStride);
         break;
     default:
         korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
@@ -555,7 +555,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_generateUtf8(korl_resource_font_g
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return;
-    _korl_resource_font_generateUtf(font, textPixelHeight, utf8Text.data, utf8Text.size, 8, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+    _korl_resource_font_generateUtf(font, textPixelHeight, utf8Text.data, utf8Text.size, 8, instancePositionOffset, o_glyphInstancePositions, glyphInstancePositionsByteStride, o_glyphInstanceIndices, glyphInstanceIndicesByteStride);
 }
 korl_internal KORL_FUNCTION_korl_resource_font_getUtf16Metrics(korl_resource_font_getUtf16Metrics)
 {
@@ -576,7 +576,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_generateUtf16(korl_resource_font_
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return;
-    _korl_resource_font_generateUtf(font, textPixelHeight, utf16Text.data, utf16Text.size, 16, instancePositionOffset, o_glyphInstancePositions, o_glyphInstanceIndices);
+    _korl_resource_font_generateUtf(font, textPixelHeight, utf16Text.data, utf16Text.size, 16, instancePositionOffset, o_glyphInstancePositions, glyphInstancePositionsByteStride, o_glyphInstanceIndices, glyphInstanceIndicesByteStride);
 }
 korl_internal KORL_FUNCTION_korl_resource_font_textGraphemePosition(korl_resource_font_textGraphemePosition)
 {

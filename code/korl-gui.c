@@ -1792,7 +1792,7 @@ korl_internal void korl_gui_frameEnd(void)
             if(widget->subType.text.gfxText)
             {
                 korl_assert(!widget->subType.text.displayText.data);
-                widget->subType.text.gfxText->modelTranslate = (Korl_Math_V3f32){widget->position.x, widget->position.y, z};
+                korl_math_transform3d_setPosition(&widget->subType.text.gfxText->transform, (Korl_Math_V3f32){widget->position.x, widget->position.y, z});
                 korl_gfx_text_draw(widget->subType.text.gfxText, usedWidget->transient.aabb);
                 const Korl_Math_Aabb2f32 textModelAabb = korl_gfx_text_getModelAabb(widget->subType.text.gfxText);
                 const Korl_Math_V2f32    textAabbSize  = korl_math_aabb2f32_size(textModelAabb);
@@ -2024,8 +2024,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
     if(newAllocation)
     {
         korl_assert(korl_memory_isNull(&widget->subType.text, sizeof(widget->subType.text)));
-        //@TODO: refactor Korl_Gfx_Text
-        // widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, string_getRawAcu16(&context->style.fontWindowText), context->style.windowTextPixelSizeY);
+        widget->subType.text.gfxText = korl_gfx_text_create(context->allocatorHandleHeap, context->style.resourceHandleFont, context->style.windowTextPixelSizeY);
     }
     /* at this point, we either have a new gfxText on the widget, or we're using 
         an already existing widget's gfxText member; in either case, we need to 

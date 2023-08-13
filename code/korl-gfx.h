@@ -7,17 +7,16 @@
 korl_internal void korl_gfx_initialize(void);
 korl_internal void korl_gfx_initializePostRendererLogicalDevice(void);
 korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds);
+//@TODO: can we move Korl_Gfx_Text into korl-utility-gfx now?
 typedef struct Korl_Gfx_Text
 {
     Korl_Memory_AllocatorHandle allocator;
     Korl_Gfx_VertexStagingMeta  vertexStagingMeta;
-    Korl_Resource_Handle        resourceHandleBufferText;// used to store the vertex buffer which contains all of the _Korl_Gfx_FontGlyphInstance data for all the lines contained in this Text object; each line will access an offset into this vertex buffer determined by the sum of all visible characters of all lines prior to it in the stbDaLines list
+    Korl_Resource_Handle        resourceHandleBufferText;// used to store the vertex buffer which contains all of the _Korl_Gfx_Text_GlyphInstance data for all the lines contained in this Text object; each line will access an offset into this vertex buffer determined by the sum of all visible characters of all lines prior to it in the stbDaLines list
     struct _Korl_Gfx_Text_Line* stbDaLines;// the user can obtain the line count by calling arrlenu(text->stbDaLines)
     f32                         textPixelHeight;
     Korl_Resource_Handle        resourceHandleFont;
-    Korl_Math_V3f32             modelTranslate;// the model-space origin of a Gfx_Text is the upper-left corner of the model-space AABB
-    Korl_Math_Quaternion        modelRotate;
-    Korl_Math_V3f32             modelScale;
+    Korl_Math_Transform3d       transform;
     Korl_Math_Aabb2f32          _modelAabb;// not valid until fifo add/remove APIs have been called
     u32                         totalVisibleGlyphs;// redundant value; acceleration for operations on resourceHandleBufferText
 } Korl_Gfx_Text;

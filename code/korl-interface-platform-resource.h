@@ -28,15 +28,15 @@ typedef KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(fnSig_korl_res
 typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;// re-declare, to prevent the need to include `korl-interface-platform.h`
 typedef struct Korl_Resource_DescriptorManifest_Callbacks
 {
-    Korl_FunctionDynamo_FunctionHandle descriptorStructCreate;// fnSig_korl_resource_descriptorCallback_descriptorStructCreate
+    Korl_FunctionDynamo_FunctionHandle descriptorStructCreate; // fnSig_korl_resource_descriptorCallback_descriptorStructCreate
     Korl_FunctionDynamo_FunctionHandle descriptorStructDestroy;// fnSig_korl_resource_descriptorCallback_descriptorStructDestroy
-    Korl_FunctionDynamo_FunctionHandle unload;// fnSig_korl_resource_descriptorCallback_unload
-    Korl_FunctionDynamo_FunctionHandle transcode;// fnSig_korl_resource_descriptorCallback_transcode
-    Korl_FunctionDynamo_FunctionHandle clearTransientData;// fnSig_korl_resource_descriptorCallback_clearTransientData
-    Korl_FunctionDynamo_FunctionHandle createRuntimeData;// fnSig_korl_resource_descriptorCallback_createRuntimeData
-    Korl_FunctionDynamo_FunctionHandle createRuntimeMedia;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
-    Korl_FunctionDynamo_FunctionHandle runtimeBytes;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
-    Korl_FunctionDynamo_FunctionHandle runtimeResize;// fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle unload;                 // fnSig_korl_resource_descriptorCallback_unload
+    Korl_FunctionDynamo_FunctionHandle transcode;              // fnSig_korl_resource_descriptorCallback_transcode
+    Korl_FunctionDynamo_FunctionHandle clearTransientData;     // fnSig_korl_resource_descriptorCallback_clearTransientData
+    Korl_FunctionDynamo_FunctionHandle createRuntimeData;      // fnSig_korl_resource_descriptorCallback_createRuntimeData
+    Korl_FunctionDynamo_FunctionHandle createRuntimeMedia;     // fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle runtimeBytes;           // fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle runtimeResize;          // fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
 } Korl_Resource_DescriptorManifest_Callbacks;
 typedef struct Korl_Resource_DescriptorManifest
 {
@@ -77,7 +77,7 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_font_getMetrics(name)           Korl_Resource_Font_Metrics      name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_resource_font_getResources(name)         Korl_Resource_Font_Resources    name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
 #define KORL_FUNCTION_korl_resource_font_getUtf8Metrics(name)       Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text)
-#define KORL_FUNCTION_korl_resource_font_generateUtf8(name)         void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+#define KORL_FUNCTION_korl_resource_font_generateUtf8(name)         void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
 #define KORL_FUNCTION_korl_resource_font_getUtf16Metrics(name)      Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text)
-#define KORL_FUNCTION_korl_resource_font_generateUtf16(name)        void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u32* o_glyphInstanceIndices)
+#define KORL_FUNCTION_korl_resource_font_generateUtf16(name)        void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
 #define KORL_FUNCTION_korl_resource_font_textGraphemePosition(name) Korl_Math_V2f32                 name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)

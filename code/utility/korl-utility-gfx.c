@@ -482,13 +482,13 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
         korl_resource_font_generateUtf8(resourceHandleFont, textPixelHeight, KORL_STRUCT_INITIALIZE(acu8){.size = utfTextSize, .data = KORL_C_CAST(const u8*, utfText)}
                                        ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
                                                                                ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
-                                       ,glyphInstancePositions, glyphIndices);
+                                       ,glyphInstancePositions, sizeof(*glyphInstancePositions), glyphIndices, sizeof(*glyphIndices));
         break;
     case 16:
         korl_resource_font_generateUtf16(resourceHandleFont, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}
                                         ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
                                                                                 ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
-                                        ,glyphInstancePositions, glyphIndices);
+                                        ,glyphInstancePositions, sizeof(*glyphInstancePositions), glyphIndices, sizeof(*glyphIndices));
         break;
     }
     /* setup text-specific material/draw-state overrides */
