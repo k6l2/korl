@@ -164,9 +164,10 @@ korl_internal void _korl_gfx_text_fifoAdd_flush(Korl_Gfx_Text* context, acu16 ut
 }
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
+    const Korl_Math_V4f32              defaultLineColor    = korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE);// default all line colors to white
     /* iterate over utf16Text until we hit a line break; upon reaching a line break, we can add another _Korl_Gfx_Text_Line to the context */
     _Korl_Gfx_Text_Line*               currentLine         = NULL;// the current working Line of text; we will accumulate substrings of codepoints which pass codepointTest (if it's provided) into this Line, until we reach a line-break ('\n') character
-    Korl_Math_V4f32                    currentLineColor    = korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE);// default all line colors to white
+    Korl_Math_V4f32                    currentLineColor    = defaultLineColor;
     i$                                 substringStartIndex = -1;// determines the next range of text to generate glyphs into `currentLine`; all text within [substringStartIndex, utf16It._currentRawUtf16) _must_ pass codepointTest if provided; values < 0 => no start index found yet
     Korl_String_CodepointIteratorUtf16 utf16It             = korl_string_codepointIteratorUtf16_initialize(utf16Text.data, utf16Text.size);
     for(;!korl_string_codepointIteratorUtf16_done(&utf16It)
@@ -192,6 +193,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
                 KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabb.max.x, currentLine->aabbSizeX);
                 /* we're done with this Line now; nullify currentLine reference */
                 currentLine = NULL;
+                currentLineColor = defaultLineColor;
             }
         }
         else
