@@ -203,7 +203,7 @@ korl_internal const _Korl_Resource_Font_BakedGlyph* _korl_resource_font_getGlyph
         const f32 y0 = 0.f/*start glyph at baseline cursor origin*/ + bbox->offset.y;
         const f32 x1 = x0 + (bbox->x1 - bbox->x0);
         const f32 y1 = y0 + (bbox->y1 - bbox->y0);
-        // @TODO: saving UV ratios will _not_ work if we ever resize the glyph page texture, _unless_ we use a fragment shader which performs this division for us!
+        //KORL-ISSUE-000-000-179: resource-font: GlyphPage resize support; saving UV ratios will _not_ work if we ever resize the glyph page texture, _unless_ we use a fragment shader which performs this division for us!
         const f32 u0 = KORL_C_CAST(f32, bbox->x0) / KORL_C_CAST(f32, glyphPageTextureSize.x);
         const f32 u1 = KORL_C_CAST(f32, bbox->x1) / KORL_C_CAST(f32, glyphPageTextureSize.x);
         const f32 v0 = KORL_C_CAST(f32, bbox->y0) / KORL_C_CAST(f32, glyphPageTextureSize.y);
@@ -398,7 +398,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getResources(korl_resource_font_g
         return result;
     result.resourceHandleSsboGlyphMeshVertices = font->resourceHandleSsboGlyphMeshVertices;
     if(arrlenu(font->stbDaGlyphPages))
-        //@TODO: support multiple glyph pages; special text fragment shader with a texture array
+        //KORL-ISSUE-000-000-180: resource-font: support multiple glyph pages; special text fragment shader with a texture array
         result.resourceHandleTexture = font->stbDaGlyphPages[0].resourceHandleTexture;
     return result;
 }
