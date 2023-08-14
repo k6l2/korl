@@ -64,6 +64,8 @@ korl_internal void korl_resource_gfxBuffer_register(void)
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handleResourceGfxBuffer)
 {
+    if(!handleResourceGfxBuffer)
+        return 0;// silently return an empty handle for empty resource handles
     //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a GFX_BUFFER resource
     _Korl_Resource_GfxBuffer*const gfxBuffer = korl_resource_getDescriptorStruct(handleResourceGfxBuffer);
     return gfxBuffer->deviceMemoryAllocationHandle;

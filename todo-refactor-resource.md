@@ -60,7 +60,8 @@
     - this kinda already works without any special "Resource_Item DAG" support, so...
   [x] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
-[ ] fix crash when loading a korl-memoryState that has the logConsole open
+[x] fix crash when loading a korl-memoryState that has the logConsole open
+[ ] investigate logConsole functionality breaking after loading a korl-memoryState
 [ ] test korl-resource-font hot-reload of font assetCache file
 [ ] add SCENE3D Resource
   - compose a SCENE3D Resource out of MESH & TEXTURE Resources

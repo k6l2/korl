@@ -45,6 +45,8 @@ korl_internal void korl_resource_shader_register(void)
 }
 korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)
 {
+    if(!handleResourceShader)
+        return 0;// silently return an empty handle for empty resource handles
     //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a SHADER resource
     _Korl_Resource_Shader*const shaderResource = korl_resource_getDescriptorStruct(handleResourceShader);
     return shaderResource->vulkanShaderHandle;
