@@ -402,8 +402,14 @@ korl_internal KORL_FUNCTION_korl_resource_font_getResources(korl_resource_font_g
         result.resourceHandleTexture = font->stbDaGlyphPages[0].resourceHandleTexture;
     return result;
 }
-korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Math_Aabb2f32* aabb, Korl_Resource_Font_TextMetrics* textMetrics)
+korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Math_Aabb2f32* aabb, Korl_Resource_Font_TextMetrics* textMetrics)
 {
+    f32 advanceXMultiplier = 1;
+    if(codepoint == '\t')
+    {
+        codepoint          = ' ';
+        advanceXMultiplier = 4;
+    }
     const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, fontMetrics._nearestSupportedPixelHeightIndex);
     int advanceX;
     int bearingLeft;
@@ -437,7 +443,7 @@ korl_internal void _korl_resource_font_getUtfMetrics_common(_Korl_Resource_Font*
     }
     else
         *glyphIndexPrevious = -1;
-    textBaselineCursor->x += fontScale * advanceX;
+    textBaselineCursor->x += advanceXMultiplier * fontScale * advanceX;
     if(codepoint == L'\n')
     {
         textBaselineCursor->x  = 0.f;
@@ -478,8 +484,14 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
     textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
     return textMetrics;
 }
-korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, const u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
+korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
 {
+    f32 advanceXMultiplier = 1;
+    if(codepoint == '\t')
+    {
+        codepoint          = ' ';
+        advanceXMultiplier = 4;
+    }
     const _Korl_Resource_Font_BakedGlyph*const bakedGlyph = _korl_resource_font_getGlyph(font, codepoint, fontMetrics._nearestSupportedPixelHeightIndex);
     int advanceX;
     int bearingLeft;
@@ -500,7 +512,7 @@ korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*co
     }
     else
         *glyphIndexPrevious = -1;
-    textBaselineCursor->x += fontScale * advanceX;
+    textBaselineCursor->x += advanceXMultiplier * fontScale * advanceX;
     if(codepoint == L'\n')
     {
         textBaselineCursor->x  = 0.f;
