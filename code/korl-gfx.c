@@ -152,7 +152,7 @@ korl_internal void _korl_gfx_text_fifoAdd_flush(Korl_Gfx_Text* context, acu16 ut
             /* obtain & append the new Line into our GlyphInstance buffer */
             u$ bytesRequested_bytesAvailable = substringMetrics.visibleGlyphCount * sizeof(_Korl_Gfx_Text_GlyphInstance);
             _Korl_Gfx_Text_GlyphInstance*const glyphInstanceUpdateBuffer = korl_resource_getUpdateBuffer(context->resourceHandleBufferText, context->totalVisibleGlyphs * sizeof(_Korl_Gfx_Text_GlyphInstance), &bytesRequested_bytesAvailable);
-            korl_resource_font_generateUtf16(context->resourceHandleFont, context->textPixelHeight, utf16Substring, (Korl_Math_V2f32){substringMetrics.aabbSize.x, 0}
+            korl_resource_font_generateUtf16(context->resourceHandleFont, context->textPixelHeight, utf16Substring, (Korl_Math_V2f32){currentLine->aabbSizeX, 0}
                                             ,&glyphInstanceUpdateBuffer[0].position , sizeof(_Korl_Gfx_Text_GlyphInstance)
                                             ,&glyphInstanceUpdateBuffer[0].meshIndex, sizeof(_Korl_Gfx_Text_GlyphInstance));
             /* update Line metrics (glyph count, AABB) */
