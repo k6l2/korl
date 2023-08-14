@@ -99,8 +99,8 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     createInfoBufferText.bytes      = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
     createInfoBufferText.usageFlags =   KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX
                                       | KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_INDEX;
-    const u$ bytesRequired           = sizeof(Korl_Gfx_Text);
-    Korl_Gfx_Text*const result       = korl_allocate(allocator, bytesRequired);
+    const u$ bytesRequired     = sizeof(Korl_Gfx_Text);
+    Korl_Gfx_Text*const result = korl_allocate(allocator, bytesRequired);
     result->allocator                = allocator;
     result->textPixelHeight          = textPixelHeight;
     result->resourceHandleFont       = resourceHandleFont;
@@ -267,9 +267,8 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     const Korl_Resource_Font_Resources fontResources = korl_resource_font_getResources(context->resourceHandleFont, context->textPixelHeight);
     Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
     material.maps.resourceHandleTextureBase       = fontResources.resourceHandleTexture;
-    //@TODO: it seems that (based on what I've seen so far) the only thing preventing us from being able to move Korl_Gfx_Text into korl-utility-gfx is access to the built-in KORL text shader resource; do we even need to store this in korl-gfx?? It seems we should be able to just obtain this hand for each Korl_Gfx_Text object on construction
-    material.shaders.resourceHandleShaderVertex   = _korl_gfx_context->resourceShaderKorlVertexText;
-    material.shaders.resourceHandleShaderFragment = _korl_gfx_context->resourceShaderKorlFragmentColorTexture;
+    material.shaders.resourceHandleShaderVertex   = korl_gfx_getBuiltInShaderVertex(&context->vertexStagingMeta);
+    material.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&material);
     KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
     storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
@@ -598,6 +597,9 @@ korl_internal KORL_FUNCTION_korl_gfx_drawVertexBuffer(korl_gfx_drawVertexBuffer)
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)
 {
+    if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32
+       && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize  == 1)
+        return _korl_gfx_context->resourceShaderKorlVertexText;
     if(vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize == 2)
         if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
            && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
@@ -607,7 +609,7 @@ korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInS
             return _korl_gfx_context->resourceShaderKorlVertex2dUv;
         else
             return _korl_gfx_context->resourceShaderKorlVertex2d;
-    else if(vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize == 3)
+    if(vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize == 3)
         if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV   ].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID
            && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
             return _korl_gfx_context->resourceShaderKorlVertex3dColor;

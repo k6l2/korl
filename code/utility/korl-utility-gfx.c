@@ -496,7 +496,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
     const f32 sizeToSupportedSizeRatio = textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
     korl_math_transform3d_setScale(&result.transform, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, sizeToSupportedSizeRatio));
     const Korl_Resource_Font_Resources fontResources = korl_resource_font_getResources(resourceHandleFont, textPixelHeight);
-    result.subType.runtime.overrides.shaderVertex        = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-text.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    result.subType.runtime.overrides.shaderVertex        = korl_gfx_getBuiltInShaderVertex(&result.subType.runtime.vertexStagingMeta);
     result.subType.runtime.overrides.storageBufferVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     result.subType.runtime.overrides.materialMapBase     = fontResources.resourceHandleTexture;
     /**/
