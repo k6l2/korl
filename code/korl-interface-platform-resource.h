@@ -68,6 +68,7 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_create(name)                    Korl_Resource_Handle            name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
 #define KORL_FUNCTION_korl_resource_getDescriptorStruct(name)       void*                           name(Korl_Resource_Handle handle)
 #define KORL_FUNCTION_korl_resource_resize(name)                    void                            name(Korl_Resource_Handle handle, u$ newByteSize)
+#define KORL_FUNCTION_korl_resource_shift(name)                     void                            name(Korl_Resource_Handle handle, i$ byteShiftCount)
 #define KORL_FUNCTION_korl_resource_destroy(name)                   void                            name(Korl_Resource_Handle resourceHandle)
 #define KORL_FUNCTION_korl_resource_update(name)                    void                            name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 #define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)           void*                           name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)

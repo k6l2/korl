@@ -2,21 +2,240 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-checkCast.h"
 #include "utility/korl-utility-resource.h"
+#include "utility/korl-utility-stb-ds.h"
 #include "korl-interface-platform.h"
 korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
-/** used for Korl_Gfx_StagingAllocation reallocation procedures, as we need to 
- * offset the buffers of each vertex attribute within the allocation once 
- * reallocation occurs */
-typedef struct _Korl_Gfx_SortableVertexBinding
+/* Since we expect that all KORL renderer code requires right-handed 
+    triangle normals (counter-clockwise vertex winding), all tri quads have 
+    the following formation:
+    [3]-[2]
+     | / | 
+    [0]-[1] */
+korl_global_const u16 _KORL_UTILITY_GFX_TRI_QUAD_INDICES[] = 
+    { 0, 1, 2
+    , 2, 3, 0 };
+typedef struct _Korl_Gfx_Text_Line
 {
-    Korl_Gfx_VertexAttributeBinding binding;
-    u32                             byteOffsetBuffer;
-} _Korl_Gfx_SortableVertexBinding;
-korl_internal KORL_ALGORITHM_COMPARE(_korl_gfx_sortVertexBindings_ascendByteOffset)
+    u32                visibleCharacters;// used to determine how many glyph instances are in the draw call
+    f32                aabbSizeX;// no need to store the sizeY, since all Text_Lines should be the same Font lineDeltaY calculation
+    Korl_Math_V4f32    color;
+} _Korl_Gfx_Text_Line;
+typedef struct _Korl_Gfx_Text_GlyphInstance
 {
-    const _Korl_Gfx_SortableVertexBinding*const sortableVertexBindingA = KORL_C_CAST(const _Korl_Gfx_SortableVertexBinding*, a);
-    const _Korl_Gfx_SortableVertexBinding*const sortableVertexBindingB = KORL_C_CAST(const _Korl_Gfx_SortableVertexBinding*, b);
-    return sortableVertexBindingA->byteOffsetBuffer > sortableVertexBindingB->byteOffsetBuffer;
+    u32             meshIndex;
+    Korl_Math_V2f32 position;
+} _Korl_Gfx_Text_GlyphInstance;
+korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight)
+{
+    KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoBufferText);
+    createInfoBufferText.bytes      = 1024;// some arbitrary non-zero value; likely not important to tune this, but we'll see
+    createInfoBufferText.usageFlags =   KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX
+                                      | KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_INDEX;
+    const u$ bytesRequired     = sizeof(Korl_Gfx_Text);
+    Korl_Gfx_Text*const result = KORL_C_CAST(Korl_Gfx_Text*, korl_allocate(allocator, bytesRequired));
+    result->allocator                = allocator;
+    result->textPixelHeight          = textPixelHeight;
+    result->resourceHandleFont       = resourceHandleFont;
+    result->transform                = korl_math_transform3d_identity();
+    result->resourceHandleBufferText = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBufferText);
+    // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
+    result->vertexStagingMeta.indexCount = korl_arraySize(_KORL_UTILITY_GFX_TRI_QUAD_INDICES);
+    result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*_KORL_UTILITY_GFX_TRI_QUAD_INDICES) == sizeof(u16));
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer = offsetof(_Korl_Gfx_Text_GlyphInstance, position);
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteStride       = sizeof(_Korl_Gfx_Text_GlyphInstance);
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize       = 2;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteOffsetBuffer = offsetof(_Korl_Gfx_Text_GlyphInstance, meshIndex);
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].byteStride       = sizeof(_Korl_Gfx_Text_GlyphInstance);
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType      = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE;
+    result->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize       = 1;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(result->allocator), result->stbDaLines, 64);
+    return result;
+}
+korl_internal void korl_gfx_text_destroy(Korl_Gfx_Text* context)
+{
+    korl_resource_destroy(context->resourceHandleBufferText);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines);
+    korl_free(context->allocator, context);
+}
+korl_internal void korl_gfx_text_collectDefragmentPointers(Korl_Gfx_Text* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
+{
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaLines, parent);
+}
+korl_internal void _korl_gfx_text_fifoAdd_flush(Korl_Gfx_Text* context, acu16 utf16Text, const Korl_String_CodepointIteratorUtf16* utf16It, _Korl_Gfx_Text_Line* currentLine, i$* io_substringStartIndex)
+{
+    if(currentLine && *io_substringStartIndex >= 0)
+    {
+        /* if we failed the codepointTest while building a Line, we need 
+            to flush the current substring into the GlyphInstance vertex 
+            buffer, and update our line metrics accordingly */
+        const acu16 utf16Substring = {.size = korl_checkCast_i$_to_u$(utf16It->_currentRawUtf16 - utf16Text.data - *io_substringStartIndex)
+                                     ,.data = utf16Text.data + *io_substringStartIndex};
+        if(utf16Substring.size)// no need to flush anything if there's nothing to flush
+        {
+            const Korl_Resource_Font_TextMetrics substringMetrics = korl_resource_font_getUtf16Metrics(context->resourceHandleFont, context->textPixelHeight, utf16Substring);
+            /* reallocate our GlyphInstance vertex buffer as needed */
+            u$ textBufferBytes = korl_resource_getByteSize(context->resourceHandleBufferText);
+            const u$ textBufferBytesRequired = (context->totalVisibleGlyphs + substringMetrics.visibleGlyphCount) * sizeof(_Korl_Gfx_Text_GlyphInstance);
+            if(textBufferBytes < textBufferBytesRequired)
+                korl_resource_resize(context->resourceHandleBufferText, KORL_MATH_MAX(textBufferBytesRequired, 2 * textBufferBytes));
+            /* obtain & append the new Line into our GlyphInstance buffer */
+            u$ bytesRequested_bytesAvailable = substringMetrics.visibleGlyphCount * sizeof(_Korl_Gfx_Text_GlyphInstance);
+            _Korl_Gfx_Text_GlyphInstance*const glyphInstanceUpdateBuffer = KORL_C_CAST(_Korl_Gfx_Text_GlyphInstance*, korl_resource_getUpdateBuffer(context->resourceHandleBufferText, context->totalVisibleGlyphs * sizeof(_Korl_Gfx_Text_GlyphInstance), &bytesRequested_bytesAvailable));
+            korl_resource_font_generateUtf16(context->resourceHandleFont, context->textPixelHeight, utf16Substring, KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){currentLine->aabbSizeX, 0}
+                                            ,&glyphInstanceUpdateBuffer[0].position , sizeof(_Korl_Gfx_Text_GlyphInstance)
+                                            ,&glyphInstanceUpdateBuffer[0].meshIndex, sizeof(_Korl_Gfx_Text_GlyphInstance));
+            /* update Line metrics (glyph count, AABB) */
+            currentLine->visibleCharacters += substringMetrics.visibleGlyphCount;
+            currentLine->aabbSizeX         += substringMetrics.aabbSize.x;
+        }
+    }
+    *io_substringStartIndex = -1;
+}
+korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
+{
+    const Korl_Resource_Font_Metrics   fontMetrics              = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
+    const f32                          sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
+    const Korl_Math_V4f32              defaultLineColor         = korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE);// default all line colors to white
+    /* iterate over utf16Text until we hit a line break; upon reaching a line break, we can add another _Korl_Gfx_Text_Line to the context */
+    _Korl_Gfx_Text_Line*               currentLine         = NULL;// the current working Line of text; we will accumulate substrings of codepoints which pass codepointTest (if it's provided) into this Line, until we reach a line-break ('\n') character
+    Korl_Math_V4f32                    currentLineColor    = defaultLineColor;
+    i$                                 substringStartIndex = -1;// determines the next range of text to generate glyphs into `currentLine`; all text within [substringStartIndex, utf16It._currentRawUtf16) _must_ pass codepointTest if provided; values < 0 => no start index found yet
+    Korl_String_CodepointIteratorUtf16 utf16It             = korl_string_codepointIteratorUtf16_initialize(utf16Text.data, utf16Text.size);
+    for(;!korl_string_codepointIteratorUtf16_done(&utf16It)
+        ; korl_string_codepointIteratorUtf16_next(&utf16It))
+    {
+        if(    codepointTest 
+           && !codepointTest(codepointTestUserData
+                            ,utf16It._codepoint, utf16It._codepointSize
+                            ,KORL_C_CAST(const u8*, utf16It._currentRawUtf16)
+                            ,sizeof(*utf16It._currentRawUtf16)
+                            ,&currentLineColor))
+        {
+            _korl_gfx_text_fifoAdd_flush(context, utf16Text, &utf16It, currentLine, &substringStartIndex);
+            continue;
+        }
+        if(utf16It._codepoint == '\n')
+        {
+            _korl_gfx_text_fifoAdd_flush(context, utf16Text, &utf16It, currentLine, &substringStartIndex);
+            if(currentLine)
+            {
+                /* update context metrics (glyph count, AABB)*/
+                context->totalVisibleGlyphs += currentLine->visibleCharacters;
+                KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, sizeToSupportedSizeRatio * currentLine->aabbSizeX);
+                /* we're done with this Line now; nullify currentLine reference */
+                currentLine = NULL;
+                currentLineColor = defaultLineColor;
+            }
+        }
+        else
+        {
+            if(substringStartIndex < 0)
+                substringStartIndex = utf16It._currentRawUtf16 - utf16Text.data;
+            if(!currentLine)
+            {
+                mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaLines, KORL_STRUCT_INITIALIZE_ZERO(_Korl_Gfx_Text_Line));
+                currentLine = &arrlast(context->stbDaLines);
+                currentLine->color = currentLineColor;
+            }
+        }
+    }
+    /* if utf16Text did not end in a new line, we still need to flush the remaining text */
+    _korl_gfx_text_fifoAdd_flush(context, utf16Text, &utf16It, currentLine, &substringStartIndex);
+    if(currentLine)
+    {
+        /* update context metrics (glyph count, AABB)*/
+        context->totalVisibleGlyphs += currentLine->visibleCharacters;
+        KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, sizeToSupportedSizeRatio * currentLine->aabbSizeX);
+    }
+    /* we can easily calculate the height of the Text object's current AABB 
+        using the font's cached metrics */
+    const f32 lineDeltaY = sizeToSupportedSizeRatio * ((fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap);
+    context->_modelAabbSize.y = KORL_C_CAST(f32, arrlenu(context->stbDaLines)) * lineDeltaY;
+}
+korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
+{
+    const u$ linesToRemove = KORL_MATH_MIN(lineCount, arrlenu(context->stbDaLines));
+    context->_modelAabbSize.x = 0;
+    u$ glyphsToRemove = 0;
+    for(u$ l = 0; l < arrlenu(context->stbDaLines); l++)
+    {
+        if(l < linesToRemove)
+        {
+            glyphsToRemove += context->stbDaLines[l].visibleCharacters;
+            continue;
+        }
+        const _Korl_Gfx_Text_Line*const line = &(context->stbDaLines[l]);
+        KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, line->aabbSizeX);
+    }
+    arrdeln(context->stbDaLines, 0, linesToRemove);
+    context->totalVisibleGlyphs -= korl_checkCast_u$_to_u32(glyphsToRemove);
+    korl_resource_shift(context->resourceHandleBufferText, -1/*shift to the left; remove the glyphs instances at the beginning of the buffer*/ * korl_checkCast_u$_to_i$(glyphsToRemove * sizeof(_Korl_Gfx_Text_GlyphInstance)));
+    const Korl_Resource_Font_Metrics fontMetrics = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
+    const f32 lineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
+    context->_modelAabbSize.y = KORL_C_CAST(f32, arrlenu(context->stbDaLines)) * lineDeltaY;
+    const f32 sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
+    korl_math_v2f32_assignMultiplyScalar(&context->_modelAabbSize, sizeToSupportedSizeRatio);
+}
+korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
+{
+    const Korl_Resource_Font_Metrics fontMetrics = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
+    const f32 sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
+    const f32 lineDeltaY = sizeToSupportedSizeRatio * ((fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap);
+    /* we can now send the vertex index data to the buffer, which will be used 
+        for all subsequent text line draw calls @korl-gfx-text-defer-index-buffer */
+    const u$ glyphInstanceBufferSize = context->totalVisibleGlyphs * sizeof(_Korl_Gfx_Text_GlyphInstance);
+    {
+        const u32 indexBufferBytes   = sizeof(_KORL_UTILITY_GFX_TRI_QUAD_INDICES);
+        const u$  currentBufferBytes = korl_resource_getByteSize(context->resourceHandleBufferText);
+        if(currentBufferBytes < glyphInstanceBufferSize + indexBufferBytes)
+            korl_resource_resize(context->resourceHandleBufferText, glyphInstanceBufferSize + indexBufferBytes);
+        korl_resource_update(context->resourceHandleBufferText, _KORL_UTILITY_GFX_TRI_QUAD_INDICES, sizeof(_KORL_UTILITY_GFX_TRI_QUAD_INDICES), glyphInstanceBufferSize);
+        // context->vertexStagingMeta.indexByteOffsetBuffer = glyphInstanceBufferSize;//can't do this yet, since this is relative to the buffer offset byte we choose per line!
+    }
+    /* configure the renderer draw state */
+    const Korl_Resource_Font_Resources fontResources = korl_resource_font_getResources(context->resourceHandleFont, context->textPixelHeight);
+    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    material.maps.resourceHandleTextureBase       = fontResources.resourceHandleTexture;
+    material.shaders.resourceHandleShaderVertex   = korl_gfx_getBuiltInShaderVertex(&context->vertexStagingMeta);
+    material.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&material);
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_StorageBuffers, storageBuffers);
+    storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
+    KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
+    drawState.storageBuffers = &storageBuffers;
+    korl_gfx_setDrawState(&drawState);
+    /* now we can iterate over each text line and conditionally draw them using line-specific draw state */
+    KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
+    Korl_Math_M4f32*const pushConstantModelM4f32 = KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex);
+    Korl_Math_V3f32 modelTranslation = context->transform._position;// the default origin position for each Line is the upper-left corner of the TextMetrics AABB, which is exactly where we want to start drawing the first line relative to our transform._position
+    u$ currentVisibleGlyphOffset = 0;// used to determine the byte (transform required) offset into the Text object's text buffer resource
+    const _Korl_Gfx_Text_Line*const linesEnd = context->stbDaLines + arrlen(context->stbDaLines);
+    for(const _Korl_Gfx_Text_Line* line = context->stbDaLines; line < linesEnd; line++)
+    {
+        if(modelTranslation.y < visibleRegion.min.y - lineDeltaY)
+            break;
+        if(modelTranslation.y <= visibleRegion.max.y + lineDeltaY)
+        {
+            material.fragmentShaderUniform.factorColorBase = line->color;
+            *pushConstantModelM4f32                        = korl_math_makeM4f32_rotateScaleTranslate(context->transform._versor, korl_math_v3f32_multiply(context->transform._scale, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = {sizeToSupportedSizeRatio, sizeToSupportedSizeRatio}}), modelTranslation);
+            KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateLine);
+            drawStateLine.material         = &material;
+            drawStateLine.pushConstantData = &pushConstantData;
+            korl_gfx_setDrawState(&drawStateLine);
+            const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_Text_GlyphInstance);
+            context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
+            context->vertexStagingMeta.instanceCount         = line->visibleCharacters;
+            korl_gfx_drawVertexBuffer(context->resourceHandleBufferText, textLineByteOffset, &context->vertexStagingMeta);
+        }
+        modelTranslation.y        -= lineDeltaY;
+        currentVisibleGlyphOffset += line->visibleCharacters;
+    }
+}
+korl_internal Korl_Math_V2f32 korl_gfx_text_getModelAabbSize(const Korl_Gfx_Text* context)
+{
+    return context->_modelAabbSize;
 }
 korl_internal u8 korl_gfx_indexBytes(Korl_Gfx_VertexIndexType vertexIndexType)
 {
@@ -470,12 +689,12 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
     createInfoDrawable.vertexIndexType = KORL_GFX_VERTEX_INDEX_TYPE_U16;
     createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
     createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0 ] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_U32;
-    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable(&createInfoDrawable, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, korl_arraySize(KORL_GFX_TRI_QUAD_INDICES), KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE, textMetrics.visibleGlyphCount);
+    Korl_Gfx_Drawable result = _korl_gfx_runtimeDrawable(&createInfoDrawable, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, korl_arraySize(_KORL_UTILITY_GFX_TRI_QUAD_INDICES), KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_INSTANCE, textMetrics.visibleGlyphCount);
     u16*const             indices                = korl_gfx_drawable_indexU16      (&result, 0);
     Korl_Math_V2f32*const glyphInstancePositions = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
     u32*const             glyphIndices           = korl_gfx_drawable_attributeU32  (&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0, 0);
     /* generate the text vertex data */
-    korl_memory_copy(indices, KORL_GFX_TRI_QUAD_INDICES, sizeof(KORL_GFX_TRI_QUAD_INDICES));
+    korl_memory_copy(indices, _KORL_UTILITY_GFX_TRI_QUAD_INDICES, sizeof(_KORL_UTILITY_GFX_TRI_QUAD_INDICES));
     switch(utfTextEncoding)
     {
     case  8:

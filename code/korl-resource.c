@@ -793,7 +793,7 @@ korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
     fnSig_korl_resource_descriptorCallback_runtimeResize*const runtimeResize = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeResize*, korl_functionDynamo_get(descriptor->callbacks.runtimeResize));
     runtimeResize(resourceItem->descriptorStruct, newByteSize, context->allocatorHandleRuntime, &resourceItem->backingSubType.runtime.data);
 }
-korl_internal void korl_resource_shift(Korl_Resource_Handle handle, i$ byteShiftCount)
+korl_internal KORL_FUNCTION_korl_resource_shift(korl_resource_shift)
 {
     if(byteShiftCount == 0)
         return;// silently do nothing else if the user doesn't provide a non-zero byte shift amount

@@ -238,16 +238,6 @@ typedef struct Korl_Gfx_ResultRay3d
     Korl_Math_V3f32 direction;
     f32             segmentDistance;
 } Korl_Gfx_ResultRay3d;
-/* Since we expect that all KORL renderer code requires right-handed 
-    triangle normals (counter-clockwise vertex winding), all tri quads have 
-    the following formation:
-    [3]-[2]
-     | \ | 
-    [0]-[1] */
-//@TODO: if we move Korl_Gfx_Text into korl-utility-gfx, we can also move this, since that is the only code currently using this outside of that module
-korl_global_const u16 KORL_GFX_TRI_QUAD_INDICES[] = 
-    { 0, 1, 3
-    , 1, 2, 3 };
 typedef enum Korl_Gfx_VertexIndexType
     {KORL_GFX_VERTEX_INDEX_TYPE_INVALID
     ,KORL_GFX_VERTEX_INDEX_TYPE_U16

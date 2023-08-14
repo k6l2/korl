@@ -52,14 +52,15 @@
 [x] add TEXTURE resource
 [~] add functionality for Resource hierarchy
   [x] add FONT resource
-    [ ] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource
+    [x] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource
       [x] create korl-resource-font out of recycled code
-      [ ] delete all font stuff in korl-gfx
+      [x] delete all font stuff in korl-gfx
     [x] KORL-PERFORMANCE-000-000-001: gfx: inefficient texture upload process
   [x] add BUFFER & TEXTURE child RUNTIME resources
     - this kinda already works without any special "Resource_Item DAG" support, so...
   [x] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
+[ ] fix crash when loading a korl-memoryState that has the logConsole open
 [ ] test korl-resource-font hot-reload of font assetCache file
 [ ] add SCENE3D Resource
   - compose a SCENE3D Resource out of MESH & TEXTURE Resources
