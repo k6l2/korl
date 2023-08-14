@@ -2039,7 +2039,7 @@ korl_internal KORL_FUNCTION_korl_gui_widgetText(korl_gui_widgetText)
             // it should be possible to nest the internal log codepointTest with the user-provided one instead of completely overriding it; 
             //  maybe at some point in the future if that becomes useful behavior...
         }
-        korl_gfx_text_fifoAdd(widget->subType.text.gfxText, newText, context->allocatorHandleStack, codepointTest, codepointTestUserData);
+        korl_gfx_text_fifoAdd(widget->subType.text.gfxText, newText, codepointTest, codepointTestUserData);
     }
     const u$ textLines = arrlenu(widget->subType.text.gfxText->stbDaLines);
     if(textLines > maxLineCount)
