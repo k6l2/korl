@@ -17,7 +17,7 @@ typedef struct Korl_Gfx_Text
     f32                         textPixelHeight;
     Korl_Resource_Handle        resourceHandleFont;
     Korl_Math_Transform3d       transform;
-    Korl_Math_Aabb2f32          _modelAabb;// not valid until fifo add/remove APIs have been called
+    Korl_Math_V2f32             _modelAabbSize;// not valid until fifo add/remove APIs have been called
     u32                         totalVisibleGlyphs;// redundant value; acceleration for operations on resourceHandleBufferText
 } Korl_Gfx_Text;
 korl_internal Korl_Gfx_Text*     korl_gfx_text_create(Korl_Memory_AllocatorHandle allocator, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight);
@@ -26,7 +26,7 @@ korl_internal void               korl_gfx_text_collectDefragmentPointers(Korl_Gf
 korl_internal void               korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData);
 korl_internal void               korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount);
 korl_internal void               korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion);
-korl_internal Korl_Math_Aabb2f32 korl_gfx_text_getModelAabb(const Korl_Gfx_Text* context);
+korl_internal Korl_Math_V2f32    korl_gfx_text_getModelAabbSize(const Korl_Gfx_Text* context);
 korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32  korl_gfx_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
 korl_internal void korl_gfx_memoryStateRead(const u8* memoryState);

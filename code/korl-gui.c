@@ -1794,8 +1794,7 @@ korl_internal void korl_gui_frameEnd(void)
                 korl_assert(!widget->subType.text.displayText.data);
                 korl_math_transform3d_setPosition(&widget->subType.text.gfxText->transform, (Korl_Math_V3f32){widget->position.x, widget->position.y, z});
                 korl_gfx_text_draw(widget->subType.text.gfxText, usedWidget->transient.aabb);
-                const Korl_Math_Aabb2f32 textModelAabb = korl_gfx_text_getModelAabb(widget->subType.text.gfxText);
-                const Korl_Math_V2f32    textAabbSize  = korl_math_aabb2f32_size(textModelAabb);
+                const Korl_Math_V2f32 textAabbSize = korl_gfx_text_getModelAabbSize(widget->subType.text.gfxText);
                 usedWidget->transient.aabbContent.max.x += textAabbSize.x;
                 usedWidget->transient.aabbContent.min.y -= textAabbSize.y;
             }
