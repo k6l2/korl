@@ -271,6 +271,12 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     switch(context->type)
     {
     case KORL_GFX_DRAWABLE_TYPE_RUNTIME:{
+        if(   context->subType.runtime.vertexStagingMeta.vertexCount == 0 
+           && context->subType.runtime.vertexStagingMeta.instanceCount == 0)
+        {
+            korl_log(WARNING, "empty drawable");
+            break;
+        }
         /* configure the renderer draw state */
         Korl_Gfx_Material materialLocal;
         if(materials)

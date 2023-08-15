@@ -74,7 +74,7 @@
       - what should we do when font resources are needed, but the font is not yet loaded?
         - in the case where we only care about the results for the current frame (not future frames), it's okay to do _nothing_
         - otherwise, we have to make sure to remember that we have not actually been able to use the resource yet
-[ ] test korl-resource-font hot-reload of font assetCache file
+[x] test korl-resource-font hot-reload of font assetCache file
 [ ] add SCENE3D Resource
   - compose a SCENE3D Resource out of MESH & TEXTURE Resources
     - GLB files can contain TEXTURE Resources!
