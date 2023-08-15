@@ -1,4 +1,4 @@
-//@TODO: refactor this to use korl-functionDynamo; move to korl/code folder since we shouldn't need platform-specific APIs to achieve this
+//KORL-ISSUE-000-000-182: command: refactor this to use korl-functionDynamo; move to korl/code folder since we shouldn't need platform-specific APIs to achieve this
 #include "korl-command.h"
 #include "korl-memory.h"
 #include "korl-string.h"

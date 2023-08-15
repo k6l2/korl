@@ -1439,7 +1439,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         perform custom actions on newly-moved allocations, such as manually offsetting a pointer to memory within the same allocation; 
         although honestly, going forward I am going to enforce a policy of _no_ allocation-local pointers stored in structs, in favor 
         of byte offsets which can be used to derive the pointers at run-time, at least for my own code */
-    // @TODO: can we simplify this with `korl_algorithm_graphDirected_sortTopological`?
+    //KORL-ISSUE-000-000-183: heap-linear: can we simplify this with `korl_algorithm_graphDirected_sortTopological`?
     /* create a copy of defragmentPointers that we can shuffle, allowing the `parent` pointers to remain valid - size(n) - O(n) memory_copy*/
     _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, false/*clear all these*/, 1);
     for(u$ i = 0; i < defragmentPointersSize; i++)

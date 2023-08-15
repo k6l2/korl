@@ -381,7 +381,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getMetrics(korl_resource_font_get
     KORL_ZERO_STACK(Korl_Resource_Font_Metrics, result);
     if(!handleResourceFont)
         return result;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
@@ -392,7 +392,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getResources(korl_resource_font_g
     KORL_ZERO_STACK(Korl_Resource_Font_Resources, result);
     if(!handleResourceFont)
         return result;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
@@ -553,7 +553,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getUtf8Metrics(korl_resource_font
     KORL_ZERO_STACK(Korl_Resource_Font_TextMetrics, result);
     if(!handleResourceFont)
         return result;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
@@ -563,7 +563,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_generateUtf8(korl_resource_font_g
 {
     if(!handleResourceFont)
         return;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return;
@@ -574,7 +574,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_getUtf16Metrics(korl_resource_fon
     KORL_ZERO_STACK(Korl_Resource_Font_TextMetrics, result);
     if(!handleResourceFont)
         return result;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
@@ -584,7 +584,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_generateUtf16(korl_resource_font_
 {
     if(!handleResourceFont)
         return;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return;
@@ -595,7 +595,7 @@ korl_internal KORL_FUNCTION_korl_resource_font_textGraphemePosition(korl_resourc
     Korl_Math_V2f32 textBaselineCursor = KORL_MATH_V2F32_ZERO;
     if(!handleResourceFont)
         return textBaselineCursor;
-    //@TODO: validate the underlying korl-resource-item descriptor type
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return textBaselineCursor;

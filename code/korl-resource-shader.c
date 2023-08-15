@@ -47,7 +47,7 @@ korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resou
 {
     if(!handleResourceShader)
         return 0;// silently return an empty handle for empty resource handles
-    //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a SHADER resource
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Shader*const shaderResource = korl_resource_getDescriptorStruct(handleResourceShader);
     return shaderResource->vulkanShaderHandle;
 }

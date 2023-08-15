@@ -101,7 +101,7 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_texture_ge
 {
     if(!handleResourceTexture)
         return 0;// silently return an empty device memory allocation for empty resource handles
-    //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a TEXTURE resource
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
     return texture->deviceMemoryAllocationHandle;
 }
@@ -109,7 +109,7 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getSize(korl_resource_texture_
 {
     if(!handleResourceTexture)
         return KORL_MATH_V2U32_ZERO;
-    //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a TEXTURE resource
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
     return texture->createInfo.size;
 }
@@ -117,7 +117,7 @@ korl_internal KORL_FUNCTION_korl_resource_texture_getRowByteStride(korl_resource
 {
     if(!handleResourceTexture)
         return 0;
-    //@TODO: validate that the korl-resource-item referenced by handleResourceShader is, indeed, a TEXTURE resource
+    //KORL-ISSUE-000-000-181: resource-*: unsafe; validate resource descriptor; it would be nice if we had a low-cost, easy to implement per-descriptor way of validating the descriptorStruct returned from korl_resource_getDescriptorStruct actually matches the descriptor code calling it; the only way I can think of is forcing the descriptor name string lookup for each of these calls, but sure there is a better way, right?
     _Korl_Resource_Texture*const texture = korl_resource_getDescriptorStruct(handleResourceTexture);
     return texture->createInfo.size.x * KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[texture->createInfo.formatImage];
 }
