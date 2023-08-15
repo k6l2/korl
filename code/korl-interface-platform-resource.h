@@ -50,7 +50,7 @@ typedef struct Korl_Resource_Font_Metrics
     f32 ascent;
     f32 decent;
     f32 lineGap;
-    f32 nearestSupportedPixelHeight;
+    f32 nearestSupportedPixelHeight;// @TODO: this is causing the user-code grief; why can't we just pre-multiply all the other values with the correct scale?
     u8  _nearestSupportedPixelHeightIndex;
 } Korl_Resource_Font_Metrics;
 typedef struct Korl_Resource_Font_Resources
@@ -60,7 +60,7 @@ typedef struct Korl_Resource_Font_Resources
 } Korl_Resource_Font_Resources;
 typedef struct Korl_Resource_Font_TextMetrics
 {
-    Korl_Math_V2f32 aabbSize;
+    Korl_Math_V2f32 aabbSize;//@TODO: is this properly scaled by nearestSupportedPixelHeight?
     u32             visibleGlyphCount;
 } Korl_Resource_Font_TextMetrics;
 #define KORL_FUNCTION_korl_resource_descriptor_add(name)            void                            name(const Korl_Resource_DescriptorManifest* descriptorManifest)
@@ -73,6 +73,7 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_update(name)                    void                            name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 #define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)           void*                           name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
 #define KORL_FUNCTION_korl_resource_getByteSize(name)               u$                              name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_isLoaded(name)                  bool                            name(Korl_Resource_Handle handle)
 #define KORL_FUNCTION_korl_resource_texture_getSize(name)           Korl_Math_V2u32                 name(Korl_Resource_Handle handleResourceTexture)
 #define KORL_FUNCTION_korl_resource_texture_getRowByteStride(name)  u32                             name(Korl_Resource_Handle handleResourceTexture)
 #define KORL_FUNCTION_korl_resource_font_getMetrics(name)           Korl_Resource_Font_Metrics      name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)

@@ -33,7 +33,7 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
     {
         u$       loggedBytes      = 0;
         acu16    logBuffer        = _korl_log_getBuffer(&loggedBytes);
-        const u$ loggedCharacters = loggedBytes/sizeof(*logBuffer.data);
+        const u$ loggedCharacters = loggedBytes / sizeof(*logBuffer.data);
         const u$ newCharacters    = KORL_MATH_MIN(loggedCharacters - context->lastLoggedCharacters, logBuffer.size);
         logBuffer.data = logBuffer.data + logBuffer.size - newCharacters;
         logBuffer.size = newCharacters;
@@ -45,7 +45,8 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
             korl_gui_setNextWidgetSize(KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){KORL_C_CAST(f32, windowSize.x)
                                                                               ,consoleSizeY - 32/*allow room for text input widget*/});//KORL-ISSUE-000-000-111: gui: this sucks; is there a way for us to have korl-gui automatically determine how tall the text scroll area should be under the hood?
             korl_gui_widgetScrollAreaBegin(KORL_RAW_CONST_UTF16(L"console scroll area"), KORL_GUI_WIDGET_SCROLL_AREA_FLAG_STICK_MAX_SCROLL);
-                korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG);
+                if(korl_gui_widgetText(L"console text", logBuffer, 1'000/*max line count*/, NULL/*codepointTest*/, NULL/*codepointTestData*/, KORL_GUI_WIDGET_TEXT_FLAG_LOG))
+                    context->lastLoggedCharacters = loggedCharacters;
             korl_gui_widgetScrollAreaEnd();
             string_free(&context->stringInputLastEnabled);
             if(context->enable)
@@ -59,7 +60,6 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
                 context->commandInvoked = true;
             }
         korl_gui_windowEnd();
-        context->lastLoggedCharacters = loggedCharacters;
     }
     else
         context->lastLoggedCharacters = 0;

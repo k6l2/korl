@@ -27,7 +27,10 @@ typedef enum Korl_Gui_Widget_Text_Flags
     { KORL_GUI_WIDGET_TEXT_FLAGS_NONE
     , KORL_GUI_WIDGET_TEXT_FLAG_LOG = 1<<0// format the text assuming that it is raw KORL log buffer text
 } Korl_Gui_Widget_Text_Flags;
-#define KORL_FUNCTION_korl_gui_widgetText(name)                void name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
+/** 
+ * \return \c true if \c newText was able to be appended to the widget, 
+ *         \c false otherwise */
+#define KORL_FUNCTION_korl_gui_widgetText(name)                bool name(const wchar_t* identifier, acu16 newText, u32 maxLineCount, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData, Korl_Gui_Widget_Text_Flags flags)
 /** 
  * \return The number of times this button was actuated (pressed & released) 
  * since the previous frame.  If the button was actuated more times than the max 

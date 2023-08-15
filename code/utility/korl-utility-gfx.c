@@ -96,6 +96,11 @@ korl_internal void _korl_gfx_text_fifoAdd_flush(Korl_Gfx_Text* context, acu16 ut
 }
 korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text, fnSig_korl_gfx_text_codepointTest* codepointTest, void* codepointTestUserData)
 {
+    if(!korl_resource_isLoaded(context->resourceHandleFont))
+    {
+        korl_log(ERROR, "malformed Text; font resource not loaded");
+        return;
+    }
     const Korl_Resource_Font_Metrics   fontMetrics              = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
     const f32                          sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
     const Korl_Math_V4f32              defaultLineColor         = korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE);// default all line colors to white
@@ -157,6 +162,11 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
 }
 korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
 {
+    if(!korl_resource_isLoaded(context->resourceHandleFont))
+    {
+        korl_log(ERROR, "malformed Text; font resource not loaded");
+        return;
+    }
     const u$ linesToRemove = KORL_MATH_MIN(lineCount, arrlenu(context->stbDaLines));
     context->_modelAabbSize.x = 0;
     u$ glyphsToRemove = 0;
@@ -181,6 +191,8 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
 }
 korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
+    if(!korl_resource_isLoaded(context->resourceHandleFont))
+        return;
     const Korl_Resource_Font_Metrics fontMetrics = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
     const f32 sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
     const f32 lineDeltaY = sizeToSupportedSizeRatio * ((fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap);
@@ -711,6 +723,15 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
         break;
     }
     /* setup text-specific material/draw-state overrides */
+    if(!korl_resource_isLoaded(resourceHandleFont))
+        switch(type)
+        {
+        case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
+            return result;
+        case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:
+            korl_log(ERROR, "malformed multi-frame drawable; font resource was not loaded on construction");
+            break;
+        }
     const Korl_Resource_Font_Metrics fontMetrics = korl_resource_font_getMetrics(resourceHandleFont, textPixelHeight);
     const f32 sizeToSupportedSizeRatio = textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
     korl_math_transform3d_setScale(&result.transform, korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_ONE, sizeToSupportedSizeRatio));

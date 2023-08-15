@@ -61,7 +61,19 @@
   [x] refactor & test korl-utility-gfx text drawing APIs
     - accept a FONT Korl_Resource_Handle instead of a utf16FontAssetName
 [x] fix crash when loading a korl-memoryState that has the logConsole open
-[ ] investigate logConsole functionality breaking after loading a korl-memoryState
+[x] investigate logConsole functionality breaking after loading a korl-memoryState
+  - the crux of this issue is the fact that file-backed resources are _not_ being fully loaded after a memoryState load occurs
+  - this causes the font resource we are using in korl-gui to return empty Font_Metrics, as the data hasn't been transcoded yet
+  - this causes user code to divide (textPixelSize / 0), resulting in NaN, infecting various other korl-gui calculations
+  - solutions:
+    - force file-backed resources to transcode before continuing the rest of the frame, regardless of assetCache get flags (lazy flag, specifically)
+      - this seems like the quick/dirty solution to a deeper issue with resource management; the user is still subject to attempts to utilize unloaded resources at any time during regular execution regardless of this specific memoryState-load issue
+    - modify usage of all korl-resource-* APIs, such that the user must be responsible for checking if a resource is actually transcoded before attempting any operations on it, especially operations which bake other runtime resources from that resource's transcoded data
+      - even though this is more annoying (more work), I feel like we should just do this, since it make sense for us to assume by default that a resource can be in an unloaded state at any time
+      - there are only 2 places currently where korl-resource-font APIs are used (thankfully): korl-gui & korl-utility-gfx
+      - what should we do when font resources are needed, but the font is not yet loaded?
+        - in the case where we only care about the results for the current frame (not future frames), it's okay to do _nothing_
+        - otherwise, we have to make sure to remember that we have not actually been able to use the resource yet
 [ ] test korl-resource-font hot-reload of font assetCache file
 [ ] add SCENE3D Resource
   - compose a SCENE3D Resource out of MESH & TEXTURE Resources
@@ -69,7 +81,7 @@
   - compose MESH Resource out of BUFFER & MATERIAL Resources
   - compose MATERIAL Resource out of SHADER & TEXTURE Resources
     - MATERIAL Resources can reference TEXTURE Resources; we want to use the same TEXTURE Resource Handles that are children of the SCENE3D potentially
-[ ] finish implementation & registration of all current Resource types
+[ ] add AUDIO Resource (last resource type)
 [ ] perform defragmentation on korl-resource persistent memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?
   - user defines a "resource-manifest.txt" file somewhere

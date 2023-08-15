@@ -780,6 +780,22 @@ korl_internal KORL_FUNCTION_korl_resource_getByteSize(korl_resource_getByteSize)
     fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
     return runtimeBytes(resourceItem->descriptorStruct);
 }
+korl_internal KORL_FUNCTION_korl_resource_isLoaded(korl_resource_isLoaded)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    if(!resourceItem)
+        return false;
+    switch(resourceItem->backingType)
+    {
+    case _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE:
+        return resourceItem->backingSubType.assetCache.isTranscoded;
+    case _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA:
+        return resourceItem->backingSubType.runtime.transcodingIsUpdated;
+    }
+    korl_log(ERROR, "invalid resource backingType: %i", resourceItem->backingType);
+    return false;
+}
 korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
