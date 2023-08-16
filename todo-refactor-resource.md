@@ -76,11 +76,21 @@
         - otherwise, we have to make sure to remember that we have not actually been able to use the resource yet
 [x] test korl-resource-font hot-reload of font assetCache file
 [ ] add SCENE3D Resource
-  - compose a SCENE3D Resource out of MESH & TEXTURE Resources
-    - GLB files can contain TEXTURE Resources!
-  - compose MESH Resource out of BUFFER & MATERIAL Resources
-  - compose MATERIAL Resource out of SHADER & TEXTURE Resources
-    - MATERIAL Resources can reference TEXTURE Resources; we want to use the same TEXTURE Resource Handles that are children of the SCENE3D potentially
+  [ ] transcode materials
+    [ ] transcode & manage runtime TEXTURE resources using raw PNG data (images.bufferView) & sampler data
+    - MVP: obtain a material (via a material index), & use it to draw arbitrary geometry, such as a test quad
+      - thankfully, there isn't really a need to create a MATERIAL resource, as far as I can tell so far...
+  [ ] transcode meshes
+    - create & manage one MESH resource per mesh
+    - store mesh primitives as Korl_Gfx_Drawables (BUFFER resources + vertex attribute meta data)
+    - MVP: user can obtain a MESH resource handle from a SCENE3D resource (even if the SCENE3D resource is not yet transcoded), then render it
+  [ ] transcode skins
+    - store inverseBindMatrices as BUFFER resource
+    - store joint hierarchy information?
+    - MVP: user can apply a skin pose to a MESH resource & draw it
+      - we should also be able to make a simple code interface to manually drive individual joint transforms to modify the skin pose in real-time
+  [ ] transcode animations
+    - MVP: user can apply animations to mesh skins to render an animated MESH
 [ ] add AUDIO Resource (last resource type)
 [ ] perform defragmentation on korl-resource persistent memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?
