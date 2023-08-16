@@ -32,11 +32,11 @@ typedef struct Korl_Resource_DescriptorManifest_Callbacks
     Korl_FunctionDynamo_FunctionHandle descriptorStructDestroy;// fnSig_korl_resource_descriptorCallback_descriptorStructDestroy
     Korl_FunctionDynamo_FunctionHandle unload;                 // fnSig_korl_resource_descriptorCallback_unload
     Korl_FunctionDynamo_FunctionHandle transcode;              // fnSig_korl_resource_descriptorCallback_transcode
-    Korl_FunctionDynamo_FunctionHandle clearTransientData;     // fnSig_korl_resource_descriptorCallback_clearTransientData
-    Korl_FunctionDynamo_FunctionHandle createRuntimeData;      // fnSig_korl_resource_descriptorCallback_createRuntimeData
+    Korl_FunctionDynamo_FunctionHandle clearTransientData;     // fnSig_korl_resource_descriptorCallback_clearTransientData; only used by resources that support ASSET_CACHE  backing
+    Korl_FunctionDynamo_FunctionHandle createRuntimeData;      // fnSig_korl_resource_descriptorCallback_createRuntimeData ; only used by resources that support RUNTIME_DATA backing
     Korl_FunctionDynamo_FunctionHandle createRuntimeMedia;     // fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
-    Korl_FunctionDynamo_FunctionHandle runtimeBytes;           // fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
-    Korl_FunctionDynamo_FunctionHandle runtimeResize;          // fnSig_korl_resource_descriptorCallback_createRuntimeMedia; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle runtimeBytes;           // fnSig_korl_resource_descriptorCallback_runtimeBytes      ; only used by resources that support RUNTIME_DATA backing
+    Korl_FunctionDynamo_FunctionHandle runtimeResize;          // fnSig_korl_resource_descriptorCallback_runtimeResize     ; only used by resources that support RUNTIME_DATA backing
 } Korl_Resource_DescriptorManifest_Callbacks;
 typedef struct Korl_Resource_DescriptorManifest
 {
