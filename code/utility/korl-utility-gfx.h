@@ -26,8 +26,11 @@ korl_internal void               korl_gfx_text_draw(Korl_Gfx_Text* context, Korl
 korl_internal Korl_Math_V2f32    korl_gfx_text_getModelAabbSize(const Korl_Gfx_Text* context);
 korl_internal u8                 korl_gfx_indexBytes(Korl_Gfx_VertexIndexType vertexIndexType);
 korl_internal Korl_Math_V4f32    korl_gfx_color_toLinear(Korl_Gfx_Color4u8 color);
-korl_internal Korl_Gfx_Material  korl_gfx_material_defaultUnlit(Korl_Gfx_Material_PrimitiveType primitiveType, Korl_Gfx_Material_Mode_Flags flags, Korl_Math_V4f32 colorLinear4Base);
-korl_internal Korl_Gfx_Material  korl_gfx_material_defaultLit(Korl_Gfx_Material_PrimitiveType primitiveType, Korl_Gfx_Material_Mode_Flags flags);
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultUnlit(void);
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultUnlitFlags(Korl_Gfx_Material_Mode_Flags flags);
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultUnlitFlagsColorbase(Korl_Gfx_Material_Mode_Flags flags, Korl_Math_V4f32 colorLinear4Base);
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultLit(void);
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultLitColorbase(Korl_Math_V4f32 colorLinear4Base);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createOrtho(f32 clipDepth);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);

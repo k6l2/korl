@@ -194,12 +194,10 @@ enum
 typedef u32 Korl_Gfx_Material_Mode_Flags;
 typedef struct Korl_Gfx_Material_Modes
 {
-    // @TODO: is it really worth packing primitiveType into Korl_Gfx_Material?  In both GLTF, as well as my own code (we always seem to just override the Material's primitiveType with whatever we're drawing's primitiveType), this value seems to never be stored/used along with the material itself; it always seems to be packed together with MeshPrimitive vertex data
-    Korl_Gfx_Material_PrimitiveType primitiveType;
-    Korl_Gfx_Material_PolygonMode   polygonMode;
-    Korl_Gfx_Material_CullMode      cullMode;
-    Korl_Gfx_Material_Blend         blend;
-    Korl_Gfx_Material_Mode_Flags    flags;
+    Korl_Gfx_Material_PolygonMode polygonMode;
+    Korl_Gfx_Material_CullMode    cullMode;
+    Korl_Gfx_Material_Blend       blend;
+    Korl_Gfx_Material_Mode_Flags  flags;
 } Korl_Gfx_Material_Modes;
 /** \note: this struct is padded for GLSL compatibility */
 typedef struct Korl_Gfx_Material_FragmentShaderUniform
@@ -308,9 +306,10 @@ typedef struct Korl_Gfx_Drawable
     {
         struct
         {
-            Korl_Gfx_Drawable_Runtime_Type type;
-            Korl_Gfx_VertexStagingMeta     vertexStagingMeta;
-            bool                           interleavedAttributes;
+            Korl_Gfx_Drawable_Runtime_Type  type;
+            Korl_Gfx_Material_PrimitiveType primitiveType;
+            Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
+            bool                            interleavedAttributes;
             union
             {
                 struct
@@ -324,7 +323,6 @@ typedef struct Korl_Gfx_Drawable
             } subType;
             struct
             {
-                Korl_Gfx_Material_PrimitiveType            primitiveType;// note: setting this member is _not_ optional; this primitiveType will _always_ override whatever is in the material used to draw this object
                 /* all members below here are effectively _optional_ */
                 Korl_Gfx_Material_Mode_Flags               materialModeFlags;
                 Korl_Resource_Handle                       shaderVertex;
@@ -359,7 +357,7 @@ typedef struct Korl_Gfx_Drawable
 #define KORL_FUNCTION_korl_gfx_setDrawState(name)                            void                       name(const Korl_Gfx_DrawState* drawState)
 #define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_stagingReallocate(name)                       Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
-#define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta)
-#define KORL_FUNCTION_korl_gfx_drawVertexBuffer(name)                        void                       name(Korl_Resource_Handle resourceHandleBuffer, u$ bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta)
+#define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
+#define KORL_FUNCTION_korl_gfx_drawVertexBuffer(name)                        void                       name(Korl_Resource_Handle resourceHandleBuffer, u$ bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 #define KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(name)                  Korl_Resource_Handle       name(const Korl_Gfx_VertexStagingMeta* vertexStagingMeta)
 #define KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(name)                Korl_Resource_Handle       name(const Korl_Gfx_Material* material)

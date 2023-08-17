@@ -209,7 +209,7 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     }
     /* configure the renderer draw state */
     const Korl_Resource_Font_Resources fontResources = korl_resource_font_getResources(context->resourceHandleFont, context->textPixelHeight);
-    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    Korl_Gfx_Material material = korl_gfx_material_defaultUnlitFlags(KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND);
     material.maps.resourceHandleTextureBase       = fontResources.resourceHandleTexture;
     material.shaders.resourceHandleShaderVertex   = korl_gfx_getBuiltInShaderVertex(&context->vertexStagingMeta);
     material.shaders.resourceHandleShaderFragment = korl_gfx_getBuiltInShaderFragment(&material);
@@ -239,7 +239,7 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
             const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_Text_GlyphInstance);
             context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
             context->vertexStagingMeta.instanceCount         = line->visibleCharacters;
-            korl_gfx_drawVertexBuffer(context->resourceHandleBufferText, textLineByteOffset, &context->vertexStagingMeta);
+            korl_gfx_drawVertexBuffer(context->resourceHandleBufferText, textLineByteOffset, &context->vertexStagingMeta, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES);
         }
         modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
@@ -265,10 +265,41 @@ korl_internal Korl_Math_V4f32 korl_gfx_color_toLinear(Korl_Gfx_Color4u8 color)
                                                   ,KORL_C_CAST(f32, color.b) / KORL_C_CAST(f32, KORL_U8_MAX)
                                                   ,KORL_C_CAST(f32, color.a) / KORL_C_CAST(f32, KORL_U8_MAX)};
 }
-korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(Korl_Gfx_Material_PrimitiveType primitiveType, Korl_Gfx_Material_Mode_Flags flags, Korl_Math_V4f32 colorLinear4Base)
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(void)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.primitiveType = primitiveType
-                                                              ,.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+                                                              ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
+                                                              ,.blend         = KORL_GFX_BLEND_ALPHA
+                                                              ,.flags         = KORL_GFX_MATERIAL_MODE_FLAGS_NONE}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 0}
+                                                    ,.maps = {.resourceHandleTextureBase     = 0
+                                                             ,.resourceHandleTextureSpecular = 0
+                                                             ,.resourceHandleTextureEmissive = 0}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = 0
+                                                                ,.resourceHandleShaderFragment = 0}};
+}
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultUnlitFlags(Korl_Gfx_Material_Mode_Flags flags)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+                                                              ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
+                                                              ,.blend         = KORL_GFX_BLEND_ALPHA
+                                                              ,.flags         = flags}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 0}
+                                                    ,.maps = {.resourceHandleTextureBase     = 0
+                                                             ,.resourceHandleTextureSpecular = 0
+                                                             ,.resourceHandleTextureEmissive = 0}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = 0
+                                                                ,.resourceHandleShaderFragment = 0}};
+}
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlitFlagsColorbase(Korl_Gfx_Material_Mode_Flags flags, Korl_Math_V4f32 colorLinear4Base)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
                                                               ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
                                                               ,.blend         = KORL_GFX_BLEND_ALPHA
                                                               ,.flags         = flags}
@@ -282,14 +313,29 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(Korl_Gfx_Material
                                                     ,.shaders = {.resourceHandleShaderVertex   = 0
                                                                 ,.resourceHandleShaderFragment = 0}};
 }
-korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(Korl_Gfx_Material_PrimitiveType primitiveType, Korl_Gfx_Material_Mode_Flags flags)
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(void)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.primitiveType = primitiveType
-                                                              ,.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
                                                               ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
                                                               ,.blend         = KORL_GFX_BLEND_ALPHA
-                                                              ,.flags         = flags}
+                                                              ,.flags         = KORL_GFX_MATERIAL_MODE_FLAGS_NONE}
                                                     ,.fragmentShaderUniform = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 32}
+                                                    ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+}
+korl_internal Korl_Gfx_Material korl_gfx_material_defaultLitColorbase(Korl_Math_V4f32 colorLinear4Base)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+                                                              ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
+                                                              ,.blend         = KORL_GFX_BLEND_ALPHA
+                                                              ,.flags         = KORL_GFX_MATERIAL_MODE_FLAGS_NONE}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = colorLinear4Base
                                                                               ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
                                                                               ,.factorColorSpecular = KORL_MATH_V4F32_ONE
                                                                               ,.shininess           = 32}
@@ -536,7 +582,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable(const Korl_Gfx_CreateI
     result.subType.runtime.type                    = createInfo->type;
     result.subType.runtime.interleavedAttributes   = createInfo->interleavedAttributes;
     result.transform                               = korl_math_transform3d_identity();
-    result.subType.runtime.overrides.primitiveType = primitiveType;
+    result.subType.runtime.primitiveType           = primitiveType;
     if(createInfo->vertexIndexType != KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
     {
         result.subType.runtime.vertexStagingMeta.indexType  = createInfo->vertexIndexType;
@@ -1102,7 +1148,7 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
     if(material)
         materialOverride = *material;
     else
-        materialOverride = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+        materialOverride = korl_gfx_material_defaultUnlit();
     materialOverride.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND;// _all_ text drawn this way _must_ be translucent
     if(enableDepthTest)
         materialOverride.modes.flags |=   KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
@@ -1137,7 +1183,7 @@ korl_internal void korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_M
 {
     Korl_Gfx_Drawable drawable = korl_gfx_drawableAxisNormalLines(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME);
     drawable.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
-    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit();
     korl_gfx_draw(&drawable, &material, 1);
 }
 korl_internal void korl_gfx_setRectangleUvAabb(Korl_Math_V2f32* uvs, const Korl_Math_Aabb2f32 aabb)

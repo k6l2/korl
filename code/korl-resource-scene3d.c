@@ -85,10 +85,10 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterial(korl_resource_scen
 {
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
-        return korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+        return korl_gfx_material_defaultUnlit();
     korl_assert(materialIndex < scene3d->gltf->materials.size);
     const Korl_Codec_Gltf_Material*const gltfMaterial = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
-    Korl_Gfx_Material result = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+    Korl_Gfx_Material result = korl_gfx_material_defaultUnlit();
     if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)

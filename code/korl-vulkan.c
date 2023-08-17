@@ -573,7 +573,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoVertexInput.pVertexAttributeDescriptions    = vertexAttributes;
     KORL_ZERO_STACK(VkPipelineInputAssemblyStateCreateInfo, createInfoInputAssembly);
     createInfoInputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    switch(pipeline->materialModes.primitiveType)
+    switch(pipeline->primitiveType)
     {
     case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES     : createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  break;
     case KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP: createInfoInputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; break;
@@ -1129,7 +1129,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     surfaceContext->drawState.uboSceneProperties.m4f32Projection = KORL_MATH_M4F32_IDENTITY;
     surfaceContext->drawState.pipelineConfigurationCache         = KORL_STRUCT_INITIALIZE_ZERO(_Korl_Vulkan_Pipeline);
     surfaceContext->drawState.scissor                            = surfaceContext->drawState.scissor = scissorDefault;
-    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, KORL_GFX_MATERIAL_MODE_FLAGS_NONE, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE)).fragmentShaderUniform;
+    surfaceContext->drawState.uboMaterialProperties              = korl_gfx_material_defaultUnlit().fragmentShaderUniform;
     surfaceContext->drawState.materialMaps.base                  = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.specular              = surfaceContext->defaultTexture;
     surfaceContext->drawState.materialMaps.emissive              = surfaceContext->defaultTexture;
@@ -2247,7 +2247,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
                                ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
     }
 }
-korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta)
+korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
@@ -2266,6 +2266,7 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     if(   surfaceContext->drawState.pipelineConfigurationCache.shaderVertex   == VK_NULL_HANDLE
        || surfaceContext->drawState.pipelineConfigurationCache.shaderFragment == VK_NULL_HANDLE)
         return;
+    surfaceContext->drawState.pipelineConfigurationCache.primitiveType = primitiveType;
     _korl_vulkan_flushPipelineState(stagingMeta);// calls vkCmdBindPipeline
     _korl_vulkan_flushDescriptors();// calls vkUpdateDescriptorSets & vkCmdBindDescriptorSets
     /* compose the draw commands */
@@ -2313,11 +2314,11 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
                  ,stagingMeta->vertexCount, instanceCount, /*firstVertex*/0, /*firstInstance*/0);
     surfaceContext->drawStateLast = surfaceContext->drawState;
 }
-korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta)
+korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
-    _korl_vulkan_draw(stagingAllocation->deviceBuffer, stagingAllocation->deviceBufferOffset, stagingMeta);
+    _korl_vulkan_draw(stagingAllocation->deviceBuffer, stagingAllocation->deviceBufferOffset, stagingMeta, primitiveType);
 }
-korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta)
+korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* attempt to obtain the vertex buffer device memory allocation; we can't do anything if the handle is invalid */
@@ -2326,7 +2327,7 @@ korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_Allocat
         return;
     korl_assert(bufferAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);// sanity check; make sure user is using a Buffer allocation
     /**/
-    _korl_vulkan_draw(bufferAllocation->subType.buffer.vulkanBuffer, vertexBufferByteOffset, stagingMeta);
+    _korl_vulkan_draw(bufferAllocation->subType.buffer.vulkanBuffer, vertexBufferByteOffset, stagingMeta, primitiveType);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Resource_Texture_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {

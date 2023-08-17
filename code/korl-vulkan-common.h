@@ -110,9 +110,10 @@ typedef struct _Korl_Vulkan_Pipeline
     /* ---------------------------------------------------------------------- */
     /* pipeline meta data which should be able to fully describe the pipeline 
         itself: */
-    Korl_Gfx_Material_Modes materialModes;
-    VkShaderModule          shaderVertex;
-    VkShaderModule          shaderFragment;
+    Korl_Gfx_Material_PrimitiveType primitiveType;
+    Korl_Gfx_Material_Modes         materialModes;
+    VkShaderModule                  shaderVertex;
+    VkShaderModule                  shaderFragment;
     struct
     {
         //note: `binding` & `input` values are implicit; those are just the index into this array!

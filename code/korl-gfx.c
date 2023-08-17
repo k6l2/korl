@@ -282,12 +282,11 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         if(materials)
         {
             korl_assert(materialsSize == 1);
-            materialLocal                      = materials[0];
-            materialLocal.modes.primitiveType  = context->subType.runtime.overrides.primitiveType;
-            materialLocal.modes.flags         |= context->subType.runtime.overrides.materialModeFlags;
+            materialLocal              = materials[0];
+            materialLocal.modes.flags |= context->subType.runtime.overrides.materialModeFlags;
         }
         else
-            materialLocal = korl_gfx_material_defaultUnlit(context->subType.runtime.overrides.primitiveType, context->subType.runtime.overrides.materialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+            materialLocal = korl_gfx_material_defaultUnlitFlags(context->subType.runtime.overrides.materialModeFlags);
         if(context->subType.runtime.overrides.materialMapBase)
             materialLocal.maps.resourceHandleTextureBase = context->subType.runtime.overrides.materialMapBase;
         if(context->subType.runtime.overrides.shaderVertex)
@@ -309,14 +308,15 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         switch(context->subType.runtime.type)
         {
         case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
-            korl_gfx_drawStagingAllocation(&context->subType.runtime.subType.singleFrame.stagingAllocation, &context->subType.runtime.vertexStagingMeta);
+            korl_gfx_drawStagingAllocation(&context->subType.runtime.subType.singleFrame.stagingAllocation, &context->subType.runtime.vertexStagingMeta, context->subType.runtime.primitiveType);
             break;
         case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:{
-            korl_gfx_drawVertexBuffer(context->subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &context->subType.runtime.vertexStagingMeta);
+            korl_gfx_drawVertexBuffer(context->subType.runtime.subType.multiFrame.resourceHandleBuffer, 0, &context->subType.runtime.vertexStagingMeta, context->subType.runtime.primitiveType);
             break;}
         }
         break;}
     case KORL_GFX_DRAWABLE_TYPE_MESH:{
+        #if 0//@TODO: refactor
         const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
                                         ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
         u32                                       meshPrimitiveCount       = 0;
@@ -344,6 +344,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             korl_vulkan_setDrawState(&drawState);
             korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, 0, meshPrimitiveVertexMetas + mp);
         }
+        #endif
         break;}
     }
 }
@@ -371,12 +372,12 @@ korl_internal KORL_FUNCTION_korl_gfx_stagingReallocate(korl_gfx_stagingReallocat
 }
 korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingAllocation)
 {
-    korl_vulkan_drawStagingAllocation(stagingAllocation, stagingMeta);
+    korl_vulkan_drawStagingAllocation(stagingAllocation, stagingMeta, primitiveType);
 }
 korl_internal KORL_FUNCTION_korl_gfx_drawVertexBuffer(korl_gfx_drawVertexBuffer)
 {
     const Korl_Vulkan_DeviceMemory_AllocationHandle bufferDeviceMemoryAllocationHandle = korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(resourceHandleBuffer);
-    korl_vulkan_drawVertexBuffer(bufferDeviceMemoryAllocationHandle, bufferByteOffset, stagingMeta);
+    korl_vulkan_drawVertexBuffer(bufferDeviceMemoryAllocationHandle, bufferByteOffset, stagingMeta, primitiveType);
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)
 {

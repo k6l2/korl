@@ -1583,7 +1583,7 @@ korl_internal void korl_gui_frameEnd(void)
             }
             korl_time_probeStart(draw_window_panel);
             {/* draw the window panel background quad */
-                Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(windowColor));
+                Korl_Gfx_Material material = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(windowColor));
                 korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, aabbSize, 0, &material, NULL, NULL, NULL);
             }
             if(widget->subType.window.styleFlags & KORL_GUI_WINDOW_STYLE_FLAG_TITLEBAR)
@@ -1591,7 +1591,7 @@ korl_internal void korl_gui_frameEnd(void)
                 childWidgetCursorOffset = (Korl_Math_V2f32){0, -context->style.windowTitleBarPixelSizeY};
                 korl_time_probeStart(title_bar);
                 {/* draw the window title bar */
-                    Korl_Gfx_Material material = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE));
+                    Korl_Gfx_Material material = korl_gfx_material_defaultUnlitFlags(defaultMaterialModeFlags);
                     Korl_Gfx_Color4u8* colors;
                     korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.1f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, (Korl_Math_V2f32){aabbSize.x, context->style.windowTitleBarPixelSizeY}, 0, &material, NULL, &colors, NULL);
                     colors[0] = colors[2] = titleBarColor;// conditionally highlight the title bar color
@@ -1606,8 +1606,8 @@ korl_internal void korl_gui_frameEnd(void)
                                                                                  : 0;
                     const f32                            titleBarTextAabbSizeX =   textMetrics.aabbSize.x 
                                                                                  + /*expand the content AABB size for the title bar buttons*/(usedWidget->widget->subType.window.titleBarButtonCount * context->style.windowTitleBarPixelSizeY);
-                    const Korl_Gfx_Material              textMaterial          = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorText));
-                    const Korl_Gfx_Material              textMaterialOutline   = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorTextOutline));
+                    const Korl_Gfx_Material              textMaterial          = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorText));
+                    const Korl_Gfx_Material              textMaterialOutline   = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorTextOutline));
                     korl_gfx_drawUtf83d((Korl_Math_V3f32){widget->position.x, widget->position.y - textPaddingY, z + 0.2f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, string_getRawAcu8(&widget->subType.window.titleBarText), context->style.resourceHandleFont, context->style.windowTextPixelSizeY, context->style.textOutlinePixelSize, &textMaterial, &textMaterialOutline, NULL);
                     usedWidget->transient.aabbContent = korl_math_aabb2f32_union(usedWidget->transient.aabbContent
                                                                                 ,korl_math_aabb2f32_fromPoints(widget->position.x, widget->position.y, widget->position.x + titleBarTextAabbSizeX, widget->position.y - textMetrics.aabbSize.y));
@@ -1692,7 +1692,7 @@ korl_internal void korl_gui_frameEnd(void)
                 glitchy rasterization due to rounding errors (there isn't an easy way to place lines at an exact 
                 pixel outside of a rectangle), we simply use the depth buffer to draw a giant rectangle to fill the 
                 scissor rectangle placed behind (greater -Z magnitude) everything that was just drawn */
-            Korl_Gfx_Material materialOutline = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(colorBorder));
+            Korl_Gfx_Material materialOutline = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(colorBorder));
             korl_gfx_drawRectangle3d((Korl_Math_V3f32){windowMiddle.x, windowMiddle.y, z}, KORL_MATH_QUATERNION_IDENTITY, (Korl_Math_V2f32){0.5f, 0.5f}, korl_math_v2f32_multiplyScalar(aabbSize, 2), 0, &materialOutline, NULL, NULL, NULL);
             korl_time_probeStop(draw_window_border);
             korl_time_probeStop(draw_window_panel);
@@ -1737,7 +1737,7 @@ korl_internal void korl_gui_frameEnd(void)
                     colorButton = context->style.colorTitleBar;
                 break;}
             }
-            const Korl_Gfx_Material materialButton = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(colorButton));
+            const Korl_Gfx_Material materialButton = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(colorButton));
             korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialButton, NULL, NULL, NULL);
             switch(widget->subType.button.display)
             {
@@ -1755,7 +1755,7 @@ korl_internal void korl_gui_frameEnd(void)
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_CLOSE:{
                 const f32               smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
-                const Korl_Gfx_Material material     = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
+                const Korl_Gfx_Material material     = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
                 KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoIconPiece);
                 createInfoIconPiece.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
                 Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(&createInfoIconPiece, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){0.1f * smallestSize, smallestSize});
@@ -1772,7 +1772,7 @@ korl_internal void korl_gui_frameEnd(void)
                 break;}
             case _KORL_GUI_WIDGET_BUTTON_DISPLAY_WINDOW_MINIMIZE:{
                 const f32                smallestSize = KORL_MATH_MIN(widget->size.x, widget->size.y);
-                const Korl_Gfx_Material  material     = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
+                const Korl_Gfx_Material  material     = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorButtonWindowTitleBarIcons));
                 KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoIconPiece);
                 createInfoIconPiece.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
                 Korl_Gfx_Drawable iconPiece = korl_gfx_drawableRectangle(&createInfoIconPiece, (Korl_Math_V2f32){0.5f, 0.5f}, (Korl_Math_V2f32){smallestSize, 0.1f * smallestSize});
@@ -1854,10 +1854,10 @@ korl_internal void korl_gui_frameEnd(void)
             case KORL_GUI_SCROLL_BAR_AXIS_X: sliderPosition = (Korl_Math_V3f32){widget->position.x + sliderOffset, widget->position.y, z + 0.5f}; break;
             case KORL_GUI_SCROLL_BAR_AXIS_Y: sliderPosition = (Korl_Math_V3f32){widget->position.x, widget->position.y - sliderOffset, z + 0.5f}; break;
             }
-            const Korl_Gfx_Material materialSlider = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(colorSlider));
+            const Korl_Gfx_Material materialSlider = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(colorSlider));
             korl_gfx_drawRectangle3d(sliderPosition, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, sliderSize, 0, &materialSlider, NULL, NULL, NULL);
             /* draw the background region */
-            const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorScrollBar));
+            const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(context->style.colorScrollBar));
             Korl_Gfx_Color4u8* backgroundColors;
             korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, widget->size, 0, &materialBackground, NULL, &backgroundColors, NULL);
             for(u8 i = 0; i < 4; i++)
@@ -1880,12 +1880,12 @@ korl_internal void korl_gui_frameEnd(void)
             korl_assert(usedWidgetParent);// for now, we want to just have the INPUT_TEXT widget fill the remaining X space of our parent
             usedWidget->transient.aabbContent.max.x = usedWidgetParent->widget->position.x + usedWidgetParent->widget->size.x;
             const Korl_Math_V2f32 contentAabbSize = korl_math_aabb2f32_size(usedWidget->transient.aabbContent);
-            const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_BLACK));
+            const Korl_Gfx_Material materialBackground = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear(KORL_COLOR4U8_BLACK));
             korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, contentAabbSize, 0, &materialBackground, NULL, NULL, NULL);
             /* draw the selection region _behind_ the text, if our cursor defines a selection */
             const Korl_Math_V2f32      cursorSize          = {2, textLineDeltaY};
             const Korl_Math_V2f32      cursorOrigin        = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
-            const Korl_Gfx_Material    cursorMaterial      = korl_gfx_material_defaultUnlit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID, defaultMaterialModeFlags, korl_gfx_color_toLinear((Korl_Gfx_Color4u8){0, 255, 0, 100}));
+            const Korl_Gfx_Material    cursorMaterial      = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear((Korl_Gfx_Color4u8){0, 255, 0, 100}));
             const u$                   cursorBegin         = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
                                                                           ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
             const u$                   cursorEnd           = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
