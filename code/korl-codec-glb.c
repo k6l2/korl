@@ -344,7 +344,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_BUFFERS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_BUFFERS_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->buffers, sizeof(Korl_Codec_Gltf_Buffer), NULL);
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->buffers, sizeof(Korl_Codec_Gltf_Buffer), &KORL_CODEC_GLTF_BUFFER_DEFAULT);
                     break;}
                 case KORL_GLTF_OBJECT_BUFFERS_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -723,7 +723,7 @@ korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glb
     korl_shared_const u32 GLB_VERSION = 2;
     if(!korl_memory_isLittleEndian())
         korl_log(ERROR, "big-endian systems not supported");
-    const u8* glbDataU8 = KORL_C_CAST(u8*, glbData);
+    const u8*      glbDataU8 = KORL_C_CAST(u8*, glbData);
     /* decode GLB header */
     struct
     {
@@ -739,21 +739,26 @@ korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glb
     korl_assert(glbHeader.version <= GLB_VERSION);
     korl_assert(glbHeader.length <= glbDataBytes);// the GLB data must be fully-contained in the provided `glbData`
     const u8*const glbDataEnd = KORL_C_CAST(u8*, glbData) + glbHeader.length;
-    /* decode chunk 0 (JSON) */
+    korl_assert(glbDataEnd <= KORL_C_CAST(u8*, glbData) + glbDataBytes);
+    /* decode chunk 0 (JSON); this chunk is _required_ */
     _Korl_Codec_Glb_Chunk glbChunk;
     glbChunk.bytes = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.bytes);
-    glbChunk.type  = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.bytes);
+    glbChunk.type  = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.type);
     glbChunk.data  = glbDataU8;                     glbDataU8 += glbChunk.bytes;
     korl_assert(glbChunk.type == 0x4E4F534A/*ascii string "JSON"*/);
     result = _korl_codec_glb_decodeChunkJson(&glbChunk, resultAllocator);
-    /* decode chunk 1 (binary buffer) */
-    glbChunk.bytes = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.bytes);
-    glbChunk.type  = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.bytes);
-    glbChunk.data  = glbDataU8;                     glbDataU8 += glbChunk.bytes;
-    korl_assert(glbChunk.type == 0x004E4942/*ascii string "\0BIN"*/);
-    /* realloc the result struct, and append the binary buffer after the GLTF data */
-    result = korl_reallocateDirty(resultAllocator, result, result->bytes + glbChunk.bytes);
-    korl_memory_copy(KORL_C_CAST(u8*, result) + result->bytes, glbChunk.data, glbChunk.bytes);
+    if(glbDataU8 < glbDataEnd)
+    {
+        /* decode chunk 1 (binary buffer); this chunk is _optional_ */
+        glbChunk.bytes = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.bytes);
+        glbChunk.type  = *KORL_C_CAST(u32*, glbDataU8); glbDataU8 += sizeof(glbChunk.type);
+        glbChunk.data  = glbDataU8;                     glbDataU8 += glbChunk.bytes;
+        korl_assert(glbChunk.type == 0x004E4942/*ascii string "\0BIN"*/);
+        korl_assert(result->buffers.size);// glTF-2.0. spec. 3.6.1.2. GLB-stored Buffer; if the GLB file has a BIN chunk, we expect there to be at least one buffer
+        Korl_Codec_Gltf_Buffer*const buffers = korl_codec_gltf_getBuffers(result);
+        korl_assert(!buffers[0].stringUri.size);// glTF-2.0. spec. 3.6.1.2. GLB-stored Buffer; in addition, the first buffer's URI field _must_ be undefined
+        buffers[0].glbByteOffset = korl_checkCast_i$_to_i32(glbChunk.data - KORL_C_CAST(u8*, glbData));
+    }
     return result;
 }
 korl_internal Korl_Codec_Gltf_Mesh* korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context)
@@ -832,4 +837,20 @@ korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Acces
         break;}
     }
     return componentBytes * componentMultiplier;
+}
+korl_internal Korl_Codec_Gltf_Texture* korl_codec_gltf_getTextures(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Texture*, KORL_C_CAST(u8*, context) + context->textures.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Image* korl_codec_gltf_getImages(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Image*, KORL_C_CAST(u8*, context) + context->images.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Sampler* korl_codec_gltf_getSamplers(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Sampler*, KORL_C_CAST(u8*, context) + context->samplers.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Material* korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Material*, KORL_C_CAST(u8*, context) + context->materials.byteOffset);
 }

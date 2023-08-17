@@ -7,6 +7,9 @@ typedef struct Korl_Codec_Gltf_Data
     u32 byteOffset;
     u32 size;// as in the array size; _not_ bytes
 } Korl_Codec_Gltf_Data;
+/** This struct will be stored as a single contiguous allocation in memory, 
+ * where the byte offsets of its members refer to data immediately following 
+ * this struct */
 typedef struct Korl_Codec_Gltf
 {
     u32 bytes;// # of bytes required for this struct, as well as all memory referred to by byteOffsets stored in this struct
@@ -98,12 +101,15 @@ typedef struct Korl_Codec_Gltf_BufferView
     u32 buffer;
     u32 byteLength;
     u32 byteOffset;
-    u8  byteStride;// glTF-2.0 spec 5.11.4: validRange=[4, 252]; 0 => attribute is tightly packed
+    u8  byteStride;// glTF-2.0 spec 5.11.4: validRange=[4, 252]; 0 => attribute is tightly packed; for Accessor byte stride, call `korl_codec_gltf_accessor_getStride` instead of using this member directly
 } Korl_Codec_Gltf_BufferView;
 typedef struct Korl_Codec_Gltf_Buffer
 {
-    u32 byteLength;
+    Korl_Codec_Gltf_Data stringUri;// 0 => undefined; "Uniform Resource Identifier"; even though this field implies this string is simply a file path (relative to this gltf file), it can also be a an embedded base64 string, representing the buffer's data itself
+    u32                  byteLength;
+    i32                  glbByteOffset;// only valid for the buffer backed by GLB chunk 1 binary data; the byte offset location of the buffer within the original GLB file
 } Korl_Codec_Gltf_Buffer;
+korl_global_const Korl_Codec_Gltf_Buffer KORL_CODEC_GLTF_BUFFER_DEFAULT = {.glbByteOffset = -1};
 typedef struct Korl_Codec_Gltf_Material
 {
     Korl_Codec_Gltf_Data rawUtf8Name;
@@ -156,7 +162,7 @@ typedef struct Korl_Codec_Gltf_Sampler
 } Korl_Codec_Gltf_Sampler;
 korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
                                                                             ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
-korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
+korl_internal Korl_Codec_Gltf*                korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
 korl_internal acu8                            korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
 korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
@@ -164,3 +170,7 @@ korl_internal Korl_Codec_Gltf_Accessor*       korl_codec_gltf_getAccessors(const
 korl_internal Korl_Codec_Gltf_BufferView*     korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Buffer*         korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context);
 korl_internal u32                             korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context, const Korl_Codec_Gltf_BufferView* bufferViewArray);
+korl_internal Korl_Codec_Gltf_Texture*        korl_codec_gltf_getTextures(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Image*          korl_codec_gltf_getImages(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Sampler*        korl_codec_gltf_getSamplers(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Material*       korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context);

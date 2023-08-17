@@ -2337,8 +2337,13 @@ korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_
     case KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED     : break;
     case KORL_RESOURCE_TEXTURE_FORMAT_R8_UNORM      : vkFormatImage = VK_FORMAT_R8_UNORM;       break;
     case KORL_RESOURCE_TEXTURE_FORMAT_R8_SRGB       : vkFormatImage = VK_FORMAT_R8_SRGB;        break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8G8_UNORM    : vkFormatImage = VK_FORMAT_R8G8_UNORM;     break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8G8_SRGB     : vkFormatImage = VK_FORMAT_R8G8_SRGB;      break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8_UNORM  : vkFormatImage = VK_FORMAT_R8G8B8_UNORM;   break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8_SRGB   : vkFormatImage = VK_FORMAT_R8G8B8_SRGB;    break;
     case KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM: vkFormatImage = VK_FORMAT_R8G8B8A8_UNORM; break;
     case KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_SRGB : vkFormatImage = VK_FORMAT_R8G8B8A8_SRGB;  break;
+    case KORL_RESOURCE_TEXTURE_FORMAT_ENUM_COUNT    : break;
     }
     return _korl_vulkan_deviceMemory_allocateTexture(&surfaceContext->deviceMemoryDeviceLocal
                                                     ,createInfo->size.x, createInfo->size.y

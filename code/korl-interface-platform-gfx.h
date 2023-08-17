@@ -29,7 +29,6 @@ typedef struct Korl_Gfx_DrawState_Scissor
     u32 x, y;
     u32 width, height;
 } Korl_Gfx_DrawState_Scissor;
-typedef struct Korl_Gfx_Material Korl_Gfx_Material;
 typedef struct Korl_Gfx_DrawState_StorageBuffers
 {
     Korl_Resource_Handle resourceHandleVertex;
@@ -75,6 +74,7 @@ typedef struct Korl_Gfx_DrawState_Lighting
     u32                   lightsCount;
     const Korl_Gfx_Light* lights;
 } Korl_Gfx_DrawState_Lighting;
+typedef struct Korl_Gfx_Material Korl_Gfx_Material;
 typedef struct Korl_Gfx_DrawState
 {
     const Korl_Gfx_Material*                   material;
@@ -194,6 +194,7 @@ enum
 typedef u32 Korl_Gfx_Material_Mode_Flags;
 typedef struct Korl_Gfx_Material_Modes
 {
+    // @TODO: is it really worth packing primitiveType into Korl_Gfx_Material?  In both GLTF, as well as my own code (we always seem to just override the Material's primitiveType with whatever we're drawing's primitiveType), this value seems to never be stored/used along with the material itself; it always seems to be packed together with MeshPrimitive vertex data
     Korl_Gfx_Material_PrimitiveType primitiveType;
     Korl_Gfx_Material_PolygonMode   polygonMode;
     Korl_Gfx_Material_CullMode      cullMode;

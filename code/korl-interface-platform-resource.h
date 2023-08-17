@@ -83,3 +83,5 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_font_getUtf16Metrics(name)      Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text)
 #define KORL_FUNCTION_korl_resource_font_generateUtf16(name)        void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
 #define KORL_FUNCTION_korl_resource_font_textGraphemePosition(name) Korl_Math_V2f32                 name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(name)  u32                             name(Korl_Resource_Handle handleResourceScene3d)
+#define KORL_FUNCTION_korl_resource_scene3d_getMaterial(name)       Korl_Gfx_Material               name(Korl_Resource_Handle handleResourceScene3d, u32 materialIndex)

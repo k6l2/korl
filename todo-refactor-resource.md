@@ -76,8 +76,8 @@
         - otherwise, we have to make sure to remember that we have not actually been able to use the resource yet
 [x] test korl-resource-font hot-reload of font assetCache file
 [ ] add SCENE3D Resource
-  [ ] transcode materials
-    [ ] transcode & manage runtime TEXTURE resources using raw PNG data (images.bufferView) & sampler data
+  [x] transcode materials
+    [x] transcode & manage runtime TEXTURE resources using raw PNG data (images.bufferView) & sampler data
     - MVP: obtain a material (via a material index), & use it to draw arbitrary geometry, such as a test quad
       - thankfully, there isn't really a need to create a MATERIAL resource, as far as I can tell so far...
   [ ] transcode meshes
