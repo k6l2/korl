@@ -54,20 +54,22 @@ typedef enum Korl_Codec_Gltf_Mesh_Primitive_Mode
     ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLE_STRIP = 5
     ,KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLE_FAN   = 6
 } Korl_Codec_Gltf_Mesh_Primitive_Mode;
+enum Korl_Codec_Gltf_Mesh_Primitive_Attribute
+    {KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_POSITION
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_NORMAL
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_TEXCOORD_0
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_JOINTS_0
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_JOINT_WEIGHTS_0
+    ,KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_ENUM_COUNT
+};
 typedef struct Korl_Codec_Gltf_Mesh_Primitive
 {
     Korl_Codec_Gltf_Mesh_Primitive_Mode mode;
-    struct
-    {
-        i32 position;
-        i32 normal;
-        i32 texCoord0;
-    } attributes;
-    i32 indices;
-    i32 material;
+    i32                                 attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_ENUM_COUNT];// Accessor index
+    i32                                 indices;// Accessor index
+    i32                                 material;// Material index
 } Korl_Codec_Gltf_Mesh_Primitive;
 korl_global_const Korl_Codec_Gltf_Mesh_Primitive KORL_CODEC_GLTF_MESH_PRIMITIVE_DEFAULT = {.mode = KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES
-                                                                                          ,.attributes = {.position = -1, .normal = -1, .texCoord0 = -1}
                                                                                           ,.indices = -1, .material = -1};
 typedef enum Korl_Codec_Gltf_Accessor_ComponentType
     /* these values are derived from the glTF-2.0 spec 3.6.2.2 */

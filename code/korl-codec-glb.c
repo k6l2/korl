@@ -41,6 +41,8 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_JOINTS_0
+    ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_JOINTWEIGHTS_0
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_MATERIAL
     ,KORL_GLTF_OBJECT_ACCESSORS
@@ -258,7 +260,10 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY;
                     Korl_Codec_Gltf_Mesh*const currentMesh = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY, sizeof(*currentMesh));
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentMesh->primitives, sizeof(Korl_Codec_Gltf_Mesh_Primitive), &KORL_CODEC_GLTF_MESH_PRIMITIVE_DEFAULT);
+                    Korl_Codec_Gltf_Mesh_Primitive meshPrimitiveDefault = KORL_CODEC_GLTF_MESH_PRIMITIVE_DEFAULT;
+                    for(u8 i = 0; i < KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_ENUM_COUNT; i++)
+                        meshPrimitiveDefault.attributes[i] = -1;// default all mesh primitive attributes to "undefined" values
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentMesh->primitives, sizeof(Korl_Codec_Gltf_Mesh_Primitive), &meshPrimitiveDefault);
                     break;}
                 case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -285,6 +290,10 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL;
                     else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("TEXCOORD_0")))
                         objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("JOINTS_0")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_JOINTS_0;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("WEIGHTS_0")))
+                        objectType = KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_JOINTWEIGHTS_0;
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
@@ -512,15 +521,23 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_POSITION:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                if(currentMeshPrimitive) currentMeshPrimitive->attributes.position = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_POSITION] = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_NORMAL:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                if(currentMeshPrimitive) currentMeshPrimitive->attributes.normal = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_NORMAL] = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_TEXCOORD_0:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
-                if(currentMeshPrimitive) currentMeshPrimitive->attributes.texCoord0 = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_TEXCOORD_0] = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_JOINTS_0:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_JOINTS_0] = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_ATTRIBUTES_OBJECT_JOINTWEIGHTS_0:{
+                Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
+                if(currentMeshPrimitive) currentMeshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_JOINT_WEIGHTS_0] = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             case KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY_ELEMENT_INDICES:{
                 Korl_Codec_Gltf_Mesh_Primitive*const currentMeshPrimitive = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT_PRIMITIVES_ARRAY, sizeof(*currentMeshPrimitive));
