@@ -85,3 +85,4 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_font_textGraphemePosition(name) Korl_Math_V2f32                 name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(name)  u32                             name(Korl_Resource_Handle handleResourceScene3d)
 #define KORL_FUNCTION_korl_resource_scene3d_getMaterial(name)       Korl_Gfx_Material               name(Korl_Resource_Handle handleResourceScene3d, u32 materialIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getMesh(name)           Korl_Resource_Handle            name(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName)
