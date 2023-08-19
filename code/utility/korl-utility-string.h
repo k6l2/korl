@@ -72,6 +72,11 @@ korl_internal int korl_string_compareUtf8(const char* a, const char* b, u$ array
  */
 korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b, u$ arraySizeLimit);
 /**
+ * \return \c 0 if the two strings are equal
+ */
+korl_internal int korl_string_compareAcu8(acu8 a, acu8 b);
+korl_internal bool korl_string_equalsAcu8(acu8 a, acu8 b);
+/**
  * \return The size of string \c s _excluding_ the null terminator.  "Size" is 
  * defined as the total number of characters; _not_ the total number of 
  * codepoints!

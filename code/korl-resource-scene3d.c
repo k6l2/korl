@@ -2,6 +2,7 @@
 #include "korl-interface-platform.h"
 #include "korl-codec-glb.h"
 #include "utility/korl-checkCast.h"
+#include "utility/korl-utility-string.h"
 typedef struct _Korl_Resource_Scene3d
 {
     Korl_Memory_AllocatorHandle allocator;
@@ -9,6 +10,8 @@ typedef struct _Korl_Resource_Scene3d
     Korl_Resource_Handle*       textures;
     u16                         texturesSize;// should be == gltf->textures.size
     Korl_Resource_Handle        vertexBuffer;// single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
+    Korl_Resource_Handle*       meshes;
+    u16                         meshesSize;// should be == gltf->meshes.size
 } _Korl_Resource_Scene3d;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
 {
@@ -24,9 +27,12 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreat
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_scene3d_descriptorStructDestroy)
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
+    for(u16 m = 0; m < scene3d->meshesSize; m++)
+        korl_resource_destroy(scene3d->meshes[m]);
+    korl_free(allocator, scene3d->meshes);
+    korl_resource_destroy(scene3d->vertexBuffer);
     for(u16 t = 0; t < scene3d->texturesSize; t++)
         korl_resource_destroy(scene3d->textures[t]);
-    korl_resource_destroy(scene3d->vertexBuffer);
     korl_free(allocator, scene3d->textures);
     korl_free(allocator, scene3d);
 }
@@ -93,6 +99,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     u$ vertexBufferBytesUsed = 0;// after we extract all the index/attribute data, we will resize the gfx-buffer to match this value exactly
     korl_resource_resize(scene3d->vertexBuffer, vertexBufferBytes);// reset our vertexBuffer to some base size
     const Korl_Codec_Gltf_Mesh*const gltfMeshes = korl_codec_gltf_getMeshes(scene3d->gltf);
+    if(scene3d->gltf->meshes.size)
+        if(scene3d->meshes)
+            // constrain scene3d re-transcodes to maintain the same # of meshes between loads
+            korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
+        else
+            scene3d->meshes = korl_allocate(scene3d->allocator, scene3d->gltf->meshes.size * sizeof(*scene3d->meshes));
+    scene3d->meshesSize = korl_checkCast_u$_to_u16(scene3d->gltf->meshes.size);
     for(u32 m = 0; m < scene3d->gltf->meshes.size; m++)
     {
         const Korl_Codec_Gltf_Mesh*const           mesh                            = gltfMeshes + m;
@@ -245,21 +258,15 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterial(korl_resource_scen
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMesh(korl_resource_scene3d_getMesh)
 {
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
-    korl_assert(scene3d);// handleResourceScene3d _must_ at least be a valid resource handle for this function to work
+    if(!scene3d || !scene3d->gltf)
+        return 0;
     /* if the resource has been transcoded, we can just do a lookup to see if 
         any of our gltf mesh names match the requested mesh name */
-    if(scene3d->gltf)
-    {
-        korl_assert(!"@TODO"); return 0;
-    }
-    else
-    /* otherwise, if we have not yet transcoded this resource, we must create a 
-        dummy mesh resource & add this getMesh request to a transient list 
-        within the scene3d resource, then when we transcode the scene3d resource 
-        we can re-create these dummy mesh resources & verify that all transient 
-        mesh request names are contained within the scene3d's transcoded list of 
-        mesh names */
-    {
-        korl_assert(!"@TODO"); return 0;
-    }
+    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
+    const Korl_Codec_Gltf_Mesh*const gltfMeshes = korl_codec_gltf_getMeshes(scene3d->gltf);
+    for(u32 m = 0; m < scene3d->gltf->meshes.size; m++)
+        if(korl_string_equalsAcu8(korl_codec_gltf_mesh_getName(scene3d->gltf, gltfMeshes + m), utf8MeshName))
+            return scene3d->meshes[m];
+    korl_log(WARNING, "mesh name \"%.*hs\" not found", utf8MeshName.size, utf8MeshName.data);
+    return 0;
 }

@@ -380,6 +380,18 @@ korl_internal int korl_string_compareUtf16(const wchar_t* a, const wchar_t* b, u
         return -1;
     return 0;
 }
+korl_internal int korl_string_compareAcu8(acu8 a, acu8 b)
+{
+    if(a.size < b.size)
+        return -1;
+    if(a.size > b.size)
+        return 1;
+    return korl_memory_compare_acu8(a, b);
+}
+korl_internal bool korl_string_equalsAcu8(acu8 a, acu8 b)
+{
+    return 0 == korl_string_compareAcu8(a, b);
+}
 korl_internal u$  korl_string_sizeUtf8(const char* s, u$ arraySizeLimit)
 {
     if(!s)
