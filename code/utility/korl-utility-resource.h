@@ -61,3 +61,11 @@ typedef struct Korl_Resource_Texture_CreateInfo
     Korl_Resource_Texture_Format formatImage;
     acu8                         imageFileMemoryBuffer;
 } Korl_Resource_Texture_CreateInfo;
+typedef struct Korl_Resource_Mesh_CreateInfo
+{
+    u32                                    meshPrimitiveCount;
+    const Korl_Gfx_Material_PrimitiveType* meshPrimitiveTypes;
+    const Korl_Gfx_VertexStagingMeta*      meshPrimitiveVertexStagingMetas;
+    const Korl_Gfx_Material*               meshPrimitiveMaterials;
+    Korl_Resource_Handle                   vertexGfxBuffer;
+} Korl_Resource_Mesh_CreateInfo;

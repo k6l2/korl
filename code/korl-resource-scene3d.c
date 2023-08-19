@@ -51,6 +51,17 @@ korl_internal const void* _korl_resource_scene3d_transcode_getViewedBuffer(_Korl
     const void*const viewedBufferData = KORL_C_CAST(u8*, bufferData ) + bufferView->byteOffset;
     return viewedBufferData;
 }
+korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resource_Scene3d*const scene3d, u32 materialIndex)
+{
+    korl_assert(materialIndex < scene3d->gltf->materials.size);
+    const Korl_Codec_Gltf_Material*const gltfMaterial = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
+    Korl_Gfx_Material result = korl_gfx_material_defaultUnlit();
+    if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
+        result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
+    if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
+        result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
+    return result;
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resource_scene3d_transcode)
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
@@ -110,14 +121,19 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     {
         const Korl_Codec_Gltf_Mesh*const           mesh                            = gltfMeshes + m;
         const Korl_Codec_Gltf_Mesh_Primitive*const gltfMeshPrimitives              = korl_codec_gltf_mesh_getPrimitives(scene3d->gltf, mesh);
-        Korl_Gfx_VertexStagingMeta*                meshPrimitiveVertexStagingMetas = korl_allocate(scene3d->allocator, mesh->primitives.size * sizeof(*meshPrimitiveVertexStagingMetas));
-        Korl_Gfx_Material_PrimitiveType*           meshPrimitiveTypes              = korl_allocate(scene3d->allocator, mesh->primitives.size * sizeof(*meshPrimitiveTypes));
+        void*                                      meshCreateInfoBuffer            = korl_allocate(scene3d->allocator, mesh->primitives.size * (  sizeof(Korl_Gfx_VertexStagingMeta) 
+                                                                                                                                                + sizeof(Korl_Gfx_Material_PrimitiveType)
+                                                                                                                                                + sizeof(Korl_Gfx_Material)));
+        Korl_Gfx_VertexStagingMeta*const           meshPrimitiveVertexStagingMetas = KORL_C_CAST(void*, KORL_C_CAST(u8*, meshCreateInfoBuffer) + 0);
+        Korl_Gfx_Material_PrimitiveType*const      meshPrimitiveTypes              = KORL_C_CAST(void*, KORL_C_CAST(u8*, meshPrimitiveVertexStagingMetas) + mesh->primitives.size * sizeof(*meshPrimitiveVertexStagingMetas));
+        Korl_Gfx_Material*const                    meshPrimitiveMaterials          = KORL_C_CAST(void*, KORL_C_CAST(u8*, meshPrimitiveTypes)              + mesh->primitives.size * sizeof(*meshPrimitiveTypes));
         /* extract vertex staging meta & store all vertex data into a runtime buffer resource */
         for(u32 mp = 0; mp < mesh->primitives.size; mp++)
         {
             const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive     = gltfMeshPrimitives              + mp;
             Korl_Gfx_VertexStagingMeta*const           vertexStagingMeta = meshPrimitiveVertexStagingMetas + mp;
             Korl_Gfx_Material_PrimitiveType*const      primitiveType     = meshPrimitiveTypes              + mp;
+            Korl_Gfx_Material*const                    material          = meshPrimitiveMaterials          + mp;
             switch(meshPrimitive->mode)
             {
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES         : *primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES;          break;
@@ -200,17 +216,22 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 korl_resource_update(scene3d->vertexBuffer, viewedBufferData, bufferView->byteLength, vertexBufferBytesUsed);
                 vertexBufferBytesUsed += bufferView->byteLength;
             }
+            if(meshPrimitive->material < 0)
+                *material = korl_gfx_material_defaultUnlit();
+            else
+                *material = _korl_resource_scene3d_getMaterial(scene3d, meshPrimitive->material);
         }
         /* create a mesh resource */
-        // how do we ensure that we create a resource that has the same Resource_Handle as a user-requested Mesh resource during an earlier time when this resource was not yet loaded?
-        // - we could implement some kind of system in korl-resource where we are able to "reserve" resource handles without making a resource
-        // - we could just implement special APIs for korl-resource-mesh that allow us to update or re-create the Mesh resource from a new CreateInfo
-        //   - korl-resource-scene3d would immediately create a Mesh resource upon user request
-        //   - once we get to this point, we would then update the Mesh resource with the proper CreateInfo
-        //   - at the end of this function, we can check to see if all of the mesh names that were priviously requested by the user have indeed been transcoded
-        //@TODO
-        korl_free(scene3d->allocator, meshPrimitiveVertexStagingMetas);
-        korl_free(scene3d->allocator, meshPrimitiveTypes);
+        KORL_ZERO_STACK(Korl_Resource_Mesh_CreateInfo, meshCreateInfo);
+        meshCreateInfo.meshPrimitiveCount              = mesh->primitives.size;
+        meshCreateInfo.meshPrimitiveTypes              = meshPrimitiveTypes;
+        meshCreateInfo.meshPrimitiveVertexStagingMetas = meshPrimitiveVertexStagingMetas;
+        meshCreateInfo.meshPrimitiveMaterials          = meshPrimitiveMaterials;
+        meshCreateInfo.vertexGfxBuffer                 = scene3d->vertexBuffer;
+        if(scene3d->meshes[m])
+            korl_resource_destroy(scene3d->meshes[m]);
+        scene3d->meshes[m] = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_MESH), &meshCreateInfo);
+        korl_free(scene3d->allocator, meshCreateInfoBuffer);
     }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_scene3d_clearTransientData)
@@ -246,14 +267,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterial(korl_resource_scen
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return korl_gfx_material_defaultUnlit();
-    korl_assert(materialIndex < scene3d->gltf->materials.size);
-    const Korl_Codec_Gltf_Material*const gltfMaterial = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
-    Korl_Gfx_Material result = korl_gfx_material_defaultUnlit();
-    if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
-        result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
-    if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
-        result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
-    return result;
+    return _korl_resource_scene3d_getMaterial(scene3d, materialIndex);
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMesh(korl_resource_scene3d_getMesh)
 {

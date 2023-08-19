@@ -123,6 +123,7 @@ typedef struct Korl_Codec_Gltf_Material
     {
         i32 baseColorTextureIndex;
     } pbrMetallicRoughness;
+    //@TODO: extract "shader-vertex" & "shader-fragment" strings that are in the "extras" properties, which allow us to assign shader file-backed resources to materials
 } Korl_Codec_Gltf_Material;
 korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.KHR_materials_specular = {.specularColorTextureIndex = -1}
                                                                               ,.pbrMetallicRoughness   = {.baseColorTextureIndex     = -1}};

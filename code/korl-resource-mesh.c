@@ -3,12 +3,13 @@
 #include "korl-vulkan.h"
 typedef struct _Korl_Resource_Mesh_Primitive
 {
-    Korl_Gfx_Material                         material;
-    Korl_Gfx_VertexStagingMeta                vertexStagingMeta;
-    Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer;
+    Korl_Gfx_Material_PrimitiveType primitiveType;
+    Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
+    Korl_Gfx_Material               material;
 } _Korl_Resource_Mesh_Primitive;
 typedef struct _Korl_Resource_Mesh
 {
+    Korl_Resource_Handle           vertexBuffer;// shallow resource; someone else manages this, so do not destroy it in here
     _Korl_Resource_Mesh_Primitive* meshPrimitives;
     u16                            meshPrimitivesSize;
 } _Korl_Resource_Mesh;
@@ -32,7 +33,9 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(_korl_resource_mesh_createRuntimeData)
 {
-    _Korl_Resource_Mesh*const mesh = resourceDescriptorStruct;
+    _Korl_Resource_Mesh*const                 mesh       = resourceDescriptorStruct;
+    const Korl_Resource_Mesh_CreateInfo*const createInfo = descriptorCreateInfo;
+    korl_assert(!"@TODO");
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(_korl_resource_mesh_createRuntimeMedia)
 {
