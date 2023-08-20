@@ -61,6 +61,7 @@ typedef struct Korl_Resource_Texture_CreateInfo
     Korl_Resource_Texture_Format formatImage;
     acu8                         imageFileMemoryBuffer;
 } Korl_Resource_Texture_CreateInfo;
+//@TODO: delete? see top of korl-resource-mesh.c for thoughts...
 typedef struct Korl_Resource_Mesh_CreateInfo
 {
     u32                                    meshPrimitiveCount;
