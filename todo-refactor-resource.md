@@ -86,7 +86,8 @@
     - MVP: user can obtain a MESH resource handle from a SCENE3D resource (even if the SCENE3D resource is not yet transcoded), then render it
     - scratch all that, we're just going to draw meshes from a SCENE3D resource by looking up their index using their string name like before; it simplifies a lot of stuff
   [x] transcode extra material strings to assign korl shaders to material pipeline stages
-  [ ] transcode material.alphaMode to determine korl material.modes.flags
+  [x] transcode material.alphaMode to determine korl material.modes.flags
+  [ ] transcode specularFactor & specularColorFactor
   [ ] refactor MESH Korl_Gfx_Drawable types to use the new scene3d APIs
   [ ] transcode skins
     - store inverseBindMatrices as BUFFER resource

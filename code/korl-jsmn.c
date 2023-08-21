@@ -1,5 +1,7 @@
 #include "korl-jsmn.h"
 #include "jsmn/jsmn.h"
+#include "utility/korl-utility-string.h"
+#include "korl-interface-platform.h"
 korl_internal i$ korl_jsmn_getString(const u8* json, const jsmntok_t* token, u8* o_bufferRawUtf8)
 {
     const acu8 tokenRawUtf8 = {.data = json + token->start, .size = token->end - token->start};
@@ -10,6 +12,18 @@ korl_internal i$ korl_jsmn_getString(const u8* json, const jsmntok_t* token, u8*
         o_bufferRawUtf8[tokenRawUtf8.size] = '\0';
     }
     return tokenRawUtf8.size + 1/*null-terminator*/;
+}
+korl_internal bool korl_jsmn_getBool(const u8* json, const jsmntok_t* token)
+{
+    const acu8 tokenRawUtf8 = {.data = json + token->start, .size = token->end - token->start};
+    korl_assert(token->type == JSMN_PRIMITIVE);
+    // korl_assert(tokenRawUtf8.data[0] == 't' || tokenRawUtf8.data[0] == 'f');
+    if(korl_string_equalsAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("true")))
+        return true;
+    if(korl_string_equalsAcu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("false")))
+        return false;
+    korl_log(ERROR, "invalid bool token: \"%.*hs\"", tokenRawUtf8.size, tokenRawUtf8.data);
+    return false;
 }
 korl_internal f32 korl_jsmn_getF32(const u8* json, const jsmntok_t* token)
 {

@@ -57,6 +57,13 @@ korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resourc
     korl_assert(materialIndex < scene3d->gltf->materials.size);
     const Korl_Codec_Gltf_Material*const gltfMaterial = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
     Korl_Gfx_Material result = korl_gfx_material_defaultUnlit();
+    switch(gltfMaterial->alphaMode)
+    {
+    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_OPAQUE:
+    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_MASK:  result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE; break;
+    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_BLEND: result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND; break;
+    }
+    result.modes.cullMode = gltfMaterial->doubleSided ? KORL_GFX_MATERIAL_CULL_MODE_NONE : KORL_GFX_MATERIAL_CULL_MODE_BACK;
     if(gltfMaterial->rawUtf8KorlShaderVertex.size)
         result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->rawUtf8KorlShaderVertex), KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(gltfMaterial->rawUtf8KorlShaderFragment.size)
@@ -65,9 +72,8 @@ korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resourc
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
         result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
-    // @TODO: transcode specular color factor from gltf
-    result.fragmentShaderUniform.factorColorSpecular = KORL_MATH_V4F32_ZERO;
-    // @TODO: transcode shininess from gltf
+    // // @TODO: transcode specular color factor from gltf
+    // result.fragmentShaderUniform.factorColorSpecular = KORL_MATH_V4F32_ZERO;
     result.fragmentShaderUniform.shininess = 32;
     return result;
 }

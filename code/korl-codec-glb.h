@@ -112,9 +112,17 @@ typedef struct Korl_Codec_Gltf_Buffer
     i32                  glbByteOffset;// only valid for the buffer backed by GLB chunk 1 binary data; the byte offset location of the buffer within the original GLB file
 } Korl_Codec_Gltf_Buffer;
 korl_global_const Korl_Codec_Gltf_Buffer KORL_CODEC_GLTF_BUFFER_DEFAULT = {.glbByteOffset = -1};
+typedef enum Korl_Codec_Gltf_Material_AlphaMode
+    {KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_OPAQUE// default
+    ,KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_MASK
+    ,KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_BLEND
+} Korl_Codec_Gltf_Material_AlphaMode;
 typedef struct Korl_Codec_Gltf_Material
 {
-    Korl_Codec_Gltf_Data rawUtf8Name;
+    Korl_Codec_Gltf_Data               rawUtf8Name;
+    Korl_Codec_Gltf_Material_AlphaMode alphaMode;
+    f32                                alphaCutoff;
+    bool                               doubleSided;
     struct
     {
         i32 specularColorTextureIndex;
@@ -126,7 +134,8 @@ typedef struct Korl_Codec_Gltf_Material
     Korl_Codec_Gltf_Data rawUtf8KorlShaderVertex;
     Korl_Codec_Gltf_Data rawUtf8KorlShaderFragment;
 } Korl_Codec_Gltf_Material;
-korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.KHR_materials_specular = {.specularColorTextureIndex = -1}
+korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.alphaCutoff            = 0.5f
+                                                                              ,.KHR_materials_specular = {.specularColorTextureIndex = -1}
                                                                               ,.pbrMetallicRoughness   = {.baseColorTextureIndex     = -1}};
 typedef struct Korl_Codec_Gltf_Texture
 {

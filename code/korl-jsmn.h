@@ -11,5 +11,6 @@
     #include "jsmn/jsmn.h"
 #undef JSMN_HEADER
 #include "korl-globalDefines.h"
-korl_internal i$  korl_jsmn_getString(const u8* json, const jsmntok_t* token, u8* o_bufferRawUtf8);
-korl_internal f32 korl_jsmn_getF32(const u8* json, const jsmntok_t* token);
+korl_internal i$   korl_jsmn_getString(const u8* json, const jsmntok_t* token, u8* o_bufferRawUtf8);
+korl_internal bool korl_jsmn_getBool(const u8* json, const jsmntok_t* token);
+korl_internal f32  korl_jsmn_getF32(const u8* json, const jsmntok_t* token);
