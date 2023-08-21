@@ -87,7 +87,7 @@
     - scratch all that, we're just going to draw meshes from a SCENE3D resource by looking up their index using their string name like before; it simplifies a lot of stuff
   [x] transcode extra material strings to assign korl shaders to material pipeline stages
   [x] transcode material.alphaMode to determine korl material.modes.flags
-  [ ] transcode specularFactor & specularColorFactor
+  [x] transcode specularFactor & specularColorFactor
   [ ] refactor MESH Korl_Gfx_Drawable types to use the new scene3d APIs
   [ ] transcode skins
     - store inverseBindMatrices as BUFFER resource

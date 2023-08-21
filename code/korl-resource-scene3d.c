@@ -72,9 +72,8 @@ korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resourc
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
         result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
-    // // @TODO: transcode specular color factor from gltf
-    // result.fragmentShaderUniform.factorColorSpecular = KORL_MATH_V4F32_ZERO;
-    result.fragmentShaderUniform.shininess = 32;
+    result.fragmentShaderUniform.factorColorSpecular = gltfMaterial->KHR_materials_specular.factors;
+    result.fragmentShaderUniform.shininess           = 32;// not sure if we can actually store this in gltf; see: https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_specular/README.md
     return result;
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resource_scene3d_transcode)

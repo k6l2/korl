@@ -125,8 +125,9 @@ typedef struct Korl_Codec_Gltf_Material
     bool                               doubleSided;
     struct
     {
-        i32 specularColorTextureIndex;
-    } KHR_materials_specular;
+        i32             specularColorTextureIndex;
+        Korl_Math_V4f32 factors;// {x,y,z} => specularColorFactor; {w} => specularFactor
+    } KHR_materials_specular;// extension doc: https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_specular/README.md
     struct
     {
         i32 baseColorTextureIndex;
@@ -135,7 +136,7 @@ typedef struct Korl_Codec_Gltf_Material
     Korl_Codec_Gltf_Data rawUtf8KorlShaderFragment;
 } Korl_Codec_Gltf_Material;
 korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.alphaCutoff            = 0.5f
-                                                                              ,.KHR_materials_specular = {.specularColorTextureIndex = -1}
+                                                                              ,.KHR_materials_specular = {.specularColorTextureIndex = -1, .factors = {1,1,1,1}}
                                                                               ,.pbrMetallicRoughness   = {.baseColorTextureIndex     = -1}};
 typedef struct Korl_Codec_Gltf_Texture
 {
