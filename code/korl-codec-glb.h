@@ -123,7 +123,8 @@ typedef struct Korl_Codec_Gltf_Material
     {
         i32 baseColorTextureIndex;
     } pbrMetallicRoughness;
-    //@TODO: extract "shader-vertex" & "shader-fragment" strings that are in the "extras" properties, which allow us to assign shader file-backed resources to materials
+    Korl_Codec_Gltf_Data rawUtf8KorlShaderVertex;
+    Korl_Codec_Gltf_Data rawUtf8KorlShaderFragment;
 } Korl_Codec_Gltf_Material;
 korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.KHR_materials_specular = {.specularColorTextureIndex = -1}
                                                                               ,.pbrMetallicRoughness   = {.baseColorTextureIndex     = -1}};
@@ -166,6 +167,7 @@ typedef struct Korl_Codec_Gltf_Sampler
 korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
                                                                             ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
 korl_internal Korl_Codec_Gltf*                korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
+korl_internal acu8                            korl_codec_gltf_getUtf8(const Korl_Codec_Gltf* context, Korl_Codec_Gltf_Data gltfData);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
 korl_internal acu8                            korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
 korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);

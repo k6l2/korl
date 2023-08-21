@@ -83,6 +83,10 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE_OBJECT
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE_OBJECT_INDEX
+    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS
+    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT
+    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_VERTEX
+    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT
     ,KORL_GLTF_OBJECT_TEXTURES
     ,KORL_GLTF_OBJECT_TEXTURES_ARRAY
     ,KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT
@@ -381,6 +385,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS;
                     else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("extensions")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("extras")))
+                        objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -426,6 +432,17 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     korl_assert(jsonToken->type == JSMN_STRING);
                     if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("index")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE_OBJECT_INDEX;
+                    break;}
+                case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT;
+                    break;}
+                case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("korl-shader-vertex")))
+                        objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_VERTEX;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("korl-shader-fragment")))
+                        objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT;
                     break;}
                 case KORL_GLTF_OBJECT_TEXTURES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
@@ -622,6 +639,14 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
                 if(currentMaterial) currentMaterial->pbrMetallicRoughness.baseColorTextureIndex = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
+            case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_VERTEX:{
+                Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->rawUtf8KorlShaderVertex);
+                break;}
+            case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT:{
+                Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->rawUtf8KorlShaderFragment);
+                break;}
             case KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT_SAMPLER:{
                 Korl_Codec_Gltf_Texture*const currentTexture = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_TEXTURES_ARRAY, sizeof(*currentTexture));
                 if(currentTexture) currentTexture->sampler = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
@@ -778,13 +803,17 @@ korl_internal Korl_Codec_Gltf* korl_codec_glb_decode(const void* glbData, u$ glb
     }
     return result;
 }
+korl_internal acu8 korl_codec_gltf_getUtf8(const Korl_Codec_Gltf* context, Korl_Codec_Gltf_Data gltfData)
+{
+    return (acu8){.size = gltfData.size, .data = KORL_C_CAST(u8*, context) + gltfData.byteOffset};
+}
 korl_internal Korl_Codec_Gltf_Mesh* korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context)
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Mesh*, KORL_C_CAST(u8*, context) + context->meshes.byteOffset);
 }
 korl_internal acu8 korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh)
 {
-    return (acu8){.size = mesh->rawUtf8Name.size, .data = KORL_C_CAST(u8*, context) + mesh->rawUtf8Name.byteOffset};
+    return korl_codec_gltf_getUtf8(context, mesh->rawUtf8Name);
 }
 korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh)
 {
