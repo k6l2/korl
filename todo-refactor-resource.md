@@ -80,10 +80,12 @@
     [x] transcode & manage runtime TEXTURE resources using raw PNG data (images.bufferView) & sampler data
     - MVP: obtain a material (via a material index), & use it to draw arbitrary geometry, such as a test quad
       - thankfully, there isn't really a need to create a MATERIAL resource, as far as I can tell so far...
-  [ ] transcode meshes
+  [x] transcode meshes
     - create & manage one MESH resource per mesh
     - store mesh primitives as Korl_Gfx_Drawables (BUFFER resources + vertex attribute meta data)
     - MVP: user can obtain a MESH resource handle from a SCENE3D resource (even if the SCENE3D resource is not yet transcoded), then render it
+    - scratch all that, we're just going to draw meshes from a SCENE3D resource by looking up their index using their string name like before; it simplifies a lot of stuff
+  [ ] refactor MESH Korl_Gfx_Drawable types to use the new scene3d APIs
   [ ] transcode skins
     - store inverseBindMatrices as BUFFER resource
     - store joint hierarchy information?

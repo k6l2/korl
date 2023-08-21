@@ -1,6 +1,8 @@
 /** utilities for KORL built-in resource descriptors */
 #pragma once
 #include "korl-globalDefines.h"
+#include "korl-interface-platform-gfx.h"
+#include "utility/korl-utility-math.h"
 /** KORL built-in resource descriptor names ***********************************/
 korl_global_const char*const KORL_RESOURCE_DESCRIPTOR_NAME_SHADER     = "korl-rd-shader";
 korl_global_const char*const KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER = "korl-rd-gfx-buffer";
@@ -61,12 +63,13 @@ typedef struct Korl_Resource_Texture_CreateInfo
     Korl_Resource_Texture_Format formatImage;
     acu8                         imageFileMemoryBuffer;
 } Korl_Resource_Texture_CreateInfo;
-//@TODO: delete? see top of korl-resource-mesh.c for thoughts...
-typedef struct Korl_Resource_Mesh_CreateInfo
+/** MISC **********************************************************************/
+/** The collection of all components required to draw any given mesh primitive, 
+ * excluding model or pose transforms. */
+typedef struct Korl_Resource_Scene3d_MeshPrimitive
 {
-    u32                                    meshPrimitiveCount;
-    const Korl_Gfx_Material_PrimitiveType* meshPrimitiveTypes;
-    const Korl_Gfx_VertexStagingMeta*      meshPrimitiveVertexStagingMetas;
-    const Korl_Gfx_Material*               meshPrimitiveMaterials;
-    Korl_Resource_Handle                   vertexGfxBuffer;
-} Korl_Resource_Mesh_CreateInfo;
+    Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
+    Korl_Resource_Handle            vertexBuffer;
+    Korl_Gfx_Material_PrimitiveType primitiveType;
+    Korl_Gfx_Material               material;
+} Korl_Resource_Scene3d_MeshPrimitive;

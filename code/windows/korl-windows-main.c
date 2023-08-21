@@ -137,7 +137,6 @@ shutdownSuccess:
 #include "korl-resource-texture.c"
 #include "korl-resource-font.c"
 #include "korl-resource-scene3d.c"
-#include "korl-resource-mesh.c"
 #include "korl-functionDynamo.c"
 #include "utility/korl-stringPool.c"
 #include "utility/korl-utility-math.c"

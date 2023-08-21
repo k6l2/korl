@@ -2,6 +2,7 @@
 #include "korl-globalDefines.h"
 #include "utility/korl-pool.h"
 #include "utility/korl-utility-math.h"
+typedef Korl_Pool_Handle Korl_Resource_Handle;
 #define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(name)  void* name(Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(name) void  name(void* resourceDescriptorStruct, Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)                  void  name(void* resourceDescriptorStruct)
@@ -43,7 +44,6 @@ typedef struct Korl_Resource_DescriptorManifest
     acu8                                       utf8DescriptorName;
     Korl_Resource_DescriptorManifest_Callbacks callbacks;
 } Korl_Resource_DescriptorManifest;
-typedef Korl_Pool_Handle Korl_Resource_Handle;
 /** to calculate the total spacing between two lines, use the formula: (ascent - decent) + lineGap */
 typedef struct Korl_Resource_Font_Metrics
 {
@@ -63,26 +63,28 @@ typedef struct Korl_Resource_Font_TextMetrics
     Korl_Math_V2f32 aabbSize;//@TODO: is this properly scaled by nearestSupportedPixelHeight?
     u32             visibleGlyphCount;
 } Korl_Resource_Font_TextMetrics;
-#define KORL_FUNCTION_korl_resource_descriptor_add(name)            void                            name(const Korl_Resource_DescriptorManifest* descriptorManifest)
-#define KORL_FUNCTION_korl_resource_fromFile(name)                  Korl_Resource_Handle            name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
-#define KORL_FUNCTION_korl_resource_create(name)                    Korl_Resource_Handle            name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
-#define KORL_FUNCTION_korl_resource_getDescriptorStruct(name)       void*                           name(Korl_Resource_Handle handle)
-#define KORL_FUNCTION_korl_resource_resize(name)                    void                            name(Korl_Resource_Handle handle, u$ newByteSize)
-#define KORL_FUNCTION_korl_resource_shift(name)                     void                            name(Korl_Resource_Handle handle, i$ byteShiftCount)
-#define KORL_FUNCTION_korl_resource_destroy(name)                   void                            name(Korl_Resource_Handle resourceHandle)
-#define KORL_FUNCTION_korl_resource_update(name)                    void                            name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
-#define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)           void*                           name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
-#define KORL_FUNCTION_korl_resource_getByteSize(name)               u$                              name(Korl_Resource_Handle handle)
-#define KORL_FUNCTION_korl_resource_isLoaded(name)                  bool                            name(Korl_Resource_Handle handle)
-#define KORL_FUNCTION_korl_resource_texture_getSize(name)           Korl_Math_V2u32                 name(Korl_Resource_Handle handleResourceTexture)
-#define KORL_FUNCTION_korl_resource_texture_getRowByteStride(name)  u32                             name(Korl_Resource_Handle handleResourceTexture)
-#define KORL_FUNCTION_korl_resource_font_getMetrics(name)           Korl_Resource_Font_Metrics      name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
-#define KORL_FUNCTION_korl_resource_font_getResources(name)         Korl_Resource_Font_Resources    name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
-#define KORL_FUNCTION_korl_resource_font_getUtf8Metrics(name)       Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text)
-#define KORL_FUNCTION_korl_resource_font_generateUtf8(name)         void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
-#define KORL_FUNCTION_korl_resource_font_getUtf16Metrics(name)      Korl_Resource_Font_TextMetrics  name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text)
-#define KORL_FUNCTION_korl_resource_font_generateUtf16(name)        void                            name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
-#define KORL_FUNCTION_korl_resource_font_textGraphemePosition(name) Korl_Math_V2f32                 name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
-#define KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(name)  u32                             name(Korl_Resource_Handle handleResourceScene3d)
-#define KORL_FUNCTION_korl_resource_scene3d_getMaterial(name)       Korl_Gfx_Material               name(Korl_Resource_Handle handleResourceScene3d, u32 materialIndex)
-#define KORL_FUNCTION_korl_resource_scene3d_getMesh(name)           Korl_Resource_Handle            name(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName)
+#define KORL_FUNCTION_korl_resource_descriptor_add(name)                void                                name(const Korl_Resource_DescriptorManifest* descriptorManifest)
+#define KORL_FUNCTION_korl_resource_fromFile(name)                      Korl_Resource_Handle                name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
+#define KORL_FUNCTION_korl_resource_create(name)                        Korl_Resource_Handle                name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
+#define KORL_FUNCTION_korl_resource_getDescriptorStruct(name)           void*                               name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_resize(name)                        void                                name(Korl_Resource_Handle handle, u$ newByteSize)
+#define KORL_FUNCTION_korl_resource_shift(name)                         void                                name(Korl_Resource_Handle handle, i$ byteShiftCount)
+#define KORL_FUNCTION_korl_resource_destroy(name)                       void                                name(Korl_Resource_Handle resourceHandle)
+#define KORL_FUNCTION_korl_resource_update(name)                        void                                name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
+#define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)               void*                               name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
+#define KORL_FUNCTION_korl_resource_getByteSize(name)                   u$                                  name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_isLoaded(name)                      bool                                name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_texture_getSize(name)               Korl_Math_V2u32                     name(Korl_Resource_Handle handleResourceTexture)
+#define KORL_FUNCTION_korl_resource_texture_getRowByteStride(name)      u32                                 name(Korl_Resource_Handle handleResourceTexture)
+#define KORL_FUNCTION_korl_resource_font_getMetrics(name)               Korl_Resource_Font_Metrics          name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
+#define KORL_FUNCTION_korl_resource_font_getResources(name)             Korl_Resource_Font_Resources        name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)
+#define KORL_FUNCTION_korl_resource_font_getUtf8Metrics(name)           Korl_Resource_Font_TextMetrics      name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text)
+#define KORL_FUNCTION_korl_resource_font_generateUtf8(name)             void                                name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
+#define KORL_FUNCTION_korl_resource_font_getUtf16Metrics(name)          Korl_Resource_Font_TextMetrics      name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text)
+#define KORL_FUNCTION_korl_resource_font_generateUtf16(name)            void                                name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu16 utf16Text, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)
+#define KORL_FUNCTION_korl_resource_font_textGraphemePosition(name)     Korl_Math_V2f32                     name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight, acu8 utf8Text, u$ graphemeIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(name)      u32                                 name(Korl_Resource_Handle handleResourceScene3d)
+#define KORL_FUNCTION_korl_resource_scene3d_getMaterial(name)           Korl_Gfx_Material                   name(Korl_Resource_Handle handleResourceScene3d, u32 materialIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getMeshIndex(name)          u32                                 name(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName)
+#define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(name) u32                                 name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(name)      Korl_Resource_Scene3d_MeshPrimitive name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, u32 primitiveIndex)

@@ -14,7 +14,6 @@
 #include "korl-resource-texture.h"
 #include "korl-resource-font.h"
 #include "korl-resource-scene3d.h"
-#include "korl-resource-mesh.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
 korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
@@ -572,7 +571,6 @@ korl_internal void korl_resource_initialize(void)
     korl_resource_texture_register();
     korl_resource_font_register();
     korl_resource_scene3d_register();
-    korl_resource_mesh_register();
 }
 korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
 {
