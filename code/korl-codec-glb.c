@@ -29,6 +29,7 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT
     ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH
     ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME
+    //@TODO: Node children, translate, rotate, scale
     ,KORL_GLTF_OBJECT_MESHES
     ,KORL_GLTF_OBJECT_MESHES_ARRAY
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT
@@ -108,6 +109,12 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT
     ,KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT_MAG_FILTER
     ,KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT_MIN_FILTER
+    ,KORL_GLTF_OBJECT_SKINS
+    ,KORL_GLTF_OBJECT_SKINS_ARRAY
+    ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_NAME
+    ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_INVERSE_BIND_MATRICES
+    ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_JOINTS
 } Korl_Gltf_Object_Type;
 typedef struct Korl_Gltf_Object
 {
@@ -197,6 +204,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     objectType = KORL_GLTF_OBJECT_IMAGES;
                 else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("samplers")))
                     objectType = KORL_GLTF_OBJECT_SAMPLERS;
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("skins")))
+                    objectType = KORL_GLTF_OBJECT_SKINS;
             }
             else
                 switch(object->type)
@@ -513,6 +522,32 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("minFilter")))
                         objectType = KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT_MIN_FILTER;
                     break;}
+                case KORL_GLTF_OBJECT_SKINS:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = KORL_GLTF_OBJECT_SKINS_ARRAY;
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->skins, sizeof(Korl_Codec_Gltf_Skin), &KORL_CODEC_GLTF_SKIN_DEFAULT);
+                    break;}
+                case KORL_GLTF_OBJECT_SKINS_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT;
+                    break;}
+                case KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                        objectType = KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_NAME;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("inverseBindMatrices")))
+                        objectType = KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_INVERSE_BIND_MATRICES;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("joints")))
+                        objectType = KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_JOINTS;
+                    break;}
+                case KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_JOINTS:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    Korl_Codec_Gltf_Skin*const currentSkin      = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SKINS_ARRAY, sizeof(*currentSkin));
+                    u32*const                  jointNodeIndices = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentSkin->joints, sizeof(*jointNodeIndices), NULL);
+                    if(jointNodeIndices)
+                        for(int i = 0; i < jsonToken->size; i++)
+                            jointNodeIndices[i] = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken + 1 + i));
+                    break;}
                 default: break;
                 }
             /* now we can push it onto the stack */
@@ -727,6 +762,14 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
             case KORL_GLTF_OBJECT_SAMPLERS_ARRAY_ELEMENT_MIN_FILTER:{
                 Korl_Codec_Gltf_Sampler*const currentSampler = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SAMPLERS_ARRAY, sizeof(*currentSampler));
                 if(currentSampler) currentSampler->minFilter = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_NAME:{
+                Korl_Codec_Gltf_Skin*const currentSkin = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SKINS_ARRAY, sizeof(*currentSkin));
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentSkin->rawUtf8Name);
+                break;}
+            case KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_INVERSE_BIND_MATRICES:{
+                Korl_Codec_Gltf_Skin*const currentSkin = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SKINS_ARRAY, sizeof(*currentSkin));
+                if(currentSkin) currentSkin->inverseBindMatrices = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             default:{break;}
             }

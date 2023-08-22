@@ -204,14 +204,15 @@ typedef struct Korl_Codec_Gltf_Sampler
     Korl_Codec_Gltf_Sampler_MagFilter magFilter;
     Korl_Codec_Gltf_Sampler_MinFilter minFilter;
 } Korl_Codec_Gltf_Sampler;
+korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
+                                                                            ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
 typedef struct Korl_Codec_Gltf_Skin
 {
     Korl_Codec_Gltf_Data rawUtf8Name;// optional
-    Korl_Codec_Gltf_Data joints;// _required_; array of node indices
+    Korl_Codec_Gltf_Data joints;// _required_; u32[]; array of node indices
     i32                  inverseBindMatrices;// optional; accessor index
 } Korl_Codec_Gltf_Skin;
-korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
-                                                                            ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
+korl_global_const Korl_Codec_Gltf_Skin KORL_CODEC_GLTF_SKIN_DEFAULT = {.inverseBindMatrices = -1};
 korl_internal Korl_Codec_Gltf*                korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal acu8                            korl_codec_gltf_getUtf8(const Korl_Codec_Gltf* context, Korl_Codec_Gltf_Data gltfData);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
