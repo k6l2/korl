@@ -29,7 +29,10 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT
     ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH
     ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME
-    //@TODO: Node children, translate, rotate, scale
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_CHILDREN
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_TRANSLATION
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_ROTATION
+    ,KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_SCALE
     ,KORL_GLTF_OBJECT_MESHES
     ,KORL_GLTF_OBJECT_MESHES_ARRAY
     ,KORL_GLTF_OBJECT_MESHES_ARRAY_ELEMENT
@@ -253,10 +256,44 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT:{
                     korl_assert(jsonToken->type == JSMN_STRING);
-                    if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
                         objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_NAME;
                     else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("mesh")))
                         objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_MESH;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("children")))
+                        objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_CHILDREN;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("translation")))
+                        objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_TRANSLATION;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("rotation")))
+                        objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_ROTATION;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("scale")))
+                        objectType = KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_SCALE;
+                    break;}
+                case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_CHILDREN:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    Korl_Codec_Gltf_Node*const currentNode  = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
+                    u32*const                  nodeChildren = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentNode->children, sizeof(u32), NULL);
+                    if(nodeChildren)
+                        for(int i = 0; i < jsonToken->size; i++)
+                            nodeChildren[i] = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken + 1 + i));
+                    break;}
+                case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_TRANSLATION:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    Korl_Codec_Gltf_Node*const currentNode = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
+                    if(currentNode)
+                        currentNode->tranlation = korl_jsmn_getV3f32(chunk->data, jsonToken);
+                    break;}
+                case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_ROTATION:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    Korl_Codec_Gltf_Node*const currentNode = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
+                    if(currentNode)
+                        currentNode->rotation.v4 = korl_jsmn_getV4f32(chunk->data, jsonToken);
+                    break;}
+                case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_SCALE:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    Korl_Codec_Gltf_Node*const currentNode = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
+                    if(currentNode)
+                        currentNode->scale = korl_jsmn_getV3f32(chunk->data, jsonToken);
                     break;}
                 case KORL_GLTF_OBJECT_MESHES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);

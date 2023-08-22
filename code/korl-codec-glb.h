@@ -60,9 +60,9 @@ typedef struct Korl_Codec_Gltf_Node
     /** all of the members of this struct are _optional_ */
     Korl_Codec_Gltf_Data rawUtf8Name;
     i32                  mesh;
-    Korl_Codec_Gltf_Data children;// node index array
+    Korl_Codec_Gltf_Data children;// u32[]; array of node indices
     Korl_Math_V3f32      tranlation;
-    Korl_Math_V4f32      rotation;
+    Korl_Math_Quaternion rotation;
     Korl_Math_V3f32      scale;
 } Korl_Codec_Gltf_Node;
 korl_global_const Korl_Codec_Gltf_Node KORL_CODEC_GLTF_NODE_DEFAULT = {.mesh = -1, .rotation = {0,0,0,1}, .scale = {1,1,1}};
