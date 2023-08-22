@@ -88,7 +88,7 @@
   [x] transcode extra material strings to assign korl shaders to material pipeline stages
   [x] transcode material.alphaMode to determine korl material.modes.flags
   [x] transcode specularFactor & specularColorFactor
-  [ ] refactor MESH Korl_Gfx_Drawable types to use the new scene3d APIs
+  [x] refactor MESH Korl_Gfx_Drawable types to use the new scene3d APIs
   [ ] transcode skins
     - store inverseBindMatrices as BUFFER resource
     - store joint hierarchy information?

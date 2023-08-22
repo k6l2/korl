@@ -316,35 +316,25 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         }
         break;}
     case KORL_GFX_DRAWABLE_TYPE_MESH:{
-        #if 0//@TODO: refactor
-        const acu8 utf8MeshName = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
-                                        ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
-        u32                                       meshPrimitiveCount       = 0;
-        Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer      = 0;
-        const Korl_Gfx_VertexStagingMeta*         meshPrimitiveVertexMetas = NULL;
-        const Korl_Gfx_Material*                  meshMaterials            = NULL;
-        korl_resource_scene3d_getMeshDrawData(context->subType.mesh.resourceHandleScene3d, utf8MeshName
-                                             ,&meshPrimitiveCount
-                                             ,&meshPrimitiveBuffer
-                                             ,&meshPrimitiveVertexMetas
-                                             ,&meshMaterials);
-        Korl_Gfx_Material materialLocal;
-        for(u32 mp = 0; mp < meshPrimitiveCount; mp++)
+        if(!context->subType.mesh.meshPrimitives && korl_resource_isLoaded(context->subType.mesh.resourceHandleScene3d))
         {
-            drawState = KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState);
-            if(materials && mp < materialsSize)
-            {
-                materialLocal                      = materials[mp];
-                materialLocal.modes.primitiveType  = meshMaterials[mp].modes.primitiveType;
-                materialLocal.modes.flags         |= meshMaterials[mp].modes.flags;
-                drawState.material = &materialLocal;
-            }
-            else
-                drawState.material = meshMaterials + mp;
-            korl_vulkan_setDrawState(&drawState);
-            korl_vulkan_drawVertexBuffer(meshPrimitiveBuffer, 0, meshPrimitiveVertexMetas + mp);
+            const acu8 utf8MeshName       = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
+                                                  ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
+            const u32  meshIndex          = korl_resource_scene3d_getMeshIndex(context->subType.mesh.resourceHandleScene3d, utf8MeshName);
+            const u32  meshPrimitiveCount = korl_resource_scene3d_getMeshPrimitiveCount(context->subType.mesh.resourceHandleScene3d, meshIndex);
+            context->subType.mesh.meshIndex      = meshIndex;
+            context->subType.mesh.meshPrimitives = korl_checkCast_u$_to_u8(meshPrimitiveCount);
         }
-        #endif
+        if(!context->subType.mesh.meshPrimitives)
+            break;// if the scene3d is _still_ not yet loaded, we can't draw anything
+        for(u8 i = 0; i < context->subType.mesh.meshPrimitives; i++)
+        {
+            Korl_Resource_Scene3d_MeshPrimitive tentacleMeshPrimitive = korl_resource_scene3d_getMeshPrimitive(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.meshIndex, i);
+            KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStatePrimitive);
+            drawStatePrimitive.material = (materialsSize && i < materialsSize) ? (materials + i) : (&tentacleMeshPrimitive.material);
+            korl_gfx_setDrawState(&drawStatePrimitive);
+            korl_gfx_drawVertexBuffer(tentacleMeshPrimitive.vertexBuffer, 0, &tentacleMeshPrimitive.vertexStagingMeta, tentacleMeshPrimitive.primitiveType);
+        }
         break;}
     }
 }

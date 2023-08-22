@@ -337,8 +337,10 @@ typedef struct Korl_Gfx_Drawable
         struct
         {
             Korl_Resource_Handle resourceHandleScene3d;
-            u8                   rawUtf8Scene3dMeshName[32];//KORL-ISSUE-000-000-163: gfx: we should be able to refactor korl-resource such that we can obtain a ResourceHandle to a "child" MESH resource of a SCENE3D resource, removing the need to have to store the mesh name string of the mesh we're trying to use
+            u8                   rawUtf8Scene3dMeshName[32];
             u8                   rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
+            u32                  meshIndex;// invalid until the scene3d resource becomes loaded
+            u8                   meshPrimitives;// 0 => scene3d resource has not yet been loaded; defines the maximum # of Materials the user can pass to korl_gfx_draw
         } mesh;
     } subType;
 } Korl_Gfx_Drawable;
