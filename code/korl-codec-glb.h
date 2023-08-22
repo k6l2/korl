@@ -1,4 +1,19 @@
 /**
+ * # Blender Export Notes
+ * 
+ *  - select `Include > Data > Custom Properties` to support custom korl-codec-glb & korl-resource-scene3d functionality (see: KORL-specific Custom Properties)
+ *  - select `Material > PBR Extensions > Export Original PBR Specular` to support specular factors & maps in KORL materials
+ *  - optional; recommended; DE-select `Transform > +Y Up` to maintain Blender workspace versors
+ *  - optional; recommended; select `Remember Export Settings` so that you only have to do this once per Blender project
+ * 
+ * # KORL-specific Custom Properties
+ * 
+ * - Materials
+ *   - korl-shader-vertex   : string
+ *     - asset cache file path of a compiled SPIR-V shader (.spv) file
+ *   - korl-shader-fragment : string
+ *     - asset cache file path of a compiled SPIR-V shader (.spv) file
+ * 
  * Useful docs:
  * https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
  * https://docs.blender.org/manual/en/latest/addons/import_export/scene_gltf2.html
