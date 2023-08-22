@@ -33,6 +33,7 @@ typedef struct Korl_Codec_Gltf
     Korl_Codec_Gltf_Data textures;
     Korl_Codec_Gltf_Data images;
     Korl_Codec_Gltf_Data samplers;
+    Korl_Codec_Gltf_Data skins;
 } Korl_Codec_Gltf;
 typedef struct Korl_Codec_Gltf_Scene
 {
@@ -41,9 +42,15 @@ typedef struct Korl_Codec_Gltf_Scene
 } Korl_Codec_Gltf_Scene;
 typedef struct Korl_Codec_Gltf_Node
 {
+    /** all of the members of this struct are _optional_ */
     Korl_Codec_Gltf_Data rawUtf8Name;
     i32                  mesh;
+    Korl_Codec_Gltf_Data children;// node index array
+    Korl_Math_V3f32      tranlation;
+    Korl_Math_V4f32      rotation;
+    Korl_Math_V3f32      scale;
 } Korl_Codec_Gltf_Node;
+korl_global_const Korl_Codec_Gltf_Node KORL_CODEC_GLTF_NODE_DEFAULT = {.mesh = -1, .rotation = {0,0,0,1}, .scale = {1,1,1}};
 typedef struct Korl_Codec_Gltf_Mesh
 {
     Korl_Codec_Gltf_Data rawUtf8Name;
@@ -182,6 +189,12 @@ typedef struct Korl_Codec_Gltf_Sampler
     Korl_Codec_Gltf_Sampler_MagFilter magFilter;
     Korl_Codec_Gltf_Sampler_MinFilter minFilter;
 } Korl_Codec_Gltf_Sampler;
+typedef struct Korl_Codec_Gltf_Skin
+{
+    Korl_Codec_Gltf_Data rawUtf8Name;// optional
+    Korl_Codec_Gltf_Data joints;// _required_; array of node indices
+    i32                  inverseBindMatrices;// optional; accessor index
+} Korl_Codec_Gltf_Skin;
 korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.magFilter = KORL_CODEC_GLTF_SAMPLER_MAG_FILTER_LINEAR
                                                                             ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
 korl_internal Korl_Codec_Gltf*                korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);

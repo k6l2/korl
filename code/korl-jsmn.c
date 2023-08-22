@@ -37,3 +37,27 @@ korl_internal f32 korl_jsmn_getF32(const u8* json, const jsmntok_t* token)
     korl_assert(isValid);
     return result;
 }
+korl_internal Korl_Math_V3f32 korl_jsmn_getV3f32(const u8* json, const jsmntok_t* token)
+{
+    KORL_ZERO_STACK(Korl_Math_V3f32, result);
+    korl_assert(token->type == JSMN_ARRAY);
+    korl_assert(token->size == korl_arraySize(result.elements));
+    for(u8 i = 0; i < korl_arraySize(result.elements); i++)
+    {
+        token++;
+        result.elements[i] = korl_jsmn_getF32(json, token);
+    }
+    return result;
+}
+korl_internal Korl_Math_V4f32 korl_jsmn_getV4f32(const u8* json, const jsmntok_t* token)
+{
+    KORL_ZERO_STACK(Korl_Math_V4f32, result);
+    korl_assert(token->type == JSMN_ARRAY);
+    korl_assert(token->size == korl_arraySize(result.elements));
+    for(u8 i = 0; i < korl_arraySize(result.elements); i++)
+    {
+        token++;
+        result.elements[i] = korl_jsmn_getF32(json, token);
+    }
+    return result;
+}

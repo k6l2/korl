@@ -83,8 +83,6 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_SPECULAR_COLOR_TEXTURE_OBJECT_INDEX
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_FACTOR
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR
-    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR_ARRAY
-    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR_ARRAY_ELEMENT
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE
@@ -433,11 +431,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_SPECULAR_COLOR_TEXTURE_OBJECT_INDEX;
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR:{
-                    korl_assert(jsonToken->type == JSMN_ARRAY);
-                    objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR_ARRAY;
                     Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
-                    if(currentMaterial)
-                        array = currentMaterial->KHR_materials_specular.factors.elements;
+                    if(currentMaterial) currentMaterial->KHR_materials_specular.factors.xyz = korl_jsmn_getV3f32(chunk->data, jsonToken);
                     break;}
                 case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -683,15 +678,6 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
             case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_FACTOR:{
                 Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
                 if(currentMaterial) currentMaterial->KHR_materials_specular.factors.w = korl_jsmn_getF32(chunk->data, jsonToken);
-                break;}
-            case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR_ARRAY_ELEMENT:{
-                Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
-                if(currentMaterial)
-                {
-                    f32*const currentFactorElement = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTENSIONS_OBJECT_KHR_MATERIALS_SPECULAR_OBJECT_COLOR_FACTOR_ARRAY, sizeof(*currentFactorElement));
-                    korl_assert(currentFactorElement);
-                    *currentFactorElement = korl_jsmn_getF32(chunk->data, jsonToken);
-                }
                 break;}
             case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_PBR_METALLIC_ROUGHNESS_OBJECT_BASE_COLOR_TEXTURE_OBJECT_INDEX:{
                 Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
