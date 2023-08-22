@@ -158,12 +158,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             sceneMeshPrimitive->vertexBuffer           = scene3d->vertexBuffer;// for now, all MeshPrimitives share the same giant vertex buffer
             switch(meshPrimitive->mode)
             {
+            case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_POINTS        : korl_log(ERROR, "unsupported MeshPrimitive mode: %i", meshPrimitive->mode);          break;
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES         : sceneMeshPrimitive->primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES;          break;
+            case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINE_LOOP     : korl_log(ERROR, "unsupported MeshPrimitive mode: %i", meshPrimitive->mode);          break;
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINE_STRIP    : sceneMeshPrimitive->primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINE_STRIP;     break;
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES     : sceneMeshPrimitive->primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES;      break;
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLE_STRIP: sceneMeshPrimitive->primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_STRIP; break;
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLE_FAN  : sceneMeshPrimitive->primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLE_FAN;   break;
-            default: korl_log(ERROR, "unsupported MeshPrimitive mode: %i", meshPrimitive->mode);
             }
             if(meshPrimitive->indices >= 0)
             {
