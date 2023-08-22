@@ -64,10 +64,10 @@ korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resourc
     case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_BLEND: result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND; break;
     }
     result.modes.cullMode = gltfMaterial->doubleSided ? KORL_GFX_MATERIAL_CULL_MODE_NONE : KORL_GFX_MATERIAL_CULL_MODE_BACK;
-    if(gltfMaterial->rawUtf8KorlShaderVertex.size)
-        result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->rawUtf8KorlShaderVertex), KORL_ASSETCACHE_GET_FLAG_LAZY);
-    if(gltfMaterial->rawUtf8KorlShaderFragment.size)
-        result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->rawUtf8KorlShaderFragment), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    if(gltfMaterial->extras.rawUtf8KorlShaderVertex.size)
+        result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderVertex), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    if(gltfMaterial->extras.rawUtf8KorlShaderFragment.size)
+        result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderFragment), KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
@@ -154,9 +154,8 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         {
             const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive      = gltfMeshPrimitives + mp;
             Korl_Resource_Scene3d_MeshPrimitive*const  sceneMeshPrimitive = meshPrimitives     + mp;
-            //@TODO: do we need to use offsets local to a single byte offset into the vertex buffer?...
-            // sceneMeshPrimitive->vertexBufferByteOffset = vertexBufferBytesUsed;
-            sceneMeshPrimitive->vertexBuffer = scene3d->vertexBuffer;// for now, all MeshPrimitives share the same giant vertex buffer
+            sceneMeshPrimitive->vertexBufferByteOffset = vertexBufferBytesUsed;// vertex attributes have buffer byte offset limitations (see maxVertexInputAttributeOffset of Vulkan spec), so we should offset all bindings by some starting amount to minimize this distance
+            sceneMeshPrimitive->vertexBuffer           = scene3d->vertexBuffer;// for now, all MeshPrimitives share the same giant vertex buffer
             switch(meshPrimitive->mode)
             {
             case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES         : sceneMeshPrimitive->primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES;          break;
@@ -176,7 +175,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                     korl_log(ERROR, "interleaved attributes not supported");
                 /* update our vertex staging meta with accessor & buffer data */
                 sceneMeshPrimitive->vertexStagingMeta.indexCount            = accessor->count;
-                sceneMeshPrimitive->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(vertexBufferBytesUsed);
+                sceneMeshPrimitive->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(vertexBufferBytesUsed - sceneMeshPrimitive->vertexBufferByteOffset);
                 switch(accessor->componentType)
                 {
                 case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U16: sceneMeshPrimitive->vertexStagingMeta.indexType = KORL_GFX_VERTEX_INDEX_TYPE_U16; break;
@@ -212,7 +211,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 else
                     sceneMeshPrimitive->vertexStagingMeta.vertexCount = accessor->count;
                 const Korl_Gfx_VertexAttributeBinding binding = GLTF_ATTRIBUTE_BINDINGS[a];
-                sceneMeshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[binding].byteOffsetBuffer = korl_checkCast_u$_to_u32(vertexBufferBytesUsed);
+                sceneMeshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[binding].byteOffsetBuffer = korl_checkCast_u$_to_u32(vertexBufferBytesUsed - sceneMeshPrimitive->vertexBufferByteOffset);
                 sceneMeshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[binding].byteStride       = korl_codec_gltf_accessor_getStride(accessor, gltfBufferViews);
                 sceneMeshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[binding].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
                 switch(accessor->componentType)

@@ -70,6 +70,7 @@ typedef struct Korl_Resource_Scene3d_MeshPrimitive
 {
     Korl_Gfx_VertexStagingMeta      vertexStagingMeta;
     Korl_Resource_Handle            vertexBuffer;
+    u$                              vertexBufferByteOffset;
     Korl_Gfx_Material_PrimitiveType primitiveType;
     Korl_Gfx_Material               material;
 } Korl_Resource_Scene3d_MeshPrimitive;

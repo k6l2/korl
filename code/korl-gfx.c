@@ -333,7 +333,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStatePrimitive);
             drawStatePrimitive.material = (materialsSize && i < materialsSize) ? (materials + i) : (&tentacleMeshPrimitive.material);
             korl_gfx_setDrawState(&drawStatePrimitive);
-            korl_gfx_drawVertexBuffer(tentacleMeshPrimitive.vertexBuffer, 0, &tentacleMeshPrimitive.vertexStagingMeta, tentacleMeshPrimitive.primitiveType);
+            korl_gfx_drawVertexBuffer(tentacleMeshPrimitive.vertexBuffer, tentacleMeshPrimitive.vertexBufferByteOffset, &tentacleMeshPrimitive.vertexStagingMeta, tentacleMeshPrimitive.primitiveType);
         }
         break;}
     }

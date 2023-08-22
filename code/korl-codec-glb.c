@@ -699,11 +699,11 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 break;}
             case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_VERTEX:{
                 Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
-                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->rawUtf8KorlShaderVertex);
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->extras.rawUtf8KorlShaderVertex);
                 break;}
             case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT:{
                 Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
-                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->rawUtf8KorlShaderFragment);
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->extras.rawUtf8KorlShaderFragment);
                 break;}
             case KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT_SAMPLER:{
                 Korl_Codec_Gltf_Texture*const currentTexture = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_TEXTURES_ARRAY, sizeof(*currentTexture));

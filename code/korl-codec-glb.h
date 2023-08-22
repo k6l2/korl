@@ -1,3 +1,8 @@
+/**
+ * Useful docs:
+ * https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
+ * https://docs.blender.org/manual/en/latest/addons/import_export/scene_gltf2.html
+ */
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-utility-math.h"
@@ -132,8 +137,11 @@ typedef struct Korl_Codec_Gltf_Material
     {
         i32 baseColorTextureIndex;
     } pbrMetallicRoughness;
-    Korl_Codec_Gltf_Data rawUtf8KorlShaderVertex;
-    Korl_Codec_Gltf_Data rawUtf8KorlShaderFragment;
+    struct
+    {
+        Korl_Codec_Gltf_Data rawUtf8KorlShaderVertex;
+        Korl_Codec_Gltf_Data rawUtf8KorlShaderFragment;
+    } extras;
 } Korl_Codec_Gltf_Material;
 korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.alphaCutoff            = 0.5f
                                                                               ,.KHR_materials_specular = {.specularColorTextureIndex = -1, .factors = {1,1,1,1}}
