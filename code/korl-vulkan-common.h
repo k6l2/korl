@@ -196,22 +196,6 @@ typedef struct _Korl_Vulkan_SwapChainImageContext
     #endif
 } _Korl_Vulkan_SwapChainImageContext;
 /** 
- * Make sure to ensure memory alignment of these data members according to GLSL 
- * data alignment spec after this struct definition!  See Vulkan Specification 
- * `15.6.4. Offset and Stride Assignment` for details.
- */
-typedef struct _Korl_Vulkan_Uniform_SceneProperties
-{
-    Korl_Math_M4f32 m4f32Projection;
-    Korl_Math_M4f32 m4f32View;
-    f32             seconds;
-    f32             _padding_0[3];
-    //KORL-PERFORMANCE-000-000-010: pre-calculate the ViewProjection matrix
-} _Korl_Vulkan_Uniform_SceneProperties;
-/* Ensure _Korl_Vulkan_Uniform_SceneProperties member alignment here: */
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_SceneProperties, m4f32Projection) % 16) == 0);
-KORL_STATIC_ASSERT((offsetof(_Korl_Vulkan_Uniform_SceneProperties, m4f32View      ) % 16) == 0);
-/** 
  * the contents of this struct are expected to be nullified at the end of each 
  * call to \c frameBegin() 
  */
@@ -226,20 +210,13 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     u$                    currentPipeline;
     _Korl_Vulkan_Pipeline pipelineConfigurationCache;
     /** ----- dynamic uniform state (push constants, descriptors, etc...) ----- */
-    Korl_Gfx_DrawState_PushConstantData pushConstantData;
-    VkRect2D                            scissor;
-    /** ----- descriptor state ----- */
-    //@TODO: for UBOs & SSBOs, instead of requiring korl-vulkan to have knowledge of what this data actually is, why not just have the user provide {buffer,range,offset}|{resource-gfx-buffer} to Korl_Gfx_DrawState instead of the actual data?; doing so would allow us to (1) check if the descriptor needs to be updated without having to do a full memcmp, (2) give the user more flexibility for each descriptor binding, allowing them to compose UBOs/SSBOs however they wish per-shader, & (3) eliminate the need for korl-vulkan to include/manage this data; korl-vulkan should just be a dumb renderer moving data back & forth from the graphics device; we should not need to know anything about korl-gfx scene transforms or korl-gfx lighting data structures, or korl-gfx material structures
-    _Korl_Vulkan_Uniform_SceneProperties    uboSceneProperties;
-    Korl_Gfx_Material_FragmentShaderUniform uboMaterialProperties;
-    KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, lights, KORL_VULKAN_MAX_LIGHTS);
-    struct
-    {
-        Korl_Vulkan_DeviceMemory_AllocationHandle base;
-        Korl_Vulkan_DeviceMemory_AllocationHandle specular;
-        Korl_Vulkan_DeviceMemory_AllocationHandle emissive;
-    } materialMaps;
-    Korl_Vulkan_DeviceMemory_AllocationHandle vertexStorageBuffer;
+    Korl_Gfx_DrawState_PushConstantData       pushConstantData;
+    VkRect2D                                  scissor;
+    Korl_Vulkan_DescriptorStagingAllocation   uboVertex[KORL_VULKAN_MAX_UBOS_VERTEX];
+    Korl_Vulkan_DescriptorStagingAllocation   uboFragment[KORL_VULKAN_MAX_UBOS_FRAGMENT];
+    Korl_Vulkan_DescriptorStagingAllocation   ssboVertex[KORL_VULKAN_MAX_SSBOS_VERTEX];
+    Korl_Vulkan_DescriptorStagingAllocation   ssboFragment[KORL_VULKAN_MAX_SSBOS_FRAGMENT];
+    Korl_Vulkan_DeviceMemory_AllocationHandle texture2dFragment[KORL_VULKAN_MAX_TEXTURE2D_FRAGMENT];
 } _Korl_Vulkan_SurfaceContextDrawState;
 /**
  * Each buffer acts as a linear allocator

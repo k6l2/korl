@@ -45,7 +45,6 @@
 #include "korl-assetCache.h"
 #include "korl-interface-platform-gfx.h"
 #include "utility/korl-utility-resource.h"
-#define KORL_VULKAN_MAX_LIGHTS 8// @TODO: move this to somewhere in korl-gfx
 typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;// 0 => NULL/invalid, as usual
 typedef u64 Korl_Vulkan_ShaderHandle;                 // 0 => NULL/invalid, as usual
 typedef struct Korl_Vulkan_CreateInfoShader
@@ -60,18 +59,23 @@ typedef struct Korl_Vulkan_DescriptorStagingAllocation
     void*                  data;
     VkDescriptorBufferInfo descriptorBufferInfo;
 } Korl_Vulkan_DescriptorStagingAllocation;
+#define KORL_VULKAN_MAX_UBOS_VERTEX        1
+#define KORL_VULKAN_MAX_UBOS_FRAGMENT      1
+#define KORL_VULKAN_MAX_SSBOS_VERTEX       1
+#define KORL_VULKAN_MAX_SSBOS_FRAGMENT     1
+#define KORL_VULKAN_MAX_TEXTURE2D_FRAGMENT 3
 typedef struct Korl_Vulkan_DrawState
 {
-    Korl_Vulkan_ShaderHandle                  shaderVertex;
-    Korl_Vulkan_ShaderHandle                  shaderFragment;
-    Korl_Gfx_Material_Modes*                  materialModes;
-    Korl_Gfx_DrawState_Scissor*               scissor;
-    Korl_Gfx_DrawState_PushConstantData*      pushConstantData;// example: model/world transform
-    Korl_Vulkan_DescriptorStagingAllocation   uboVertex;       // example: SceneProperties (VP transform, seconds, etc.)
-    Korl_Vulkan_DescriptorStagingAllocation   uboFragment;     // example: material UBO
-    Korl_Vulkan_DescriptorStagingAllocation   ssboVertex;      // example: glyph mesh vertex cache
-    Korl_Vulkan_DescriptorStagingAllocation   ssboFragment;    // example: lighting
-    Korl_Vulkan_DeviceMemory_AllocationHandle map2dFragment[3];// example: material maps (base, specular, emissive)
+    Korl_Vulkan_ShaderHandle                   shaderVertex;
+    Korl_Vulkan_ShaderHandle                   shaderFragment;
+    const Korl_Gfx_Material_Modes*             materialModes;
+    const Korl_Gfx_DrawState_Scissor*          scissor;
+    const Korl_Gfx_DrawState_PushConstantData* pushConstantData;                                     // example: model/world transform
+    Korl_Vulkan_DescriptorStagingAllocation    uboVertex[KORL_VULKAN_MAX_UBOS_VERTEX];               // example: SceneProperties (VP transform, seconds, etc.)
+    Korl_Vulkan_DescriptorStagingAllocation    uboFragment[KORL_VULKAN_MAX_UBOS_FRAGMENT];           // example: material UBO
+    Korl_Vulkan_DescriptorStagingAllocation    ssboVertex[KORL_VULKAN_MAX_SSBOS_VERTEX];             // example: glyph mesh vertex cache
+    Korl_Vulkan_DescriptorStagingAllocation    ssboFragment[KORL_VULKAN_MAX_SSBOS_FRAGMENT];         // example: lighting
+    Korl_Vulkan_DeviceMemory_AllocationHandle  texture2dFragment[KORL_VULKAN_MAX_TEXTURE2D_FRAGMENT];// example: material maps (base, specular, emissive)
 } Korl_Vulkan_DrawState;
 typedef struct Korl_Resource_Texture_CreateInfo Korl_Resource_Texture_CreateInfo;
 korl_internal void                                      korl_vulkan_construct(void);
@@ -83,7 +87,7 @@ korl_internal void                                      korl_vulkan_clearAllDevi
 korl_internal void                                      korl_vulkan_setSurfaceClearColor(const f32 clearRgb[3]);
 korl_internal void                                      korl_vulkan_frameEnd(void);
 korl_internal void                                      korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
-korl_internal void                                      korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state);
+korl_internal void                                      korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
 korl_internal Korl_Vulkan_DescriptorStagingAllocation   korl_vulkan_stagingAllocateDescriptorData(u$ bytes);// used for allocation of UBO & SSBO data
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingReallocate(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation);
@@ -97,5 +101,6 @@ korl_internal Korl_Math_V2u32                           korl_vulkan_texture_getS
 korl_internal void                                      korl_vulkan_buffer_resize(Korl_Vulkan_DeviceMemory_AllocationHandle* in_out_bufferHandle, u$ bytes);
 korl_internal void                                      korl_vulkan_buffer_update(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, const void* data, u$ dataBytes, u$ deviceLocalBufferOffset);
 korl_internal void*                                     korl_vulkan_buffer_getStagingBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle, u$ bytes, u$ bufferByteOffset);
+korl_internal VkDescriptorBufferInfo                    korl_vulkan_buffer_getDescriptorBufferInfo(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle);
 korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
 korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);

@@ -31,19 +31,19 @@ typedef union Korl_Math_V4u8
     Korl_Math_V3u8 rgb;
     u8 elements[4];
 } Korl_Math_V4u8;
-korl_internal inline u64 korl_math_kilobytes(u64 x);
-korl_internal inline u64 korl_math_megabytes(u64 x);
-korl_internal inline u64 korl_math_gigabytes(u64 x);
-korl_internal inline u$ korl_math_nextHighestDivision(u$ value, u$ division);
-korl_internal inline u$ korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple);
+korl_internal inline u64  korl_math_kilobytes(u64 x);
+korl_internal inline u64  korl_math_megabytes(u64 x);
+korl_internal inline u64  korl_math_gigabytes(u64 x);
+korl_internal inline u$   korl_math_nextHighestDivision(u$ value, u$ division);
+korl_internal inline u$   korl_math_roundUpPowerOf2(u$ value, u$ powerOf2Multiple);
 korl_internal inline bool korl_math_isNearlyZero(f32 x);
 korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 epsilon);
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);/** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
-korl_internal inline f32 korl_math_f32_positive(f32 x);
-korl_internal inline f32 korl_math_f32_nan(void);
-korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor);
+korl_internal inline f32  korl_math_f32_positive(f32 x);
+korl_internal inline f32  korl_math_f32_nan(void);
+korl_internal inline f32  korl_math_lerp(f32 from, f32 to, f32 factor);
 //KORL-PERFORMANCE-000-000-051: math: this sphere mesh generating API is crappy and does not generate vertex indices, so we will end up duplicating a ton of vertices
-korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments);
+korl_internal u$          korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments);
 /**
  * Generate mesh data for a sphere made of (semi)circles along latitudes and 
  * longitudes with the specified respective resolutions.
@@ -60,7 +60,7 @@ korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u
  * \param o_vertexTextureNormals OPTIONAL;
  * Vertex textureNormals are generated using a cylindrical projection.
  */
-korl_internal void korl_math_generateMeshSphere(f32 radius, u32 latitudeSegments, u32 longitudeSegments, Korl_Math_V3f32* o_vertexPositions, u$ vertexPositionByteStride, Korl_Math_V2f32* o_vertexTextureNormals, u$ vertexTextureNormalByteStride);
+korl_internal void        korl_math_generateMeshSphere(f32 radius, u32 latitudeSegments, u32 longitudeSegments, Korl_Math_V3f32* o_vertexPositions, u$ vertexPositionByteStride, Korl_Math_V2f32* o_vertexTextureNormals, u$ vertexTextureNormalByteStride);
 /* RNG ************************************************************************/
 typedef struct Korl_Math_Rng_WichmannHill
 {
@@ -138,14 +138,14 @@ const Korl_Math_V3f32 KORL_MATH_V3F32_Z       = { 0,  0,  1};
 const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_X = {-1,  0,  0};
 const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Y = { 0, -1,  0};
 const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Z = { 0,  0, -1};
-korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
-korl_internal f32 korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
+korl_internal f32             korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
+korl_internal f32             korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f32 v, f32 magnitude);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_tripleProduct(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB, Korl_Math_V3f32 vC);// (vA x vB) x vC
-korl_internal f32 korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
-korl_internal f32 korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
+korl_internal f32             korl_math_v3f32_dot(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
+korl_internal f32             korl_math_v3f32_radiansBetween(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_project(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB, bool vbIsNormalized);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_add(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_addScalar(Korl_Math_V3f32 v, f32 scalar);
@@ -155,12 +155,12 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_multiply(Korl_Math_V3f32 vA, Korl_
 korl_internal Korl_Math_V3f32 korl_math_v3f32_multiplyScalar(Korl_Math_V3f32 v, f32 scalar);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_divide(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_divideScalar(Korl_Math_V3f32 v, f32 scalar);
-korl_internal void korl_math_v3f32_assignAdd(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
-korl_internal void korl_math_v3f32_assignAddScalar(Korl_Math_V3f32*const v, f32 scalar);
-korl_internal void korl_math_v3f32_assignSubtract(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
-korl_internal void korl_math_v3f32_assignSubtractScalar(Korl_Math_V3f32*const v, f32 scalar);
-korl_internal void korl_math_v3f32_assignMultiply(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
-korl_internal void korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f32*const v, f32 scalar);
+korl_internal void            korl_math_v3f32_assignAdd(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
+korl_internal void            korl_math_v3f32_assignAddScalar(Korl_Math_V3f32*const v, f32 scalar);
+korl_internal void            korl_math_v3f32_assignSubtract(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
+korl_internal void            korl_math_v3f32_assignSubtractScalar(Korl_Math_V3f32*const v, f32 scalar);
+korl_internal void            korl_math_v3f32_assignMultiply(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
+korl_internal void            korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f32*const v, f32 scalar);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_min(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_max(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 /* V4u8 ***********************************************************************/
@@ -175,19 +175,19 @@ typedef union Korl_Math_V4f32
 } Korl_Math_V4f32;
 const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};
 const Korl_Math_V4f32 KORL_MATH_V4F32_ZERO = {0, 0, 0, 0};
-korl_internal f32 korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v);
-korl_internal f32 korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_normal(Korl_Math_V4f32 v);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_normalKnownMagnitude(Korl_Math_V4f32 v, f32 magnitude);
-korl_internal f32 korl_math_v4f32_dot(const Korl_Math_V4f32*const vA, const Korl_Math_V4f32*const vB);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_add(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_addScalar(Korl_Math_V4f32 v, f32 scalar);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_subtract(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_subtractScalar(Korl_Math_V4f32 v, f32 scalar);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_multiply(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_multiplyScalar(Korl_Math_V4f32 v, f32 scalar);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_divide(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
-korl_internal Korl_Math_V4f32 korl_math_v4f32_divideScalar(Korl_Math_V4f32 v, f32 scalar);
+korl_internal f32              korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v);
+korl_internal f32              korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_normal(Korl_Math_V4f32 v);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_normalKnownMagnitude(Korl_Math_V4f32 v, f32 magnitude);
+korl_internal f32              korl_math_v4f32_dot(const Korl_Math_V4f32*const vA, const Korl_Math_V4f32*const vB);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_add(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_addScalar(Korl_Math_V4f32 v, f32 scalar);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_subtract(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_subtractScalar(Korl_Math_V4f32 v, f32 scalar);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_multiply(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_multiplyScalar(Korl_Math_V4f32 v, f32 scalar);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_divide(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_divideScalar(Korl_Math_V4f32 v, f32 scalar);
 korl_internal Korl_Math_V4f32* korl_math_v4f32_assignAdd(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB);
 korl_internal Korl_Math_V4f32* korl_math_v4f32_assignAddScalar(Korl_Math_V4f32*const v, f32 scalar);
 korl_internal Korl_Math_V4f32* korl_math_v4f32_assignSubtract(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB);
@@ -214,8 +214,8 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_fromVector(Korl_Math_V3f
 korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q);
-korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized);
-korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized);
+korl_internal Korl_Math_V2f32      korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized);
+korl_internal Korl_Math_V3f32      korl_math_quaternion_transformV3f32(Korl_Math_Quaternion q, Korl_Math_V3f32 v, bool qIsNormalized);
 /* M4f32 **********************************************************************/
 typedef union Korl_Math_M4f32
 {

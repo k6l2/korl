@@ -17,6 +17,7 @@ typedef struct Korl_Gfx_DrawState_SceneProperties
 {
     Korl_Math_M4f32 view, projection;
     f32             seconds;
+    f32             _padding_0[3];
 } Korl_Gfx_DrawState_SceneProperties;
 typedef struct Korl_Gfx_DrawState_PushConstantData
 {
