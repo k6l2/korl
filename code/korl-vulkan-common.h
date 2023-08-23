@@ -229,6 +229,7 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     Korl_Gfx_DrawState_PushConstantData pushConstantData;
     VkRect2D                            scissor;
     /** ----- descriptor state ----- */
+    //@TODO: for UBOs & SSBOs, instead of requiring korl-vulkan to have knowledge of what this data actually is, why not just have the user provide {buffer,range,offset}|{resource-gfx-buffer} to Korl_Gfx_DrawState instead of the actual data?; doing so would allow us to (1) check if the descriptor needs to be updated without having to do a full memcmp, (2) give the user more flexibility for each descriptor binding, allowing them to compose UBOs/SSBOs however they wish per-shader, & (3) eliminate the need for korl-vulkan to include/manage this data; korl-vulkan should just be a dumb renderer moving data back & forth from the graphics device; we should not need to know anything about korl-gfx scene transforms or korl-gfx lighting data structures, or korl-gfx material structures
     _Korl_Vulkan_Uniform_SceneProperties    uboSceneProperties;
     Korl_Gfx_Material_FragmentShaderUniform uboMaterialProperties;
     KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, lights, KORL_VULKAN_MAX_LIGHTS);

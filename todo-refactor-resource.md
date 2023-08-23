@@ -94,6 +94,25 @@
     - store joint hierarchy information?
     - MVP: user can apply a skin pose to a MESH resource & draw it
       - we should also be able to make a simple code interface to manually drive individual joint transforms to modify the skin pose in real-time
+      - https://webglfundamentals.org/webgl/lessons/webgl-skinning.html
+    - scene3d_skin
+      - pre-computed row-major bone inverseBindMatrices
+      - topological bone order (root bone first, followed by all children)
+    - SkinInstance
+      - bones[skinBoneCount] : Korl_Math_Transform3d
+        - initialized to the same value as its corresponding gltf.node
+      - modifiable at-will by the user of SkinInstance
+      - API: prepare : void
+        - compute each bone's local=>world xform matrix
+          - we do this by iterating over each bone in topological order
+          - boneXform[i] = boneXform[parent] * boneLocal[i]
+        - pre-multiply all boneXform matrices by their respective inverseBindMatrix
+          - boneXform[i] *= inverseBindMatrix[i]
+    - wherever mesh gets rendered:
+      - pass the SkinInstance we want to use on the skinned mesh
+    - inside of draw call:
+      - send boneXform array to graphics device via `setDrawState`
+      - modify mesh material to utilize skinning (+ lighting) vertex shader
   [ ] transcode animations
     - MVP: user can apply animations to mesh skins to render an animated MESH
 [ ] add AUDIO Resource (last resource type)
