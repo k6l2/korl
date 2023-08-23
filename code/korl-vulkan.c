@@ -1994,7 +1994,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
     KORL_MEMORY_POOL_ZERO(descriptorBufferInfos);
     KORL_MEMORY_POOL_DECLARE(VkDescriptorImageInfo, descriptorImageInfos, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_MEMORY_POOL_ZERO(descriptorImageInfos);
-    //@TODO: korl-vulkan descriptor set flexibility; in here we are arbitrarily picking which data channels belong to each descriptor set; we _should_ be able to allow the user to define their own VkDescriptorSetLayouts & VkPipelineLayouts, which would certainly give Vulkan a much better idea of how to optimize, as well as give the user the ability to compose descriptors however they wish without having to modify this code :|
+    //KORL-ISSUE-000-000-184: vulkan: descriptor set flexibility; in here we are arbitrarily picking which data channels belong to each descriptor set; we _should_ be able to allow the user to define their own VkDescriptorSetLayouts & VkPipelineLayouts, which would certainly give Vulkan a much better idea of how to optimize, as well as give the user the ability to compose descriptors however they wish without having to modify this code :|; related to KORL-ISSUE-000-000-185
     // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE //
     if(   surfaceContext->drawState.uboVertex[0].descriptorBufferInfo.buffer != VK_NULL_HANDLE 
        && 0 != korl_memory_compare(&surfaceContext->drawState.uboVertex[0]
@@ -2455,7 +2455,7 @@ korl_internal VkDescriptorBufferInfo korl_vulkan_buffer_getDescriptorBufferInfo(
     korl_assert(deviceMemoryAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);
     VkDescriptorBufferInfo result;
     result.buffer = deviceMemoryAllocation->subType.buffer.vulkanBuffer;
-    result.offset = 0;//@TODO: or do we use the deviceMemoryAllocation->offset ?
+    result.offset = 0;// NOTE: we don't use deviceMemoryAllocation->byteOffset here because the user expects to use the entire range of the buffer referred to by bufferHandle
     result.range  = deviceMemoryAllocation->bytesUsed;
     return result;
 }

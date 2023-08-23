@@ -95,7 +95,7 @@
     - MVP: user can apply a skin pose to a MESH resource & draw it
       - we should also be able to make a simple code interface to manually drive individual joint transforms to modify the skin pose in real-time
       - https://webglfundamentals.org/webgl/lessons/webgl-skinning.html
-    - scene3d_skin
+    - scene3d_skin; what we need to transcode from the glb/gltf decoder output
       - pre-computed row-major bone inverseBindMatrices (so we can apply these to bones on the CPU)
       - topological bone order (root bone first, followed by all children)
     - SkinInstance

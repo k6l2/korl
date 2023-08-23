@@ -343,7 +343,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 }
 korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
 {
-    //@TODO: manage custom descriptor set layouts; here, we are currently manually selecting arbitrary descriptor data channels to propagate various data, which looks & feels very hacky; we should be able to modify korl-vulkan to allow us to create & manage our own custom descriptor set & pipeline layouts for specific rendering purposes; related to the todo item currently found in _korl_vulkan_flushDescriptors
+    //KORL-ISSUE-000-000-185: gfx: manage custom descriptor set layouts; here, we are currently manually selecting arbitrary descriptor data channels to propagate various data, which looks & feels very hacky; we should be able to modify korl-vulkan to allow us to create & manage our own custom descriptor set & pipeline layouts for specific rendering purposes; related to the todo item currently found in _korl_vulkan_flushDescriptors; related to KORL-ISSUE-000-000-184
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);
     if(drawState->material)
     {
