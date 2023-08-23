@@ -15,7 +15,7 @@ korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_WHITE       = {255, 255, 255, 
 korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   0, 255};
 typedef struct Korl_Gfx_DrawState_SceneProperties
 {
-    Korl_Math_M4f32 view, projection;
+    Korl_Math_M4f32 projection, view;
     f32             seconds;
     f32             _padding_0[3];
 } Korl_Gfx_DrawState_SceneProperties;
