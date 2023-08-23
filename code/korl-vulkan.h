@@ -45,14 +45,34 @@
 #include "korl-assetCache.h"
 #include "korl-interface-platform-gfx.h"
 #include "utility/korl-utility-resource.h"
-#define KORL_VULKAN_MAX_LIGHTS 8
-typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;
-typedef u64 Korl_Vulkan_ShaderHandle;
+#define KORL_VULKAN_MAX_LIGHTS 8// @TODO: move this to somewhere in korl-gfx
+typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;// 0 => NULL/invalid, as usual
+typedef u64 Korl_Vulkan_ShaderHandle;                 // 0 => NULL/invalid, as usual
 typedef struct Korl_Vulkan_CreateInfoShader
 {
     const void* data;
     u$          dataBytes;
 } Korl_Vulkan_CreateInfoShader;
+/** very similar to \c Korl_Gfx_StagingAllocation , but we have different 
+ * alignment requirements */
+typedef struct Korl_Vulkan_DescriptorStagingAllocation
+{
+    void*                  data;
+    VkDescriptorBufferInfo descriptorBufferInfo;
+} Korl_Vulkan_DescriptorStagingAllocation;
+typedef struct Korl_Vulkan_DrawState
+{
+    Korl_Vulkan_ShaderHandle                  shaderVertex;
+    Korl_Vulkan_ShaderHandle                  shaderFragment;
+    Korl_Gfx_Material_Modes*                  materialModes;
+    Korl_Gfx_DrawState_Scissor*               scissor;
+    Korl_Gfx_DrawState_PushConstantData*      pushConstantData;// example: model/world transform
+    Korl_Vulkan_DescriptorStagingAllocation   uboVertex;       // example: SceneProperties (VP transform, seconds, etc.)
+    Korl_Vulkan_DescriptorStagingAllocation   uboFragment;     // example: material UBO
+    Korl_Vulkan_DescriptorStagingAllocation   ssboVertex;      // example: glyph mesh vertex cache
+    Korl_Vulkan_DescriptorStagingAllocation   ssboFragment;    // example: lighting
+    Korl_Vulkan_DeviceMemory_AllocationHandle map2dFragment[3];// example: material maps (base, specular, emissive)
+} Korl_Vulkan_DrawState;
 typedef struct Korl_Resource_Texture_CreateInfo Korl_Resource_Texture_CreateInfo;
 korl_internal void                                      korl_vulkan_construct(void);
 korl_internal void                                      korl_vulkan_destroy(void);
@@ -64,6 +84,7 @@ korl_internal void                                      korl_vulkan_setSurfaceCl
 korl_internal void                                      korl_vulkan_frameEnd(void);
 korl_internal void                                      korl_vulkan_deferredResize(u32 sizeX, u32 sizeY);
 korl_internal void                                      korl_vulkan_setDrawState(const Korl_Gfx_DrawState* state);
+korl_internal Korl_Vulkan_DescriptorStagingAllocation   korl_vulkan_stagingAllocateDescriptorData(u$ bytes);// used for allocation of UBO & SSBO data
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingReallocate(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation);
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType);

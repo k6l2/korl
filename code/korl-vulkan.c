@@ -1944,6 +1944,13 @@ korl_internal VkDeviceSize _korl_vulkan_vertexStagingMeta_bytes(const Korl_Gfx_V
     }
     return vertexByteEnd > vertexByteStart ? vertexByteEnd - vertexByteStart : 0;
 }
+korl_internal Korl_Vulkan_DescriptorStagingAllocation korl_vulkan_stagingAllocateDescriptorData(u$ bytes)
+{
+    Korl_Vulkan_DescriptorStagingAllocation result;// we're re-writing the entire struct; no need to initialize
+    result.data                       = _korl_vulkan_getDescriptorStagingPool(bytes, &result.descriptorBufferInfo.buffer, &result.descriptorBufferInfo.offset);
+    result.descriptorBufferInfo.range = bytes;
+    return result;
+}
 korl_internal Korl_Gfx_StagingAllocation korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta)
 {
     KORL_ZERO_STACK(Korl_Gfx_StagingAllocation, result);

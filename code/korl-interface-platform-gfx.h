@@ -20,6 +20,7 @@ typedef struct Korl_Gfx_DrawState_SceneProperties
 } Korl_Gfx_DrawState_SceneProperties;
 typedef struct Korl_Gfx_DrawState_PushConstantData
 {
+    //@TODO: add ability to specify "bytesUsed" for each pipeline stage to prevent the renderer from uploading push constants for each draw call
     u8 vertex  [64];// enough bytes to upload a 4x4 f32 model matrix
     u8 fragment[64];
 } Korl_Gfx_DrawState_PushConstantData;
