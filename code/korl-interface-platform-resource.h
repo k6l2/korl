@@ -88,3 +88,4 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshIndex(name)          u32                                 name(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(name) u32                                 name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(name)      Korl_Resource_Scene3d_MeshPrimitive name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, u32 primitiveIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_newSkin(name)               Korl_Resource_Scene3d_Skin          name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, Korl_Memory_AllocatorHandle allocator)

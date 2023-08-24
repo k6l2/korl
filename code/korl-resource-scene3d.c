@@ -6,7 +6,6 @@
 #include "utility/korl-utility-algorithm.h"
 typedef struct _Korl_Resource_Scene3d_Skin
 {
-    u32              boneCount;
     Korl_Math_M4f32* boneInverseBindMatrices;
     u32*             boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
 } _Korl_Resource_Scene3d_Skin;
@@ -395,4 +394,31 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(korl_resource
     const u32 sceneMeshPrimitiveIndex = scene3d->meshes[meshIndex].meshPrimitivesOffset + primitiveIndex;
     korl_assert(sceneMeshPrimitiveIndex < scene3d->meshPrimitivesSize);
     return scene3d->meshPrimitives[sceneMeshPrimitiveIndex];
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_newSkin(korl_resource_scene3d_newSkin)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return KORL_STRUCT_INITIALIZE_ZERO(Korl_Resource_Scene3d_Skin);
+    korl_assert(meshIndex           <  scene3d->gltf->meshes.size);
+    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
+    const _Korl_Resource_Scene3d_Mesh*const mesh = scene3d->meshes + meshIndex;
+    korl_assert(mesh->skinIndex >= 0);
+    const _Korl_Resource_Scene3d_Skin*const _skin    = scene3d->skins + mesh->skinIndex;
+    const Korl_Codec_Gltf_Skin*const        gltfSkin = korl_codec_gltf_getSkins(scene3d->gltf) + mesh->skinIndex;
+    KORL_ZERO_STACK(Korl_Resource_Scene3d_Skin, skin);
+    skin.skinIndex  = mesh->skinIndex;
+    skin.allocator  = allocator;
+    skin.bonesCount = gltfSkin->joints.size;
+    skin.bones      = korl_allocateDirty(allocator, gltfSkin->joints.size * sizeof(*skin.bones));
+    /* before giving the user the Skin instance, we should initialize the bones */
+    for(u32 b = 0; b < gltfSkin->joints.size; b++)
+    {
+        const Korl_Codec_Gltf_Node*const gltfBoneNode = korl_codec_gltf_skin_getJointNode(scene3d->gltf, gltfSkin, b);
+        skin.bones[b]._position       = gltfBoneNode->translation;
+        skin.bones[b]._versor         = gltfBoneNode->rotation;
+        skin.bones[b]._scale          = gltfBoneNode->scale;
+        skin.bones[b]._m4f32IsUpdated = false;
+    }
+    return skin;
 }
