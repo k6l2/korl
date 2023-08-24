@@ -281,7 +281,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     Korl_Codec_Gltf_Node*const currentNode = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_NODES_ARRAY, sizeof(*currentNode));
                     if(currentNode)
-                        currentNode->tranlation = korl_jsmn_getV3f32(chunk->data, jsonToken);
+                        currentNode->translation = korl_jsmn_getV3f32(chunk->data, jsonToken);
                     break;}
                 case KORL_GLTF_OBJECT_NODES_ARRAY_ELEMENT_ROTATION:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
@@ -1023,4 +1023,26 @@ korl_internal Korl_Codec_Gltf_Sampler* korl_codec_gltf_getSamplers(const Korl_Co
 korl_internal Korl_Codec_Gltf_Material* korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context)
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Material*, KORL_C_CAST(u8*, context) + context->materials.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Skin* korl_codec_gltf_getSkins(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Skin*, KORL_C_CAST(u8*, context) + context->skins.byteOffset);
+}
+korl_internal u32* korl_codec_gltf_skin_getJointNodeIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin)
+{
+    return KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + skin->joints.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Node* korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex)
+{
+    const u32*const jointNodeIndices = KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + skin->joints.byteOffset);
+    return KORL_C_CAST(Korl_Codec_Gltf_Node*, KORL_C_CAST(u8*, context) + context->nodes.byteOffset) + jointNodeIndices[jointIndex];
+}
+korl_internal Korl_Codec_Gltf_Node* korl_codec_gltf_getNodes(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Node*, KORL_C_CAST(u8*, context) + context->nodes.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Node* korl_codec_gltf_node_getChild(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Node*const node, u32 childIndex)
+{
+    const u32*const childNodeIndices = KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + node->children.byteOffset);
+    return KORL_C_CAST(Korl_Codec_Gltf_Node*, KORL_C_CAST(u8*, context) + context->nodes.byteOffset) + childNodeIndices[childIndex];
 }

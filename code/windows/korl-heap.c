@@ -1621,7 +1621,7 @@ korl_internal void korl_heap_linear_free(_Korl_Heap_Linear*const allocator, void
     if(allocation < heapAllocateBegin || allocation >= heapAllocateEnd)
     {
         if(!allocator->next)
-            korl_log(ERROR, "allocation 0x%X not found", allocation);
+            korl_log(ERROR, "allocation 0x%llX not found", allocation);
         korl_heap_linear_free(allocator->next, allocation, file, line, fastAndDirty);
         return;
     }

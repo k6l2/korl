@@ -74,3 +74,9 @@ typedef struct Korl_Resource_Scene3d_MeshPrimitive
     Korl_Gfx_Material_PrimitiveType primitiveType;
     Korl_Gfx_Material               material;
 } Korl_Resource_Scene3d_MeshPrimitive;
+typedef struct Korl_Resource_Scene3d_Skin
+{
+    Korl_Memory_AllocatorHandle allocator;// we need to store a skin instance somewhere in dynamic memory because we don't know how many bones a skin requires
+    Korl_Math_Transform3d*      bones;
+    u32                         bonesCount;
+} Korl_Resource_Scene3d_Skin;

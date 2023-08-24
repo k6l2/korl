@@ -165,6 +165,14 @@ korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(c
     result.edges         = KORL_C_CAST(_Korl_Algorithm_GraphDirected_Edge*, korl_allocate(createInfo->allocator, result.edgesCapacity * sizeof(*result.edges)));
     return result;
 }
+korl_internal void korl_algorithm_graphDirected_destroy(Korl_Algorithm_GraphDirected* context)
+{
+    if(!context)
+        return;
+    korl_free(context->createInfo.allocator, context->edges);
+    korl_free(context->createInfo.allocator, context->nodeMetas);
+    korl_memory_zero(context, sizeof(*context));
+}
 korl_internal void korl_algorithm_graphDirected_addEdge(Korl_Algorithm_GraphDirected* context, u32 indexParent, u32 indexChild)
 {
     korl_assert(context->edgesSize <= context->edgesCapacity);
@@ -185,7 +193,7 @@ korl_internal KORL_ALGORITHM_COMPARE(_korl_algorithm_graphDirected_sortTopologic
                : edgeA->indexChild < edgeB->indexChild ? -1
                  : 0;
 }
-korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
+korl_internal bool korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, u32* o_resultIndexArray)
 {
     // this is effectively just Kahn's algorithm: https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
     /* sort the list of edges by `indexParent` (order doesn't really matter here I don't think...);
@@ -214,40 +222,44 @@ korl_internal u32* korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_G
         context->nodeMetas[context->edges[e].indexParent].children++;
         context->nodeMetas[context->edges[e].indexChild ].inDegree++;
     }
-    /* allocate a node index deque; queue all nodes with in-degree == 0; the 
-        `resultDeque` will by used by enqueueing items to the back of the array 
-        (where "back" is determined by "front" + size), and dequeueing items 
+    /* queue all nodes with in-degree == 0; the `o_resultIndexArray` will by 
+        used by enqueueing items to the back of the array, and dequeueing items 
         from the front (advancing the front offset simultaneously) - O(n) */
-    u32* resultDeque      = KORL_C_CAST(u32*, korl_allocateDirty(allocator, context->createInfo.nodesSize * sizeof(*resultDeque)));
-    u32  resultDequeSize  = 0;
-    u32  resultDequeFront = 0;
+    u32* resultDequeBegin = o_resultIndexArray;
+    u32* resultDequeEnd   = o_resultIndexArray;
     for(u32 n = 0; n < context->createInfo.nodesSize; n++)
         if(0 == context->nodeMetas[n].inDegree)
-            resultDeque[resultDequeFront + resultDequeSize++] = n;
+            *(resultDequeEnd++) = n;
     /* perform topological sort using deque recursion to visit all nodes */
-    while(resultDequeSize)
+    while(resultDequeEnd - resultDequeBegin > 0)// while we still have queued nodes
     {
         /* dequeue the next node */
-        const u32 nextNode = resultDeque[resultDequeFront++];
-        resultDequeSize--;
+        const u32 nextNode = *(resultDequeBegin++);
         /* reduce in-degree of all adjacent nodes by 1, and queue all those whose in-degree is now 0 */
         _Korl_Algorithm_GraphDirected_Edge*const nodeEdges = context->edges + context->nodeMetas[nextNode].childEdgesIndex;
         for(u32 c = 0; c < context->nodeMetas[nextNode].children; c++)
         {
             korl_assert(nodeEdges[c].indexParent == nextNode);
             if(0 == --context->nodeMetas[nodeEdges[c].indexChild].inDegree)
-                resultDeque[resultDequeFront + resultDequeSize++] = nodeEdges[c].indexChild;
+                *(resultDequeEnd++) = nodeEdges[c].indexChild;
         }
     }
-    /* if a cycle was detected, dispose of the deque and give the user nothing */
-    if(resultDequeFront < context->createInfo.nodesSize)
+    /* if a cycle was detected, return failure */
+    if(resultDequeBegin < o_resultIndexArray + context->createInfo.nodesSize)
+        return false;
+    korl_assert(resultDequeBegin == o_resultIndexArray + context->createInfo.nodesSize);// sanity check
+    /* at this point, we have a list of array indices in topological sort 
+        (o_resultIndexArray), but if the user wants de-interleaved sub-trees, etc., 
+        then we have some extra work to do... */
+    return true;
+}
+korl_internal u32* korl_algorithm_graphDirected_sortTopologicalNew(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
+{
+    u32* resultDeque = KORL_C_CAST(u32*, korl_allocateDirty(allocator, context->createInfo.nodesSize * sizeof(*resultDeque)));
+    if(!korl_algorithm_graphDirected_sortTopological(context, resultDeque))
     {
         korl_free(allocator, resultDeque);
         return NULL;
     }
-    korl_assert(resultDequeFront == context->createInfo.nodesSize);// sanity check
-    /* at this point, we have a list of array indices in topological sort 
-        (resultDeque), but if the user wants de-interleaved sub-trees, etc., 
-        then we have some extra work to do... */
     return resultDeque;
 }

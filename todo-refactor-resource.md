@@ -108,7 +108,7 @@
           - boneXform[i] = boneXform[parent] * boneLocal[i]
         - pre-multiply all boneXform matrices by their respective inverseBindMatrix
           - boneXform[i] *= inverseBindMatrix[i]
-        - return a staging buffer to the final boneXform matrices
+        - return a _descriptor_ staging buffer to the final boneXform matrices
     - wherever mesh gets rendered:
       - pass the SkinInstance we want to use on the skinned mesh
     - inside of draw call:

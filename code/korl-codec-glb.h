@@ -61,7 +61,7 @@ typedef struct Korl_Codec_Gltf_Node
     Korl_Codec_Gltf_Data rawUtf8Name;
     i32                  mesh;
     Korl_Codec_Gltf_Data children;// u32[]; array of node indices
-    Korl_Math_V3f32      tranlation;
+    Korl_Math_V3f32      translation;
     Korl_Math_Quaternion rotation;
     Korl_Math_V3f32      scale;
 } Korl_Codec_Gltf_Node;
@@ -226,3 +226,8 @@ korl_internal Korl_Codec_Gltf_Texture*        korl_codec_gltf_getTextures(const 
 korl_internal Korl_Codec_Gltf_Image*          korl_codec_gltf_getImages(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Sampler*        korl_codec_gltf_getSamplers(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Material*       korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Skin*           korl_codec_gltf_getSkins(const Korl_Codec_Gltf* context);
+korl_internal u32*                            korl_codec_gltf_skin_getJointNodeIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin);
+korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex);
+korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_getNodes(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_node_getChild(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Node*const node, u32 childIndex);

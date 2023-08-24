@@ -3,6 +3,13 @@
 #include "korl-codec-glb.h"
 #include "utility/korl-checkCast.h"
 #include "utility/korl-utility-string.h"
+#include "utility/korl-utility-algorithm.h"
+typedef struct _Korl_Resource_Scene3d_Skin
+{
+    u32              boneCount;
+    Korl_Math_M4f32* boneInverseBindMatrices;
+    u32*             boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
+} _Korl_Resource_Scene3d_Skin;
 typedef struct _Korl_Resource_Scene3d
 {
     Korl_Memory_AllocatorHandle          allocator;
@@ -12,8 +19,10 @@ typedef struct _Korl_Resource_Scene3d
     Korl_Resource_Handle                 vertexBuffer;// single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
     u16*                                 meshPrimitiveOffsets;// acceleration structure for Korl_Resource_Scene3d_MeshPrimitive lookups; the index of the first MeshPrimitive associated with a given gltf->mesh in the meshPrimitives array
     u16                                  meshPrimitiveOffsetsSize;// should be == gltf->meshes.size
-    Korl_Resource_Scene3d_MeshPrimitive* meshPrimitives;
+    Korl_Resource_Scene3d_MeshPrimitive* meshPrimitives;// array containing _all_ mesh primitives for all meshes
     u16                                  meshPrimitivesSize;// should be == SUM(gltf->meshes[i].primitives.size)
+    _Korl_Resource_Scene3d_Skin*         skins;
+    u16                                  skinsSize;// should be == gltf->skins.size
 } _Korl_Resource_Scene3d;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
 {
@@ -29,6 +38,12 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreat
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_scene3d_descriptorStructDestroy)
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
+    for(u16 s = 0; s < scene3d->skinsSize; s++)
+    {
+        korl_free(allocator, scene3d->skins[s].boneInverseBindMatrices);
+        korl_free(allocator, scene3d->skins[s].boneTopologicalOrder);
+    }
+    korl_free(allocator, scene3d->skins);
     korl_free(allocator, scene3d->meshPrimitiveOffsets);
     korl_free(allocator, scene3d->meshPrimitives);
     korl_resource_destroy(scene3d->vertexBuffer);
@@ -39,15 +54,14 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
 }
 korl_internal const void* _korl_resource_scene3d_transcode_getViewedBuffer(_Korl_Resource_Scene3d*const scene3d, const void* glbFileData, i32 bufferViewIndex)
 {
+    korl_assert(bufferViewIndex >= 0);
     const Korl_Codec_Gltf_BufferView*const gltfBufferViews = korl_codec_gltf_getBufferViews(scene3d->gltf);
     const Korl_Codec_Gltf_Buffer*const     gltfBuffers     = korl_codec_gltf_getBuffers(scene3d->gltf);
-    if(bufferViewIndex < 0)
-        korl_log(ERROR, "external image source not supported");
-    const Korl_Codec_Gltf_BufferView*const bufferView = gltfBufferViews + bufferViewIndex;
-    const Korl_Codec_Gltf_Buffer*const     buffer     = gltfBuffers     + bufferView->buffer;
+    const Korl_Codec_Gltf_BufferView*const bufferView      = gltfBufferViews + bufferViewIndex;
+    const Korl_Codec_Gltf_Buffer*const     buffer          = gltfBuffers     + bufferView->buffer;
     if(buffer->stringUri.size)
         korl_log(ERROR, "external & embedded string buffers not supported");
-    korl_assert(buffer->glbByteOffset >= 0);// require that the raw image file data is embedded in the GLB file itself as-is
+    korl_assert(buffer->glbByteOffset >= 0);// require that the raw data is embedded in the GLB file itself as-is
     const void*const bufferData       = KORL_C_CAST(u8*, glbFileData) + buffer->glbByteOffset;
     const void*const viewedBufferData = KORL_C_CAST(u8*, bufferData ) + bufferView->byteOffset;
     return viewedBufferData;
@@ -100,6 +114,8 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         if(gltfTextures[t].source < 0)
             korl_log(ERROR, "undefined texture source not supported");// perhaps in the future we can just assign a "default" source image of some kind
         const Korl_Codec_Gltf_Image*const image = gltfImages + gltfTextures[t].source;
+        if(image->bufferView < 0)
+            korl_log(ERROR, "external image sources (URIs) not supported");// if this ever gets implemented, it will probably only be used to get resource handles of image file assets
         const void*const viewedBufferData = _korl_resource_scene3d_transcode_getViewedBuffer(scene3d, data, image->bufferView);
         const Korl_Codec_Gltf_BufferView*const bufferView = gltfBufferViews + image->bufferView;
         /* create a new runtime texture resource */
@@ -244,6 +260,56 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             else
                 sceneMeshPrimitive->material = _korl_resource_scene3d_getMaterial(scene3d, meshPrimitive->material);
         }
+    }
+    /* transcode skins */
+    const Korl_Codec_Gltf_Skin*const gltfSkins = korl_codec_gltf_getSkins(scene3d->gltf);
+    const Korl_Codec_Gltf_Node*const gltfNodes = korl_codec_gltf_getNodes(scene3d->gltf);
+    if(scene3d->gltf->skins.size)
+        if(scene3d->skins)
+            // constrain scene3d re-transcodes to maintain the same # of textures between loads
+            korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+        else
+            scene3d->skins = korl_allocate(scene3d->allocator, scene3d->gltf->skins.size * sizeof(*scene3d->skins));
+    scene3d->skinsSize = korl_checkCast_u$_to_u16(scene3d->gltf->skins.size);
+    for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
+    {
+        const Korl_Codec_Gltf_Skin*const  gltfSkin = gltfSkins      + s;
+        _Korl_Resource_Scene3d_Skin*const skin     = scene3d->skins + s;
+        skin->boneInverseBindMatrices = korl_reallocate(scene3d->allocator, skin->boneInverseBindMatrices, gltfSkin->joints.size * sizeof(*skin->boneInverseBindMatrices));
+        skin->boneTopologicalOrder    = korl_reallocate(scene3d->allocator, skin->boneTopologicalOrder   , gltfSkin->joints.size * sizeof(*skin->boneTopologicalOrder));
+        /* transcode inverse bind matrices */
+        if(gltfSkin->inverseBindMatrices >= 0)
+        {
+            const Korl_Codec_Gltf_Accessor*const accessor = gltfAccessors   + gltfSkin->inverseBindMatrices;
+            korl_assert(   accessor->type          == KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4 
+                        && accessor->componentType == KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_F32);// gltf spec. 3.7.3.1
+            const Korl_Math_M4f32*const            viewedBufferData = _korl_resource_scene3d_transcode_getViewedBuffer(scene3d, data, accessor->bufferView);
+            const Korl_Codec_Gltf_BufferView*const bufferView       = gltfBufferViews + accessor->bufferView;
+            /* gltf matrices are column-major in memory, so we need to transpose them all for korl-math */
+            for(u32 m = 0; m < accessor->count; m++)
+                skin->boneInverseBindMatrices[m] = korl_math_m4f32_transpose(viewedBufferData + m);
+        }
+        else
+            korl_log(ERROR, "implicit inverseBindMatrices not implemented");
+        /* transcode topological bone order */
+        KORL_ZERO_STACK(Korl_Algorithm_GraphDirected_CreateInfo, graphCreateInfo);
+        graphCreateInfo.allocator = scene3d->allocator;
+        graphCreateInfo.nodesSize = gltfSkin->joints.size;
+        Korl_Algorithm_GraphDirected graphDirected = korl_algorithm_graphDirected_create(&graphCreateInfo);
+        for(u32 j = 0; j < gltfSkin->joints.size; j++)
+        {
+            const Korl_Codec_Gltf_Node*const jointNode      = korl_codec_gltf_skin_getJointNode(scene3d->gltf, gltfSkin, j);
+            const u32                        jointNodeIndex = korl_checkCast_i$_to_u32(jointNode - gltfNodes);
+            for(u32 jc = 0; jc < jointNode->children.size; jc++)
+            {
+                const Korl_Codec_Gltf_Node*const jointNodeChild      = korl_codec_gltf_node_getChild(scene3d->gltf, jointNode, jc);
+                const u32                        jointNodeChildIndex = korl_checkCast_i$_to_u32(jointNodeChild - gltfNodes);
+                korl_algorithm_graphDirected_addEdge(&graphDirected, jointNodeIndex, jointNodeChildIndex);
+            }
+        }
+        if(!korl_algorithm_graphDirected_sortTopological(&graphDirected, skin->boneTopologicalOrder))
+            korl_log(ERROR, "skin topological sort failed; invalid bone DAG (graph has cycles?)");
+        korl_algorithm_graphDirected_destroy(&graphDirected);
     }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_scene3d_clearTransientData)

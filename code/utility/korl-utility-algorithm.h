@@ -57,10 +57,14 @@ typedef struct Korl_Algorithm_GraphDirected
     u32                                            edgesSize;
 } Korl_Algorithm_GraphDirected;
 korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo);
+korl_internal void                         korl_algorithm_graphDirected_destroy(Korl_Algorithm_GraphDirected* context);
 korl_internal void                         korl_algorithm_graphDirected_addEdge(Korl_Algorithm_GraphDirected* context, u32 indexParent, u32 indexChild);
+/** \param o_resultIndexArray _must_ be >= \c context->createInfo.nodesSize in length
+ * \return \c true if topological sort succeeds, \c false if a cycle is detected */
+korl_internal bool                         korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, u32* o_resultIndexArray);
 /** \return An array of indices into the user's nodes array sorted topologically, 
  * such that parent node indices _always_ come _before_ their child node indices.  
  * If no such order exists (the graph created by the user contains cycles), then 
  * \c NULL is returned.  The result array is allocated via the \c allocator 
  * parameter. */
-korl_internal u32*                         korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator);
+korl_internal u32*                         korl_algorithm_graphDirected_sortTopologicalNew(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator);
