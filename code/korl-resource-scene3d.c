@@ -10,19 +10,24 @@ typedef struct _Korl_Resource_Scene3d_Skin
     Korl_Math_M4f32* boneInverseBindMatrices;
     u32*             boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
 } _Korl_Resource_Scene3d_Skin;
+typedef struct _Korl_Resource_Scene3d_Mesh
+{
+    u16 meshPrimitivesOffset;// acceleration data for Korl_Resource_Scene3d_MeshPrimitive lookups; the index of the first MeshPrimitive associated with a given gltf->mesh in the meshPrimitives array
+    i32 skinIndex;           // < 0 => no skin is compatible with this mesh
+} _Korl_Resource_Scene3d_Mesh;
 typedef struct _Korl_Resource_Scene3d
 {
     Korl_Memory_AllocatorHandle          allocator;
     Korl_Codec_Gltf*                     gltf;
     Korl_Resource_Handle*                textures;
-    u16                                  texturesSize;// should be == gltf->textures.size
-    Korl_Resource_Handle                 vertexBuffer;// single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
-    u16*                                 meshPrimitiveOffsets;// acceleration structure for Korl_Resource_Scene3d_MeshPrimitive lookups; the index of the first MeshPrimitive associated with a given gltf->mesh in the meshPrimitives array
-    u16                                  meshPrimitiveOffsetsSize;// should be == gltf->meshes.size
-    Korl_Resource_Scene3d_MeshPrimitive* meshPrimitives;// array containing _all_ mesh primitives for all meshes
+    u16                                  texturesSize;      // should be == gltf->textures.size
+    Korl_Resource_Handle                 vertexBuffer;      // single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
+    _Korl_Resource_Scene3d_Mesh*         meshes;            // meta data (acceleration, mappings, etc.) for each gltf->mesh
+    u16                                  meshesSize;        // should be == gltf->meshes.size
+    Korl_Resource_Scene3d_MeshPrimitive* meshPrimitives;    // array containing _all_ mesh primitives for all meshes
     u16                                  meshPrimitivesSize;// should be == SUM(gltf->meshes[i].primitives.size)
-    _Korl_Resource_Scene3d_Skin*         skins;
-    u16                                  skinsSize;// should be == gltf->skins.size
+    _Korl_Resource_Scene3d_Skin*         skins;             // pre-baked data needed to instantiate a Korl_Resource_Scene3d_Skin
+    u16                                  skinsSize;         // should be == gltf->skins.size
 } _Korl_Resource_Scene3d;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
 {
@@ -44,7 +49,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
         korl_free(allocator, scene3d->skins[s].boneTopologicalOrder);
     }
     korl_free(allocator, scene3d->skins);
-    korl_free(allocator, scene3d->meshPrimitiveOffsets);
+    korl_free(allocator, scene3d->meshes);
     korl_free(allocator, scene3d->meshPrimitives);
     korl_resource_destroy(scene3d->vertexBuffer);
     for(u16 t = 0; t < scene3d->texturesSize; t++)
@@ -140,17 +145,18 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     u$ vertexBufferBytesUsed = 0;// after we extract all the index/attribute data, we will resize the gfx-buffer to match this value exactly
     korl_resource_resize(scene3d->vertexBuffer, vertexBufferBytes);// reset our vertexBuffer to some base size
     const Korl_Codec_Gltf_Mesh*const gltfMeshes = korl_codec_gltf_getMeshes(scene3d->gltf);
+    const Korl_Codec_Gltf_Node*const gltfNodes  = korl_codec_gltf_getNodes(scene3d->gltf);
     if(scene3d->gltf->meshes.size)
-        if(scene3d->meshPrimitiveOffsets)
+        if(scene3d->meshes)
             // constrain scene3d re-transcodes to maintain the same # of meshes between loads
-            korl_assert(scene3d->meshPrimitiveOffsetsSize == scene3d->gltf->meshes.size);
+            korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
         else
-            scene3d->meshPrimitiveOffsets = korl_allocate(scene3d->allocator, scene3d->gltf->meshes.size * sizeof(*scene3d->meshPrimitiveOffsets));
-    scene3d->meshPrimitiveOffsetsSize = korl_checkCast_u$_to_u16(scene3d->gltf->meshes.size);
+            scene3d->meshes = korl_allocate(scene3d->allocator, scene3d->gltf->meshes.size * sizeof(*scene3d->meshes));
+    scene3d->meshesSize = korl_checkCast_u$_to_u16(scene3d->gltf->meshes.size);
     u16 meshPrimitiveCount = 0;
     for(u32 m = 0; m < scene3d->gltf->meshes.size; m++)
     {
-        scene3d->meshPrimitiveOffsets[m] = meshPrimitiveCount;
+        scene3d->meshes[m].meshPrimitivesOffset = meshPrimitiveCount;
         meshPrimitiveCount += korl_checkCast_u$_to_u16(gltfMeshes[m].primitives.size);
     }
     if(meshPrimitiveCount)
@@ -164,7 +170,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     {
         const Korl_Codec_Gltf_Mesh*const           mesh               = gltfMeshes + m;
         const Korl_Codec_Gltf_Mesh_Primitive*const gltfMeshPrimitives = korl_codec_gltf_mesh_getPrimitives(scene3d->gltf, mesh);
-        Korl_Resource_Scene3d_MeshPrimitive*const  meshPrimitives     = scene3d->meshPrimitives + scene3d->meshPrimitiveOffsets[m];
+        Korl_Resource_Scene3d_MeshPrimitive*const  meshPrimitives     = scene3d->meshPrimitives + scene3d->meshes[m].meshPrimitivesOffset;
         /* extract vertex staging meta & store all vertex data into a runtime buffer resource */
         for(u32 mp = 0; mp < mesh->primitives.size; mp++)
         {
@@ -260,10 +266,20 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             else
                 sceneMeshPrimitive->material = _korl_resource_scene3d_getMaterial(scene3d, meshPrimitive->material);
         }
+        /* enumerate Nodes to identify whether or not there is a skin compatible with this mesh */
+        scene3d->meshes[m].skinIndex = -1;
+        for(u32 n = 0; n < scene3d->gltf->nodes.size; n++)
+        {
+            const Korl_Codec_Gltf_Node*const node = gltfNodes + n;
+            if(node->mesh == korl_checkCast_u$_to_i32(m) && node->skin >= 0)
+            {
+                scene3d->meshes[m].skinIndex = node->skin;
+                break;// for now, only one skin can be associated with a mesh
+            }
+        }
     }
     /* transcode skins */
     const Korl_Codec_Gltf_Skin*const gltfSkins = korl_codec_gltf_getSkins(scene3d->gltf);
-    const Korl_Codec_Gltf_Node*const gltfNodes = korl_codec_gltf_getNodes(scene3d->gltf);
     if(scene3d->gltf->skins.size)
         if(scene3d->skins)
             // constrain scene3d re-transcodes to maintain the same # of textures between loads
@@ -364,8 +380,8 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(korl_res
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return 0;
-    korl_assert(meshIndex                         <  scene3d->gltf->meshes.size);
-    korl_assert(scene3d->meshPrimitiveOffsetsSize == scene3d->gltf->meshes.size);
+    korl_assert(meshIndex           <  scene3d->gltf->meshes.size);
+    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
     return korl_codec_gltf_getMeshes(scene3d->gltf)[meshIndex].primitives.size;
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(korl_resource_scene3d_getMeshPrimitive)
@@ -373,10 +389,10 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(korl_resource
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Resource_Scene3d_MeshPrimitive);
-    korl_assert(meshIndex                         <  scene3d->gltf->meshes.size);
-    korl_assert(scene3d->meshPrimitiveOffsetsSize == scene3d->gltf->meshes.size);
+    korl_assert(meshIndex           <  scene3d->gltf->meshes.size);
+    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
     korl_assert(primitiveIndex < korl_codec_gltf_getMeshes(scene3d->gltf)[meshIndex].primitives.size);
-    const u32 sceneMeshPrimitiveIndex = scene3d->meshPrimitiveOffsets[meshIndex] + primitiveIndex;
+    const u32 sceneMeshPrimitiveIndex = scene3d->meshes[meshIndex].meshPrimitivesOffset + primitiveIndex;
     korl_assert(sceneMeshPrimitiveIndex < scene3d->meshPrimitivesSize);
     return scene3d->meshPrimitives[sceneMeshPrimitiveIndex];
 }
