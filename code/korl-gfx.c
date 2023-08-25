@@ -363,7 +363,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             }
             /* pre-multiply bone matrices with their respective inverseBindMatrix */
             const Korl_Math_M4f32*const boneInverseBindMatrices = korl_resource_scene3d_skin_getBoneInverseBindMatrices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
-            for(u32 b = 1; b < context->subType.mesh.skin->bonesCount; b++)
+            for(u32 b = 0; b < context->subType.mesh.skin->bonesCount; b++)
                 boneMatrices[b] = korl_math_m4f32_multiply(boneMatrices + b, boneInverseBindMatrices + b);
             /* apply the bone matrix descriptor to vulkan DrawState */
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);

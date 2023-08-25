@@ -32,15 +32,16 @@ layout(location = KORL_FRAGMENT_INPUT_VIEW_NORMAL)   out vec3 fragmentViewNormal
 layout(location = KORL_FRAGMENT_INPUT_VIEW_POSITION) out vec3 fragmentViewPosition;
 void main()
 {
-    const mat3 normalMatrix = mat3(transpose(inverse(pushConstants.model)));
+    // note: all bones are expected to be already combined with their inverseBindMatrices
+    // note: pushConstants.model is expected to be pre-multiplied with the root bone; ergo, all bones are in model-space; in other words, do _not_ use pushConstants.model anywhere in this shader
+    const mat4 skinnedModel = bones[int(attributeJoints0[0] * 255)] * attributeJointWeights0[0]
+                            + bones[int(attributeJoints0[1] * 255)] * attributeJointWeights0[1]
+                            + bones[int(attributeJoints0[2] * 255)] * attributeJointWeights0[2]
+                            + bones[int(attributeJoints0[3] * 255)] * attributeJointWeights0[3];
+    const mat3 normalMatrix = mat3(transpose(inverse(skinnedModel)));
     fragmentColor        = vec4(1.0);
     fragmentUv           = attributeUv;
     fragmentViewNormal   = normalize(mat3(sceneProperties.view) * normalMatrix * attributeNormal);
-    fragmentViewPosition = vec3(sceneProperties.view * pushConstants.model * vec4(attributePosition, 1.0));
-    // gl_Position          = sceneProperties.projection * sceneProperties.view * pushConstants.model * vec4(attributePosition, 1.0);
-    gl_Position          =   sceneProperties.projection * sceneProperties.view 
-                           * (  bones[int(attributeJoints0[0] * 255)] * vec4(attributePosition, 1.0) * attributeJointWeights0[0]
-                              + bones[int(attributeJoints0[1] * 255)] * vec4(attributePosition, 1.0) * attributeJointWeights0[1]
-                              + bones[int(attributeJoints0[2] * 255)] * vec4(attributePosition, 1.0) * attributeJointWeights0[2]
-                              + bones[int(attributeJoints0[3] * 255)] * vec4(attributePosition, 1.0) * attributeJointWeights0[3]);
+    fragmentViewPosition = vec3(sceneProperties.view * skinnedModel * vec4(attributePosition, 1.0));
+    gl_Position          = sceneProperties.projection * sceneProperties.view * skinnedModel * vec4(attributePosition, 1.0);
 }

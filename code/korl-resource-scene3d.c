@@ -317,16 +317,23 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         Korl_Algorithm_GraphDirected graphDirected = korl_algorithm_graphDirected_create(&graphCreateInfo);
         for(u32 j = 0; j < gltfSkin->joints.size; j++)
             skin->boneParentIndices[j] = -1;// initialize all bones to have no parent
+        const u32*const skinJointIndices = korl_codec_gltf_skin_getJointIndices(scene3d->gltf, gltfSkin);
         for(u32 j = 0; j < gltfSkin->joints.size; j++)
         {
-            const Korl_Codec_Gltf_Node*const jointNode      = korl_codec_gltf_skin_getJointNode(scene3d->gltf, gltfSkin, j);
-            const u32                        jointNodeIndex = korl_checkCast_i$_to_u32(jointNode - gltfNodes);
+            const Korl_Codec_Gltf_Node*const jointNode = korl_codec_gltf_skin_getJointNode(scene3d->gltf, gltfSkin, j);
             for(u32 jc = 0; jc < jointNode->children.size; jc++)
             {
                 const Korl_Codec_Gltf_Node*const jointNodeChild      = korl_codec_gltf_node_getChild(scene3d->gltf, jointNode, jc);
                 const u32                        jointNodeChildIndex = korl_checkCast_i$_to_u32(jointNodeChild - gltfNodes);
-                korl_algorithm_graphDirected_addEdge(&graphDirected, jointNodeIndex, jointNodeChildIndex);
-                skin->boneParentIndices[jointNodeChildIndex] = jointNodeIndex;
+                /* we have the skinJointIndex of the parent node, and we have the nodeIndex of the child node, 
+                    so we must convert the child nodeIndex into a skinJointIndex to determine the edge */
+                u32 jointChildIndex = 0;
+                for(; jointChildIndex < gltfSkin->joints.size; jointChildIndex++)
+                    if(skinJointIndices[jointChildIndex] == jointNodeChildIndex)
+                        break;
+                korl_assert(jointChildIndex < gltfSkin->joints.size);// ensure that we actually found the child in the skin joint array
+                korl_algorithm_graphDirected_addEdge(&graphDirected, j, jointChildIndex);
+                skin->boneParentIndices[jointChildIndex] = j;
             }
         }
         if(!korl_algorithm_graphDirected_sortTopological(&graphDirected, skin->boneTopologicalOrder))

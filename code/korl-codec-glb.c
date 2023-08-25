@@ -1035,6 +1035,10 @@ korl_internal Korl_Codec_Gltf_Skin* korl_codec_gltf_getSkins(const Korl_Codec_Gl
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Skin*, KORL_C_CAST(u8*, context) + context->skins.byteOffset);
 }
+korl_internal const u32* korl_codec_gltf_skin_getJointIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin)
+{
+    return KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + skin->joints.byteOffset);
+}
 korl_internal Korl_Codec_Gltf_Node* korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex)
 {
     const u32*const jointNodeIndices = KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + skin->joints.byteOffset);
