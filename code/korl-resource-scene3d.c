@@ -6,10 +6,12 @@
 #include "utility/korl-utility-algorithm.h"
 typedef struct _Korl_Resource_Scene3d_Skin
 {
+    //@TODO: move all this data into a single allocation
     /** all these array sizes should == this object's respective gltfSkin->joints.size */
     Korl_Math_M4f32* boneInverseBindMatrices;
     u32*             boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
     i32*             boneParentIndices;// < 0 => bone has no parent
+    i32*             nodeIndex_to_boneIndex;// < 0 => gltfNode is not related to any bones of this skin; acceleration structure; useful for topological sort, performing animations on gltfNodes instead of bones
 } _Korl_Resource_Scene3d_Skin;
 typedef struct _Korl_Resource_Scene3d_Mesh
 {
@@ -20,6 +22,7 @@ typedef struct _Korl_Resource_Scene3d
 {
     Korl_Memory_AllocatorHandle          allocator;
     Korl_Codec_Gltf*                     gltf;
+    //@TODO: move all this transient data into a single allocation? this might introduce issues if we decide to actually clear transient data in `*_clearTransientData` though...
     Korl_Resource_Handle*                textures;
     u16                                  texturesSize;      // should be == gltf->textures.size
     Korl_Resource_Handle                 vertexBuffer;      // single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
@@ -49,6 +52,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
         korl_free(allocator, scene3d->skins[s].boneInverseBindMatrices);
         korl_free(allocator, scene3d->skins[s].boneTopologicalOrder);
         korl_free(allocator, scene3d->skins[s].boneParentIndices);
+        korl_free(allocator, scene3d->skins[s].nodeIndex_to_boneIndex);
     }
     korl_free(allocator, scene3d->skins);
     korl_free(allocator, scene3d->meshes);
@@ -296,6 +300,17 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         skin->boneInverseBindMatrices = korl_reallocate(scene3d->allocator, skin->boneInverseBindMatrices, gltfSkin->joints.size * sizeof(*skin->boneInverseBindMatrices));
         skin->boneTopologicalOrder    = korl_reallocate(scene3d->allocator, skin->boneTopologicalOrder   , gltfSkin->joints.size * sizeof(*skin->boneTopologicalOrder));
         skin->boneParentIndices       = korl_reallocate(scene3d->allocator, skin->boneParentIndices      , gltfSkin->joints.size * sizeof(*skin->boneParentIndices));
+        skin->nodeIndex_to_boneIndex  = korl_reallocate(scene3d->allocator, skin->nodeIndex_to_boneIndex , scene3d->gltf->nodes.size * sizeof(*skin->nodeIndex_to_boneIndex));
+        /* transcode nodeIndex=>boneIndex lookup table */
+        const u32*const skinJointIndices = korl_codec_gltf_skin_getJointIndices(scene3d->gltf, gltfSkin);
+        for(u32 n = 0; n < scene3d->gltf->nodes.size; n++)
+        {
+            skin->nodeIndex_to_boneIndex[n] = -1;
+            for(u32 j = 0; j < gltfSkin->joints.size && skin->nodeIndex_to_boneIndex[n] == -1; j++)
+                if(skinJointIndices[j] == n)
+                    skin->nodeIndex_to_boneIndex[n] = j;
+            
+        }
         /* transcode inverse bind matrices */
         if(gltfSkin->inverseBindMatrices >= 0)
         {
@@ -317,23 +332,16 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         Korl_Algorithm_GraphDirected graphDirected = korl_algorithm_graphDirected_create(&graphCreateInfo);
         for(u32 j = 0; j < gltfSkin->joints.size; j++)
             skin->boneParentIndices[j] = -1;// initialize all bones to have no parent
-        const u32*const skinJointIndices = korl_codec_gltf_skin_getJointIndices(scene3d->gltf, gltfSkin);
         for(u32 j = 0; j < gltfSkin->joints.size; j++)
         {
             const Korl_Codec_Gltf_Node*const jointNode = korl_codec_gltf_skin_getJointNode(scene3d->gltf, gltfSkin, j);
             for(u32 jc = 0; jc < jointNode->children.size; jc++)
             {
-                const Korl_Codec_Gltf_Node*const jointNodeChild      = korl_codec_gltf_node_getChild(scene3d->gltf, jointNode, jc);
-                const u32                        jointNodeChildIndex = korl_checkCast_i$_to_u32(jointNodeChild - gltfNodes);
-                /* we have the skinJointIndex of the parent node, and we have the nodeIndex of the child node, 
-                    so we must convert the child nodeIndex into a skinJointIndex to determine the edge */
-                u32 jointChildIndex = 0;
-                for(; jointChildIndex < gltfSkin->joints.size; jointChildIndex++)
-                    if(skinJointIndices[jointChildIndex] == jointNodeChildIndex)
-                        break;
-                korl_assert(jointChildIndex < gltfSkin->joints.size);// ensure that we actually found the child in the skin joint array
-                korl_algorithm_graphDirected_addEdge(&graphDirected, j, jointChildIndex);
-                skin->boneParentIndices[jointChildIndex] = j;
+                const Korl_Codec_Gltf_Node*const jointNodeChild  = korl_codec_gltf_node_getChild(scene3d->gltf, jointNode, jc);
+                const u32                        childNodeIndex  = korl_checkCast_i$_to_u32(jointNodeChild - gltfNodes);
+                const u32                        childJointIndex = korl_checkCast_i$_to_u32(skin->nodeIndex_to_boneIndex[childNodeIndex]);
+                korl_algorithm_graphDirected_addEdge(&graphDirected, j, childJointIndex);
+                skin->boneParentIndices[childJointIndex] = j;
             }
         }
         if(!korl_algorithm_graphDirected_sortTopological(&graphDirected, skin->boneTopologicalOrder))
