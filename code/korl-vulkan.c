@@ -1877,6 +1877,7 @@ korl_internal VkFormat _korl_vulkan_vertexAttribute_format(const Korl_Gfx_Vertex
         {
         case  2: return VK_FORMAT_R32G32_SFLOAT;
         case  3: return VK_FORMAT_R32G32B32_SFLOAT;
+        case  4: return VK_FORMAT_R32G32B32A32_SFLOAT;
         default: return VK_FORMAT_UNDEFINED;
         }
     default:
@@ -2046,6 +2047,23 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
         descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
         descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
         descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &surfaceContext->drawState.ssboVertex[0].descriptorBufferInfo;
+        // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
+        descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE;
+        descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;
+        descriptorWriteCount++;
+    }
+    if(   surfaceContext->drawState.uboVertex[1].descriptorBufferInfo.buffer != VK_NULL_HANDLE
+       && 0 != korl_memory_compare(&surfaceContext->drawState.uboVertex[1]
+                                  ,&surfaceContext->drawStateLast.uboVertex[1]
+                                  ,sizeof(surfaceContext->drawState.uboVertex[1])))
+    {
+        const VkDescriptorSetLayoutBinding*const descriptorSetLayoutBinding = _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_STORAGE 
+                                                                            + _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_BONES_UBO;
+        descriptorSetWrites[descriptorWriteCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorSetWrites[descriptorWriteCount].dstBinding      = descriptorSetLayoutBinding->binding;
+        descriptorSetWrites[descriptorWriteCount].descriptorType  = descriptorSetLayoutBinding->descriptorType;
+        descriptorSetWrites[descriptorWriteCount].descriptorCount = descriptorSetLayoutBinding->descriptorCount;
+        descriptorSetWrites[descriptorWriteCount].pBufferInfo     = &surfaceContext->drawState.uboVertex[1].descriptorBufferInfo;
         // defer writing a destination set, since we don't want to allocate a descriptor set unless we need to; descriptor set allocation/binding is _EXPENSIVE_!
         descriptorSetWriteSetIndices[descriptorWriteCount] = _KORL_VULKAN_DESCRIPTOR_SET_INDEX_STORAGE;
         descriptorSetIndicesChanged[descriptorSetWriteSetIndices[descriptorWriteCount]] = true;

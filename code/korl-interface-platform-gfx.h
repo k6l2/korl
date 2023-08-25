@@ -302,6 +302,7 @@ typedef enum Korl_Gfx_Drawable_Runtime_Type
     {KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME
     ,KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME
 } Korl_Gfx_Drawable_Runtime_Type;
+typedef struct Korl_Resource_Scene3d_Skin Korl_Resource_Scene3d_Skin;
 typedef struct Korl_Gfx_Drawable
 {
     Korl_Gfx_Drawable_Type type;
@@ -338,11 +339,12 @@ typedef struct Korl_Gfx_Drawable
         } runtime;
         struct
         {
-            Korl_Resource_Handle resourceHandleScene3d;
-            u8                   rawUtf8Scene3dMeshName[32];
-            u8                   rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
-            u32                  meshIndex;// invalid until the scene3d resource becomes loaded
-            u8                   meshPrimitives;// 0 => scene3d resource has not yet been loaded; defines the maximum # of Materials the user can pass to korl_gfx_draw
+            Korl_Resource_Handle        resourceHandleScene3d;
+            Korl_Resource_Scene3d_Skin* skin;
+            u8                          rawUtf8Scene3dMeshName[32];
+            u8                          rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
+            u32                         meshIndex;// invalid until the scene3d resource becomes loaded
+            u8                          meshPrimitives;// 0 => scene3d resource has not yet been loaded; defines the maximum # of Materials the user can pass to korl_gfx_draw
         } mesh;
     } subType;
 } Korl_Gfx_Drawable;
@@ -360,7 +362,7 @@ typedef struct Korl_Gfx_Drawable
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
 #define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)
-#define KORL_FUNCTION_korl_gfx_setDrawState(name)                            void                       name(const Korl_Gfx_DrawState* drawState)
+#define KORL_FUNCTION_korl_gfx_setDrawState(name)                            bool                       name(const Korl_Gfx_DrawState* drawState)
 #define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
 #define KORL_FUNCTION_korl_gfx_stagingReallocate(name)                       Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
 #define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)

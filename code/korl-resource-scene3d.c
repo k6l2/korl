@@ -6,8 +6,10 @@
 #include "utility/korl-utility-algorithm.h"
 typedef struct _Korl_Resource_Scene3d_Skin
 {
+    /** all these array sizes should == this object's respective gltfSkin->joints.size */
     Korl_Math_M4f32* boneInverseBindMatrices;
     u32*             boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
+    i32*             boneParentIndices;// < 0 => bone has no parent
 } _Korl_Resource_Scene3d_Skin;
 typedef struct _Korl_Resource_Scene3d_Mesh
 {
@@ -46,6 +48,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
     {
         korl_free(allocator, scene3d->skins[s].boneInverseBindMatrices);
         korl_free(allocator, scene3d->skins[s].boneTopologicalOrder);
+        korl_free(allocator, scene3d->skins[s].boneParentIndices);
     }
     korl_free(allocator, scene3d->skins);
     korl_free(allocator, scene3d->meshes);
@@ -292,6 +295,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         _Korl_Resource_Scene3d_Skin*const skin     = scene3d->skins + s;
         skin->boneInverseBindMatrices = korl_reallocate(scene3d->allocator, skin->boneInverseBindMatrices, gltfSkin->joints.size * sizeof(*skin->boneInverseBindMatrices));
         skin->boneTopologicalOrder    = korl_reallocate(scene3d->allocator, skin->boneTopologicalOrder   , gltfSkin->joints.size * sizeof(*skin->boneTopologicalOrder));
+        skin->boneParentIndices       = korl_reallocate(scene3d->allocator, skin->boneParentIndices      , gltfSkin->joints.size * sizeof(*skin->boneParentIndices));
         /* transcode inverse bind matrices */
         if(gltfSkin->inverseBindMatrices >= 0)
         {
@@ -306,11 +310,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         }
         else
             korl_log(ERROR, "implicit inverseBindMatrices not implemented");
-        /* transcode topological bone order */
+        /* transcode topological bone order & the parent index array */
         KORL_ZERO_STACK(Korl_Algorithm_GraphDirected_CreateInfo, graphCreateInfo);
         graphCreateInfo.allocator = scene3d->allocator;
         graphCreateInfo.nodesSize = gltfSkin->joints.size;
         Korl_Algorithm_GraphDirected graphDirected = korl_algorithm_graphDirected_create(&graphCreateInfo);
+        for(u32 j = 0; j < gltfSkin->joints.size; j++)
+            skin->boneParentIndices[j] = -1;// initialize all bones to have no parent
         for(u32 j = 0; j < gltfSkin->joints.size; j++)
         {
             const Korl_Codec_Gltf_Node*const jointNode      = korl_codec_gltf_skin_getJointNode(scene3d->gltf, gltfSkin, j);
@@ -320,6 +326,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 const Korl_Codec_Gltf_Node*const jointNodeChild      = korl_codec_gltf_node_getChild(scene3d->gltf, jointNode, jc);
                 const u32                        jointNodeChildIndex = korl_checkCast_i$_to_u32(jointNodeChild - gltfNodes);
                 korl_algorithm_graphDirected_addEdge(&graphDirected, jointNodeIndex, jointNodeChildIndex);
+                skin->boneParentIndices[jointNodeChildIndex] = jointNodeIndex;
             }
         }
         if(!korl_algorithm_graphDirected_sortTopological(&graphDirected, skin->boneTopologicalOrder))
@@ -421,4 +428,34 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_newSkin(korl_resource_scene3d_
         skin.bones[b]._m4f32IsUpdated = false;
     }
     return skin;
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneParentIndices(korl_resource_scene3d_skin_getBoneParentIndices)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return NULL;
+    korl_assert(skinIndex          <  scene3d->gltf->skins.size);
+    korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+    const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
+    return _skin->boneParentIndices;
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneTopologicalOrder(korl_resource_scene3d_skin_getBoneTopologicalOrder)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return NULL;
+    korl_assert(skinIndex          <  scene3d->gltf->skins.size);
+    korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+    const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
+    return _skin->boneTopologicalOrder;
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneInverseBindMatrices(korl_resource_scene3d_skin_getBoneInverseBindMatrices)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return NULL;
+    korl_assert(skinIndex          <  scene3d->gltf->skins.size);
+    korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+    const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
+    return _skin->boneInverseBindMatrices;
 }

@@ -59,7 +59,7 @@ typedef struct Korl_Vulkan_DescriptorStagingAllocation
     void*                  data;
     VkDescriptorBufferInfo descriptorBufferInfo;
 } Korl_Vulkan_DescriptorStagingAllocation;
-#define KORL_VULKAN_MAX_UBOS_VERTEX        1
+#define KORL_VULKAN_MAX_UBOS_VERTEX        2
 #define KORL_VULKAN_MAX_UBOS_FRAGMENT      1
 #define KORL_VULKAN_MAX_SSBOS_VERTEX       1
 #define KORL_VULKAN_MAX_SSBOS_FRAGMENT     1

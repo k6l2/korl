@@ -146,4 +146,5 @@ shutdownSuccess:
 #include "utility/korl-utility-memory.c"
 #include "utility/korl-utility-gfx.c"
 #include "utility/korl-utility-algorithm.c"
+#include "utility/korl-utility-resource.c"
 #include "utility/korl-pool.c"

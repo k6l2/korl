@@ -30,6 +30,7 @@ typedef enum _Korl_Vulkan_DescriptorSetBinding
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_SSBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_COUNT// keep last in the `LIGHTS` section
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO = 0
+    ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_BONES_UBO
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_COUNT// keep last in the `VERTEX_STORAGE` section
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO = 0
     ,_KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_TEXTURE_BASE
@@ -55,7 +56,11 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_SSBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::vertexStorageBuffer*/};
+     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}/*_Korl_Vulkan_SurfaceContextDrawState::vertexStorageBuffer*/
+    ,{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_VERTEX_STORAGE_BONES_UBO
+     ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+     ,.descriptorCount = 1
+     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}};
 korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_MATERIAL[] = 
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_MATERIAL_UBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER

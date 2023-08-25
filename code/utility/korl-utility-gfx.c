@@ -217,7 +217,7 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.storageBuffers = &storageBuffers;
-    korl_gfx_setDrawState(&drawState);
+    korl_assert(korl_gfx_setDrawState(&drawState));
     /* now we can iterate over each text line and conditionally draw them using line-specific draw state */
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
     Korl_Math_M4f32*const pushConstantModelM4f32 = KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex);
@@ -235,11 +235,13 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
             KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStateLine);
             drawStateLine.material         = &material;
             drawStateLine.pushConstantData = &pushConstantData;
-            korl_gfx_setDrawState(&drawStateLine);
-            const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_Text_GlyphInstance);
-            context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
-            context->vertexStagingMeta.instanceCount         = line->visibleCharacters;
-            korl_gfx_drawVertexBuffer(context->resourceHandleBufferText, textLineByteOffset, &context->vertexStagingMeta, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES);
+            if(korl_gfx_setDrawState(&drawStateLine))
+            {
+                const u$ textLineByteOffset = currentVisibleGlyphOffset * sizeof(_Korl_Gfx_Text_GlyphInstance);
+                context->vertexStagingMeta.indexByteOffsetBuffer = korl_checkCast_u$_to_u32(glyphInstanceBufferSize - textLineByteOffset);
+                context->vertexStagingMeta.instanceCount         = line->visibleCharacters;
+                korl_gfx_drawVertexBuffer(context->resourceHandleBufferText, textLineByteOffset, &context->vertexStagingMeta, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES);
+            }
         }
         modelTranslation.y        -= lineDeltaY;
         currentVisibleGlyphOffset += line->visibleCharacters;
@@ -646,13 +648,24 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable(const Korl_Gfx_CreateI
 }
 korl_internal void korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context)
 {
-    if(context->type == KORL_GFX_DRAWABLE_TYPE_RUNTIME)
+    switch(context->type)
     {
-        if(context->subType.runtime.type == KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME)
+    case KORL_GFX_DRAWABLE_TYPE_RUNTIME:{
+        switch(context->subType.runtime.type)
         {
+        case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:{
+            // nothing to do here
+            break;}
+        case KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME:{
             korl_resource_destroy(context->subType.runtime.subType.multiFrame.resourceHandleBuffer);
             context->subType.runtime.subType.multiFrame.resourceHandleBuffer = 0;
+            break;}
         }
+        break;}
+    case KORL_GFX_DRAWABLE_TYPE_MESH:{
+        if(context->subType.mesh.skin)
+            korl_resource_scene3d_skin_destroy(context->subType.mesh.skin);
+        break;}
     }
 }
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount)
@@ -717,7 +730,7 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableCircle(const Korl_Gfx_CreateInf
                                                                   ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
         if(uvs)
             uvs[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
-                                                                     ,1.f - (0.5f + 0.5f * spoke.y)};
+                                                                ,1.f - (0.5f + 0.5f * spoke.y)};
     }
     return result;
 }
@@ -1173,10 +1186,11 @@ korl_internal void korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quat
 {
     _korl_gfx_drawUtf(position, versor, anchorRatio, utf16Text.data, 16, utf16Text.size, resourceHandleFont, textPixelHeight, outlineSize, material, materialOutline, true, o_textMetrics);
 }
-korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize)
+korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin)
 {
     Korl_Gfx_Drawable mesh = korl_gfx_mesh(resourceHandleScene3d, utf8MeshName);
-    mesh.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
+    mesh.transform         = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
+    mesh.subType.mesh.skin = skin;
     korl_gfx_draw(&mesh, materials, materialsSize);
 }
 korl_internal void korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale)

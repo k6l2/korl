@@ -228,7 +228,6 @@ korl_internal Korl_Codec_Gltf_Image*          korl_codec_gltf_getImages(const Ko
 korl_internal Korl_Codec_Gltf_Sampler*        korl_codec_gltf_getSamplers(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Material*       korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Skin*           korl_codec_gltf_getSkins(const Korl_Codec_Gltf* context);
-korl_internal u32*                            korl_codec_gltf_skin_getJointNodeIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin);
 korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex);
 korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_getNodes(const Korl_Codec_Gltf* context);
 korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_node_getChild(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Node*const node, u32 childIndex);

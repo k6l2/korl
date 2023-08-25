@@ -249,7 +249,7 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                 case KORL_GLTF_OBJECT_NODES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_NODES_ARRAY;
-                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->nodes, sizeof(Korl_Codec_Gltf_Node), NULL);
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->nodes, sizeof(Korl_Codec_Gltf_Node), &KORL_CODEC_GLTF_NODE_DEFAULT);
                     break;}
                 case KORL_GLTF_OBJECT_NODES_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -1034,10 +1034,6 @@ korl_internal Korl_Codec_Gltf_Material* korl_codec_gltf_getMaterials(const Korl_
 korl_internal Korl_Codec_Gltf_Skin* korl_codec_gltf_getSkins(const Korl_Codec_Gltf* context)
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Skin*, KORL_C_CAST(u8*, context) + context->skins.byteOffset);
-}
-korl_internal u32* korl_codec_gltf_skin_getJointNodeIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin)
-{
-    return KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + skin->joints.byteOffset);
 }
 korl_internal Korl_Codec_Gltf_Node* korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex)
 {

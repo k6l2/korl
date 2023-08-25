@@ -1199,11 +1199,18 @@ korl_internal void korl_math_transform3d_setScale(Korl_Math_Transform3d* context
             context->_m4f32IsUpdated = false;
     context->_scale = scale;
 }
+korl_internal void korl_math_transform3d_updateM4f32(Korl_Math_Transform3d* context)
+{
+    if(context->_m4f32IsUpdated)
+        return;
+    context->_m4f32          = korl_math_makeM4f32_rotateScaleTranslate(context->_versor, context->_scale, context->_position);
+    context->_m4f32IsUpdated = true;
+}
 korl_internal Korl_Math_M4f32 korl_math_transform3d_m4f32(Korl_Math_Transform3d* context)
 {
     if(!context->_m4f32IsUpdated)
     {
-        context->_m4f32 = korl_math_makeM4f32_rotateScaleTranslate(context->_versor, context->_scale, context->_position);
+        context->_m4f32          = korl_math_makeM4f32_rotateScaleTranslate(context->_versor, context->_scale, context->_position);
         context->_m4f32IsUpdated = true;
     }
     return context->_m4f32;

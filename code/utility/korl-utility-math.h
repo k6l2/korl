@@ -309,6 +309,7 @@ korl_internal void                  korl_math_transform3d_setPosition(Korl_Math_
 korl_internal void                  korl_math_transform3d_move(Korl_Math_Transform3d* context, Korl_Math_V3f32 positionDelta);
 korl_internal void                  korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor);
 korl_internal void                  korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale);
+korl_internal void                  korl_math_transform3d_updateM4f32(Korl_Math_Transform3d* context);
 korl_internal Korl_Math_M4f32       korl_math_transform3d_m4f32(Korl_Math_Transform3d* context);
 #if 0//@TODO
 /* Korl_Math_TriangleMesh *****************************************************/

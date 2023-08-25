@@ -153,7 +153,7 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.scissor         = &scissor;
     drawState.sceneProperties = &sceneProperties;
-    korl_gfx_setDrawState(&drawState);
+    korl_assert(korl_gfx_setDrawState(&drawState));
     korl_time_probeStop(useCamera);
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_getCurrent(korl_gfx_camera_getCurrent)
@@ -270,7 +270,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_transform3d_m4f32(&context->transform);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.pushConstantData = &pushConstantData;
-    korl_gfx_setDrawState(&drawState);
+    korl_assert(korl_gfx_setDrawState(&drawState));
     switch(context->type)
     {
     case KORL_GFX_DRAWABLE_TYPE_RUNTIME:{
@@ -307,7 +307,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             drawState.storageBuffers = &storageBuffers;
         drawState.material         = &materialLocal;
         drawState.pushConstantData = context->subType.runtime.overrides.pushConstantData;
-        korl_gfx_setDrawState(&drawState);
+        if(!korl_gfx_setDrawState(&drawState))
+            break;
         switch(context->subType.runtime.type)
         {
         case KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME:
@@ -330,12 +331,52 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         }
         if(!context->subType.mesh.meshPrimitives)
             break;// if the scene3d is _still_ not yet loaded, we can't draw anything
+        if(context->subType.mesh.skin)
+        {
+            /* if we are skinning a mesh, we need to 
+                - prepare a descriptor staging allocation for the bone transform matrix array
+                - update the bone matrices with respect to their parents using topological order
+                - multiply each bone matrix by their respective inverseBindMatrix
+                - set the appropriate vulkan DrawState to use the bone descriptor staging allocation */
+            /* allocate descriptor staging memory for bone matrices */
+            const Korl_Vulkan_DescriptorStagingAllocation descriptorStagingAllocationBones = korl_vulkan_stagingAllocateDescriptorData(context->subType.mesh.skin->bonesCount * sizeof(Korl_Math_M4f32));
+            Korl_Math_M4f32*const boneMatrices = descriptorStagingAllocationBones.data;
+            /* compute bone matrices with respect to topological order */
+            const i32*const boneParentIndices    = korl_resource_scene3d_skin_getBoneParentIndices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
+            const u32*const boneTopologicalOrder = korl_resource_scene3d_skin_getBoneTopologicalOrder(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
+            {/* we treat the (topologically) first bone's computation specially, since it _must_ be the root bone */
+                korl_assert(context->subType.mesh.skin->bonesCount > 0);// ensure there is at least one bone in the skin
+                const u32 boneRoot = boneTopologicalOrder[0];
+                korl_assert(boneParentIndices[boneRoot] < 0);// we expect the first bone in topological order to have _no_ parent, as it _must_ be the common root node
+                korl_assert(context->transform._m4f32IsUpdated);// this should have been updated at the top of this function
+                korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[boneRoot]);
+                boneMatrices[boneRoot] = korl_math_m4f32_multiply(&context->transform._m4f32, &context->subType.mesh.skin->bones[boneRoot]._m4f32);// the root bone node can simply be the local transform with context's model xform applied, preventing the need to apply the model xform to all vertices in the shader
+            }
+            for(u32 bt = 1; bt < context->subType.mesh.skin->bonesCount; bt++)
+            {
+                const u32 b  = boneTopologicalOrder[bt];// index of the current bone to process
+                const u32 bp = boneParentIndices[b];    // index of the current bone's parent
+                korl_assert(boneParentIndices[b] >= 0);// we expect _all_ bones after the root to have a parent
+                korl_assert(context->subType.mesh.skin->bones[bp]._m4f32IsUpdated);// we're processing bones in topological order; our parent's transform matrix better be updated by now!
+                korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[b]);
+                boneMatrices[b] = korl_math_m4f32_multiply(boneMatrices + bp, &context->subType.mesh.skin->bones[b]._m4f32);
+            }
+            /* pre-multiply bone matrices with their respective inverseBindMatrix */
+            const Korl_Math_M4f32*const boneInverseBindMatrices = korl_resource_scene3d_skin_getBoneInverseBindMatrices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
+            for(u32 b = 1; b < context->subType.mesh.skin->bonesCount; b++)
+                boneMatrices[b] = korl_math_m4f32_multiply(boneMatrices + b, boneInverseBindMatrices + b);
+            /* apply the bone matrix descriptor to vulkan DrawState */
+            KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);
+            vulkanDrawState.uboVertex[1] = descriptorStagingAllocationBones;
+            korl_vulkan_setDrawState(&vulkanDrawState);
+        }
         for(u8 i = 0; i < context->subType.mesh.meshPrimitives; i++)
         {
             Korl_Resource_Scene3d_MeshPrimitive tentacleMeshPrimitive = korl_resource_scene3d_getMeshPrimitive(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.meshIndex, i);
             KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStatePrimitive);
             drawStatePrimitive.material = (materialsSize && i < materialsSize) ? (materials + i) : (&tentacleMeshPrimitive.material);
-            korl_gfx_setDrawState(&drawStatePrimitive);
+            if(!korl_gfx_setDrawState(&drawStatePrimitive))
+                continue;
             korl_gfx_drawVertexBuffer(tentacleMeshPrimitive.vertexBuffer, tentacleMeshPrimitive.vertexBufferByteOffset, &tentacleMeshPrimitive.vertexStagingMeta, tentacleMeshPrimitive.primitiveType);
         }
         break;}
@@ -348,9 +389,17 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
     if(drawState->material)
     {
         if(drawState->material->shaders.resourceHandleShaderVertex)
+        {
             vulkanDrawState.shaderVertex = korl_resource_shader_getHandle(drawState->material->shaders.resourceHandleShaderVertex);
+            if(0 == vulkanDrawState.shaderVertex)
+                return false;// signal to the caller that we cannot draw with the current state
+        }
         if(drawState->material->shaders.resourceHandleShaderFragment)
+        {
             vulkanDrawState.shaderFragment = korl_resource_shader_getHandle(drawState->material->shaders.resourceHandleShaderFragment);
+            if(0 == vulkanDrawState.shaderFragment)
+                return false;// signal to the caller that we cannot draw with the current state
+        }
         vulkanDrawState.materialModes = &drawState->material->modes;
         vulkanDrawState.uboFragment[0] = korl_vulkan_stagingAllocateDescriptorData(sizeof(drawState->material->fragmentShaderUniform));
         *KORL_C_CAST(Korl_Gfx_Material_FragmentShaderUniform*, vulkanDrawState.uboFragment[0].data) = drawState->material->fragmentShaderUniform;
@@ -404,6 +453,7 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
         }
     }
     korl_vulkan_setDrawState(&vulkanDrawState);
+    return true;
 }
 korl_internal KORL_FUNCTION_korl_gfx_stagingAllocate(korl_gfx_stagingAllocate)
 {
