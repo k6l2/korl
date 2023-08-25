@@ -49,6 +49,7 @@ typedef struct Korl_Codec_Gltf
     Korl_Codec_Gltf_Data images;
     Korl_Codec_Gltf_Data samplers;
     Korl_Codec_Gltf_Data skins;
+    Korl_Codec_Gltf_Data animations;
 } Korl_Codec_Gltf;
 typedef struct Korl_Codec_Gltf_Scene
 {
@@ -209,11 +210,44 @@ korl_global_const Korl_Codec_Gltf_Sampler KORL_CODEC_GLTF_SAMPLER_DEFAULT = {.ma
                                                                             ,.minFilter = KORL_CODEC_GLTF_SAMPLER_MIN_FILTER_LINEAR};
 typedef struct Korl_Codec_Gltf_Skin
 {
-    Korl_Codec_Gltf_Data rawUtf8Name;// optional
-    Korl_Codec_Gltf_Data joints;// _required_; u32[]; array of node indices
+    Korl_Codec_Gltf_Data rawUtf8Name;        // optional
+    Korl_Codec_Gltf_Data joints;             // _required_; u32[]; array of node indices
     i32                  inverseBindMatrices;// optional; accessor index
 } Korl_Codec_Gltf_Skin;
 korl_global_const Korl_Codec_Gltf_Skin KORL_CODEC_GLTF_SKIN_DEFAULT = {.inverseBindMatrices = -1};
+typedef struct Korl_Codec_Gltf_Animation
+{
+    Korl_Codec_Gltf_Data rawUtf8Name;// optional
+    Korl_Codec_Gltf_Data channels;   // _required_
+    Korl_Codec_Gltf_Data samplers;   // _required_
+} Korl_Codec_Gltf_Animation;
+typedef enum Korl_Codec_Gltf_Animation_Channel_Target_Path
+    {KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_TRANSLATION
+    ,KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_ROTATION
+    ,KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_SCALE
+    ,KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_WEIGHTS
+} Korl_Codec_Gltf_Animation_Channel_Target_Path;
+typedef struct Korl_Codec_Gltf_Animation_Channel
+{
+    u32 sampler;// _required_
+    struct
+    {
+        Korl_Codec_Gltf_Animation_Channel_Target_Path path;// _required_
+        i32                                           node;// optional
+    } target;// _required_
+} Korl_Codec_Gltf_Animation_Channel;
+korl_global_const Korl_Codec_Gltf_Animation_Channel KORL_CODEC_GLTF_ANIMATION_CHANNEL_DEFAULT = {.target = {.node = -1}};
+typedef enum Korl_Codec_Gltf_Animation_Sampler_Interpolation
+    {KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_LINEAR// default
+    ,KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_STEP
+    ,KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_CUBIC_SPLINE
+} Korl_Codec_Gltf_Animation_Sampler_Interpolation;
+typedef struct Korl_Codec_Gltf_Animation_Sampler
+{
+    u32                                             input;        // _required_; Accessor index; contains an array of keyframe timestamps
+    Korl_Codec_Gltf_Animation_Sampler_Interpolation interpolation;// optional
+    u32                                             output;       // _required_; Accessor index; contains keyframe output values
+} Korl_Codec_Gltf_Animation_Sampler;
 korl_internal Korl_Codec_Gltf*                korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
 korl_internal acu8                            korl_codec_gltf_getUtf8(const Korl_Codec_Gltf* context, Korl_Codec_Gltf_Data gltfData);
 korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);

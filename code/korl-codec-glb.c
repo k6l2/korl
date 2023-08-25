@@ -119,6 +119,24 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_NAME
     ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_INVERSE_BIND_MATRICES
     ,KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_JOINTS
+    ,KORL_GLTF_OBJECT_ANIMATIONS
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_NAME
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_SAMPLER
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT_NODE
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT_PATH
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_INPUT
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_INTERPOLATION
+    ,KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_OUTPUT
 } Korl_Gltf_Object_Type;
 typedef struct Korl_Gltf_Object
 {
@@ -210,6 +228,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     objectType = KORL_GLTF_OBJECT_SAMPLERS;
                 else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("skins")))
                     objectType = KORL_GLTF_OBJECT_SKINS;
+                else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("animations")))
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS;
             }
             else
                 switch(object->type)
@@ -588,6 +608,71 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         for(int i = 0; i < jsonToken->size; i++)
                             jointNodeIndices[i] = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken + 1 + i));
                     break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY;
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->animations, sizeof(Korl_Codec_Gltf_Animation), NULL);
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("name")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_NAME;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("channels")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("samplers")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY;
+                    Korl_Codec_Gltf_Animation*const currentAnimation = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY, sizeof(*currentAnimation));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentAnimation->channels, sizeof(Korl_Codec_Gltf_Animation_Channel), &KORL_CODEC_GLTF_ANIMATION_CHANNEL_DEFAULT);
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("sampler")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_SAMPLER;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("target")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("node")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT_NODE;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("path")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT_PATH;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS:{
+                    korl_assert(jsonToken->type == JSMN_ARRAY);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY;
+                    Korl_Codec_Gltf_Animation*const currentAnimation = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY, sizeof(*currentAnimation));
+                    array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentAnimation->samplers, sizeof(Korl_Codec_Gltf_Animation_Sampler), NULL);
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY:{
+                    korl_assert(jsonToken->type == JSMN_OBJECT);
+                    objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT;
+                    break;}
+                case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT:{
+                    korl_assert(jsonToken->type == JSMN_STRING);
+                    if(     0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("input")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_INPUT;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("interpolation")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_INTERPOLATION;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("output")))
+                        objectType = KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_OUTPUT;
+                    break;}
                 default: break;
                 }
             /* now we can push it onto the stack */
@@ -814,6 +899,58 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
             case KORL_GLTF_OBJECT_SKINS_ARRAY_ELEMENT_INVERSE_BIND_MATRICES:{
                 Korl_Codec_Gltf_Skin*const currentSkin = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_SKINS_ARRAY, sizeof(*currentSkin));
                 if(currentSkin) currentSkin->inverseBindMatrices = korl_checkCast_f32_to_i32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_NAME:{
+                Korl_Codec_Gltf_Animation*const currentAnimation = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY, sizeof(*currentAnimation));
+                _korl_codec_glb_decodeChunkJson_processPass_getString(currentAnimation->rawUtf8Name);
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_SAMPLER:{
+                Korl_Codec_Gltf_Animation_Channel*const currentChannel = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY, sizeof(*currentChannel));
+                if(currentChannel) currentChannel->sampler = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT_NODE:{
+                Korl_Codec_Gltf_Animation_Channel*const currentChannel = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY, sizeof(*currentChannel));
+                if(currentChannel) currentChannel->target.node = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY_ELEMENT_TARGET_OBJECT_PATH:{
+                Korl_Codec_Gltf_Animation_Channel*const currentChannel = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_CHANNELS_ARRAY, sizeof(*currentChannel));
+                if(currentChannel)
+                {
+                    const acu8 jsonAcu8 = {.data = chunk->data + jsonToken->start, .size = jsonToken->end - jsonToken->start};
+                    if(     0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("translation"), jsonAcu8))
+                        currentChannel->target.path = KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_TRANSLATION;
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("rotation"), jsonAcu8))
+                        currentChannel->target.path = KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_ROTATION;
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("scale"), jsonAcu8))
+                        currentChannel->target.path = KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_SCALE;
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("weights"), jsonAcu8))
+                        currentChannel->target.path = KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_WEIGHTS;
+                    else
+                        korl_log(ERROR, "invalid animation channel target path \"%*.hs\"", jsonAcu8.size, jsonAcu8.data);
+                }
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_INPUT:{
+                Korl_Codec_Gltf_Animation_Sampler*const currentSampler = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY, sizeof(*currentSampler));
+                if(currentSampler) currentSampler->input = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_INTERPOLATION:{
+                Korl_Codec_Gltf_Animation_Sampler*const currentSampler = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY, sizeof(*currentSampler));
+                if(currentSampler)
+                {
+                    const acu8 jsonAcu8 = {.data = chunk->data + jsonToken->start, .size = jsonToken->end - jsonToken->start};
+                    if(     0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("LINEAR"), jsonAcu8))
+                        currentSampler->interpolation = KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_LINEAR;
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("STEP"), jsonAcu8))
+                        currentSampler->interpolation = KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_STEP;
+                    else if(0 == korl_memory_compare_acu8(KORL_RAW_CONST_UTF8("CUBICSPLINE"), jsonAcu8))
+                        currentSampler->interpolation = KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_CUBIC_SPLINE;
+                    else
+                        korl_log(ERROR, "invalid animation sampler interpolation \"%*.hs\"", jsonAcu8.size, jsonAcu8.data);
+                }
+                break;}
+            case KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY_ELEMENT_OUTPUT:{
+                Korl_Codec_Gltf_Animation_Sampler*const currentSampler = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ANIMATIONS_ARRAY_ELEMENT_SAMPLERS_ARRAY, sizeof(*currentSampler));
+                if(currentSampler) currentSampler->output = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
                 break;}
             default:{break;}
             }
