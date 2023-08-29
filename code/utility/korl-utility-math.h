@@ -210,8 +210,8 @@ typedef union Korl_Math_Quaternion
     f32 elements[4];
 } Korl_Math_Quaternion;
 const Korl_Math_Quaternion KORL_MATH_QUATERNION_IDENTITY = {0, 0, 0, 1};
-/** \return the magnitude of \c q */
-korl_internal f32                  korl_math_quaternion_normalize(Korl_Math_Quaternion* q);
+korl_internal Korl_Math_Quaternion korl_math_quaternion_normal(Korl_Math_Quaternion q);
+korl_internal f32                  korl_math_quaternion_normalize(Korl_Math_Quaternion* q);/** \return the magnitude of \c q */
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromVector(Korl_Math_V3f32 forward, Korl_Math_V3f32 worldForward, Korl_Math_V3f32 worldUp);
 korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB);

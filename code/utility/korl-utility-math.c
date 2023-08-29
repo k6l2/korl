@@ -632,6 +632,12 @@ korl_internal Korl_Math_V4f32 korl_math_v4f32_interpolateLinear(Korl_Math_V4f32 
         vFactorZero.elements[i] = inverseFactor * vFactorZero.elements[i] + factor * vFactorOne.elements[i];
     return vFactorZero;
 }
+korl_internal Korl_Math_Quaternion korl_math_quaternion_normal(Korl_Math_Quaternion q)
+{
+    const f32 magnitude = korl_math_v4f32_magnitude(&q.v4);
+    q.v4 = korl_math_v4f32_normalKnownMagnitude(q.v4, magnitude);
+    return q;
+}
 korl_internal f32 korl_math_quaternion_normalize(Korl_Math_Quaternion* q)
 {
     const f32 magnitude = korl_math_v4f32_magnitude(&q->v4);
