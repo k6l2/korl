@@ -708,7 +708,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_applyAnimation(korl_resou
                 break;
             case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_ROTATION:
                 korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4);
-                //@TODO: gltf 2.0 spec. appendix C.3 & C.4 wants us to apply Spherical Linear Interpolation here instead of just Linear Interpolation; LERP is only a reasonable approximation when the angle between quaternions is close to zero, but I believe Casey Muratori actually looked into this and found that in the vast majority of cases LERP provides more than enough in terms of accuracy
+                //KORL-ISSUE-000-000-186: scene3d: (_minor_) gltf 2.0 spec. appendix C.3 & C.4 wants us to apply Spherical Linear Interpolation here instead of just Linear Interpolation; LERP is only a reasonable approximation when the angle between quaternions is close to zero, but I believe Casey Muratori actually looked into this and found that in the vast majority of cases LERP provides more than enough in terms of accuracy (and seems to make the math for blending multiple animations _much_ easier!): https://caseymuratori.com/blog_0002
                 korl_math_transform3d_setVersor(targetBoneTransform, korl_math_quaternion_normal(KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.v4 = korl_math_v4f32_interpolateLinear(rawSamplesV4f32[k], rawSamplesV4f32[kNext], interpolationFactor)}));
                 break;
             case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_SCALE:
