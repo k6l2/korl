@@ -663,7 +663,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_applyAnimation(korl_resou
             perform the Sampler.interpolation logic on the targetSkin->bone[boneIndex]'s Channel.targetPath according to gltf 2.0 spec. appendix C; 
         note that we shouldn't have to worry about bone hierarchies here, as we are only animating the local bone transforms; 
         model-space targetSkin->bone transforms will be calculated when we actually want to render the skinned mesh; */
-    const f32 animationSeconds = KORL_MATH_CLAMP(secondsRelativeToAnimationStart, animation->keyFrameSecondsStart, animation->keyFrameSecondsEnd);
+    const f32 animationSeconds = KORL_MATH_CLAMP(animation->keyFrameSecondsStart + secondsRelativeToAnimationStart, animation->keyFrameSecondsStart, animation->keyFrameSecondsEnd);
     for(u32 ac = 0; ac < gltfAnimation->channels.size; ac++)
     {
         const Korl_Codec_Gltf_Animation_Channel*const gltfAnimationChannel = gltfAnimationChannels + ac;
