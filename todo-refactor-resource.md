@@ -114,8 +114,9 @@
     - inside of draw call:
       - send boneXform array to graphics device via `setDrawState`
       - modify mesh material to utilize skinning (+ lighting) vertex shader
-  [ ] transcode animations
+  [x] transcode animations
     - MVP: user can apply animations to mesh skins to render an animated MESH
+[ ] investigate looped skin animations having hitched frame(s) near the loop point
 [ ] add AUDIO Resource (last resource type)
 [ ] perform defragmentation on korl-resource persistent memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?

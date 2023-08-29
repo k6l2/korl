@@ -473,6 +473,13 @@ korl_internal void korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f32*const v,
     v->elements[1] *= scalar;
     v->elements[2] *= scalar;
 }
+korl_internal Korl_Math_V3f32 korl_math_v3f32_interpolateLinear(Korl_Math_V3f32 vFactorZero, Korl_Math_V3f32 vFactorOne, f32 factor)
+{
+    const f32 inverseFactor = 1.f - factor;
+    for(u8 i = 0; i < korl_arraySize(vFactorZero.elements); i++)
+        vFactorZero.elements[i] = inverseFactor * vFactorZero.elements[i] + factor * vFactorOne.elements[i];
+    return vFactorZero;
+}
 #pragma warning(push)
 #pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
 korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_V4u8 to, f32 factor)
@@ -617,6 +624,13 @@ korl_internal Korl_Math_V4f32* korl_math_v4f32_assignDivideScalar(Korl_Math_V4f3
     for(u8 i = 0; i < korl_arraySize(v->elements); i++)
         v->elements[i] /= scalar;
     return v;
+}
+korl_internal Korl_Math_V4f32 korl_math_v4f32_interpolateLinear(Korl_Math_V4f32 vFactorZero, Korl_Math_V4f32 vFactorOne, f32 factor)
+{
+    const f32 inverseFactor = 1.f - factor;
+    for(u8 i = 0; i < korl_arraySize(vFactorZero.elements); i++)
+        vFactorZero.elements[i] = inverseFactor * vFactorZero.elements[i] + factor * vFactorOne.elements[i];
+    return vFactorZero;
 }
 korl_internal f32 korl_math_quaternion_normalize(Korl_Math_Quaternion* q)
 {

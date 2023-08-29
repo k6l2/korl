@@ -41,6 +41,7 @@ korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 eps
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);/** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
 korl_internal inline f32  korl_math_f32_positive(f32 x);
 korl_internal inline f32  korl_math_f32_nan(void);
+//@TODO: rename to korl_math_f32_lerp
 korl_internal inline f32  korl_math_lerp(f32 from, f32 to, f32 factor);
 //KORL-PERFORMANCE-000-000-051: math: this sphere mesh generating API is crappy and does not generate vertex indices, so we will end up duplicating a ton of vertices
 korl_internal u$          korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments);
@@ -161,6 +162,7 @@ korl_internal void            korl_math_v3f32_assignSubtract(Korl_Math_V3f32*con
 korl_internal void            korl_math_v3f32_assignSubtractScalar(Korl_Math_V3f32*const v, f32 scalar);
 korl_internal void            korl_math_v3f32_assignMultiply(Korl_Math_V3f32*const vA, Korl_Math_V3f32 vB);
 korl_internal void            korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f32*const v, f32 scalar);
+korl_internal Korl_Math_V3f32 korl_math_v3f32_interpolateLinear(Korl_Math_V3f32 vFactorZero, Korl_Math_V3f32 vFactorOne, f32 factor);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_min(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_max(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 /* V4u8 ***********************************************************************/
@@ -196,6 +198,7 @@ korl_internal Korl_Math_V4f32* korl_math_v4f32_assignMultiply(Korl_Math_V4f32*co
 korl_internal Korl_Math_V4f32* korl_math_v4f32_assignMultiplyScalar(Korl_Math_V4f32*const v, f32 scalar);
 korl_internal Korl_Math_V4f32* korl_math_v4f32_assignDivide(Korl_Math_V4f32*const vA, Korl_Math_V4f32 vB);
 korl_internal Korl_Math_V4f32* korl_math_v4f32_assignDivideScalar(Korl_Math_V4f32*const v, f32 scalar);
+korl_internal Korl_Math_V4f32  korl_math_v4f32_interpolateLinear(Korl_Math_V4f32 vFactorZero, Korl_Math_V4f32 vFactorOne, f32 factor);
 // korl_internal Korl_Math_V4f32 korl_math_v4f32_min(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
 // korl_internal Korl_Math_V4f32 korl_math_v4f32_max(Korl_Math_V4f32 vA, Korl_Math_V4f32 vB);
 /* Quaternion *****************************************************************/

@@ -641,3 +641,111 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_animation_seconds(korl_resourc
     const _Korl_Resource_Scene3d_Animation*const animation = scene3d->animations + animationIndex;
     return animation->keyFrameSecondsEnd - animation->keyFrameSecondsStart;
 }
+korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_applyAnimation(korl_resource_scene3d_skin_applyAnimation)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return;
+    if(animationIndex >= scene3d->gltf->animations.size)
+        return;
+    korl_assert(targetSkin->skinIndex < scene3d->gltf->skins.size);
+    const _Korl_Resource_Scene3d_Skin*const       skin                  = scene3d->skins + targetSkin->skinIndex;
+    const Korl_Codec_Gltf_Animation*const         gltfAnimation         = korl_codec_gltf_getAnimations(scene3d->gltf) + animationIndex;
+    const _Korl_Resource_Scene3d_Animation*const  animation             = scene3d->animations                          + animationIndex;
+    const Korl_Codec_Gltf_Animation_Channel*const gltfAnimationChannels = korl_codec_gltf_getAnimationChannels(scene3d->gltf, gltfAnimation);
+    const Korl_Codec_Gltf_Animation_Sampler*const gltfAnimationSamplers = korl_codec_gltf_getAnimationSamplers(scene3d->gltf, gltfAnimation);
+    const Korl_Codec_Gltf_Accessor*const          gltfAccessors         = korl_codec_gltf_getAccessors(scene3d->gltf);
+    /* gltf 2.0 spec. 3.11: "Skinned animation is achieved by animating the joints in the skin’s joint hierarchy." 
+        calculate the absolute animation time using the Animation's start/end times & secondsRelativeToAnimationStart; 
+        iterate over each Animation_Channel; 
+            use the lookup table we baked in _Korl_Resource_Scene3d_Skin to convert the target->node from nodeIndex=>boneIndex; 
+            from the SampleSet of the current Channel, calculate the two keyframe indices that surround the absolute animation time; 
+            perform the Sampler.interpolation logic on the targetSkin->bone[boneIndex]'s Channel.targetPath according to gltf 2.0 spec. appendix C; 
+        note that we shouldn't have to worry about bone hierarchies here, as we are only animating the local bone transforms; 
+        model-space targetSkin->bone transforms will be calculated when we actually want to render the skinned mesh; */
+    const f32 animationSeconds = KORL_MATH_CLAMP(secondsRelativeToAnimationStart, animation->keyFrameSecondsStart, animation->keyFrameSecondsEnd);
+    for(u32 ac = 0; ac < gltfAnimation->channels.size; ac++)
+    {
+        const Korl_Codec_Gltf_Animation_Channel*const gltfAnimationChannel = gltfAnimationChannels + ac;
+        if(gltfAnimationChannel->target.node < 0)
+            continue;// gltf 2.0 spec. 3.11: "When node isn’t defined, channel SHOULD be ignored."
+        /* obtain the target bone of the skin */
+        const i32 targetBoneIndex = skin->nodeIndex_to_boneIndex[gltfAnimationChannel->target.node];
+        korl_assert(targetBoneIndex >= 0);// sanity check; the skin _must_ utilize this Animation Channel's target node
+        korl_assert(KORL_C_CAST(u32, targetBoneIndex) < targetSkin->bonesCount);// sanity check; make sure we don't go out-of-bounds
+        Korl_Math_Transform3d*const targetBoneTransform = targetSkin->bones + targetBoneIndex;
+        /* calculate which keyframes surround animationSeconds */
+        const _Korl_Resource_Scene3d_Animation_SampleSet*const sampleSet         = animation->sampleSets       + gltfAnimationChannel->sampler;
+        const Korl_Codec_Gltf_Animation_Sampler*const          gltfSampler       = gltfAnimationSamplers       + gltfAnimationChannel->sampler;
+        const Korl_Codec_Gltf_Accessor*const                   gltfAccessorInput = gltfAccessors               + gltfSampler->input;
+        const f32*const                                        keyFramesSeconds  = animation->keyFramesSeconds + sampleSet->keyFramesSecondsStartIndex;
+        u32 k = 0;// keyframe index; the index of the keyframe immediately _before_ animationSeconds
+        // PERFORMANCE: keyFramesSeconds should be in ascending order; use binary search, or some acceleration data structure to find keyframe index to achieve sub-linear times, if necessary
+        for(; k < gltfAccessorInput->count; k++)
+            if(   (keyFramesSeconds[k] < animationSeconds || korl_math_isNearlyEqual(keyFramesSeconds[k], animationSeconds))
+               && (k >= gltfAccessorInput->count - 1      || keyFramesSeconds[k + 1] > animationSeconds))
+                break;
+        korl_assert(k < gltfAccessorInput->count);// ensure that we did, in fact, find a keyframe
+        /* perform interpolation on the target path; implementation should be derived from gltf 2.0 spec. appendix C */
+        const Korl_Codec_Gltf_Accessor*const gltfAccessorOutput = gltfAccessors      + gltfSampler->output;
+        const f32*const                      rawSamples         = animation->samples + sampleSet->sampleStartIndex;
+        const Korl_Math_V3f32*const          rawSamplesV3f32    = KORL_C_CAST(Korl_Math_V3f32*, rawSamples);
+        const Korl_Math_V4f32*const          rawSamplesV4f32    = KORL_C_CAST(Korl_Math_V4f32*, rawSamples);
+        switch(gltfSampler->interpolation)
+        {
+        case KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_LINEAR:
+            const u32 kNext               = KORL_MATH_CLAMP(k + 1, 0, gltfAccessorInput->count - 1);
+            const f32 keyframeCurrent     = animationSeconds - keyFramesSeconds[k];
+            const f32 keyframeDuration    = keyFramesSeconds[kNext] - keyFramesSeconds[k];
+            const f32 interpolationFactor = keyframeCurrent / keyframeDuration;
+            korl_assert(   (interpolationFactor > 0 || korl_math_isNearlyZero(interpolationFactor))
+                        && (interpolationFactor < 1 || korl_math_isNearlyEqual(interpolationFactor, 1)));
+            switch(gltfAnimationChannel->target.path)
+            {
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_TRANSLATION:
+                korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3);
+                korl_math_transform3d_setPosition(targetBoneTransform, korl_math_v3f32_interpolateLinear(rawSamplesV3f32[k], rawSamplesV3f32[kNext], interpolationFactor));
+                break;
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_ROTATION:
+                korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4);
+                //@TODO: gltf 2.0 spec. appendix C.3 & C.4 wants us to apply Spherical Linear Interpolation here instead of just Linear Interpolation; LERP is only a reasonable approximation when the angle between quaternions is close to zero
+                korl_math_transform3d_setVersor(targetBoneTransform, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.v4 = korl_math_v4f32_interpolateLinear(rawSamplesV4f32[k], rawSamplesV4f32[kNext], interpolationFactor)});
+                break;
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_SCALE:
+                korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3);
+                korl_math_transform3d_setScale(targetBoneTransform, korl_math_v3f32_interpolateLinear(rawSamplesV3f32[k], rawSamplesV3f32[kNext], interpolationFactor));
+                break;
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_WEIGHTS:
+                korl_log(ERROR, "not implemented");
+                break;
+            default: korl_log(ERROR, "invalid animation channel target path: %i", gltfAnimationChannel->target.path);
+            }
+            break;
+        case KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_STEP:
+            switch(gltfAnimationChannel->target.path)
+            {
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_TRANSLATION:
+                korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3);
+                korl_math_transform3d_setPosition(targetBoneTransform, rawSamplesV3f32[k]);
+                break;
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_ROTATION:
+                korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4);
+                korl_math_transform3d_setVersor(targetBoneTransform, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){.v4 = rawSamplesV4f32[k]});
+                break;
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_SCALE:
+                korl_assert(gltfAccessorOutput->type == KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3);
+                korl_math_transform3d_setScale(targetBoneTransform, rawSamplesV3f32[k]);
+                break;
+            case KORL_CODEC_GLTF_ANIMATION_CHANNEL_TARGET_PATH_WEIGHTS:
+                korl_log(ERROR, "not implemented");
+                break;
+            default: korl_log(ERROR, "invalid animation channel target path: %i", gltfAnimationChannel->target.path);
+            }
+            break;
+        case KORL_CODEC_GLTF_ANIMATION_SAMPLER_INTERPOLATION_CUBIC_SPLINE:
+            korl_log(ERROR, "not implemented");
+            break;
+        default: korl_log(ERROR, "invalid sampler interpolation: %i", gltfSampler->interpolation);
+        }
+    }
+}
