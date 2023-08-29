@@ -58,9 +58,7 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_COUNT
     ,KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_TYPE
     ,KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX
-    ,KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX_ARRAY
     ,KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MIN
-    ,KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MIN_ARRAY
     ,KORL_GLTF_OBJECT_BUFFER_VIEWS
     ,KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY
     ,KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT
@@ -377,9 +375,6 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     korl_assert(jsonToken->type == JSMN_ARRAY);
                     objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY;
                     array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &context->accessors, sizeof(Korl_Codec_Gltf_Accessor), &KORL_CODEC_GLTF_ACCESSOR_DEFAULT);
-                    Korl_Codec_Gltf_Accessor*const accessorArray = array;
-                    for(i32 i = 0; accessorArray && i < jsonToken->size; i++)
-                        accessorArray[i] = (Korl_Codec_Gltf_Accessor){.aabb = KORL_MATH_AABB3F32_EMPTY};
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS_ARRAY:{
                     korl_assert(jsonToken->type == JSMN_OBJECT);
@@ -402,11 +397,17 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
-                    objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX_ARRAY;
+                    Korl_Codec_Gltf_Accessor*const currentAccessor = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ACCESSORS_ARRAY, sizeof(*currentAccessor));
+                    f32*const f32Array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentAccessor->max, sizeof(f32), NULL);
+                    for(int i = 0; f32Array && i < jsonToken->size; i++)
+                        f32Array[i] = korl_jsmn_getF32(chunk->data, jsonToken + 1 + i);
                     break;}
                 case KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MIN:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
-                    objectType = KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MIN_ARRAY;
+                    Korl_Codec_Gltf_Accessor*const currentAccessor = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ACCESSORS_ARRAY, sizeof(*currentAccessor));
+                    f32*const f32Array = _korl_codec_glb_decodeChunkJson_processPass_newArray(context, jsonToken, &contextByteNext, &currentAccessor->min, sizeof(f32), NULL);
+                    for(int i = 0; f32Array && i < jsonToken->size; i++)
+                        f32Array[i] = korl_jsmn_getF32(chunk->data, jsonToken + 1 + i);
                     break;}
                 case KORL_GLTF_OBJECT_BUFFER_VIEWS:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
@@ -782,14 +783,6 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         korl_log(ERROR, "invalid accessor type \"%.*hs\"", jsonAcu8.size, jsonAcu8.data);
                 }
                 break;}
-            case KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MAX_ARRAY:{
-                Korl_Codec_Gltf_Accessor*const currentAccessor = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ACCESSORS_ARRAY, sizeof(*currentAccessor));
-                if(currentAccessor) currentAccessor->aabb.max.elements[KORL_MEMORY_POOL_LAST_POINTER(objectStack)->parsedChildren] = korl_jsmn_getF32(chunk->data, jsonToken);
-                break;}
-            case KORL_GLTF_OBJECT_ACCESSORS_ARRAY_ELEMENT_MIN_ARRAY:{
-                Korl_Codec_Gltf_Accessor*const currentAccessor = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_ACCESSORS_ARRAY, sizeof(*currentAccessor));
-                if(currentAccessor) currentAccessor->aabb.min.elements[KORL_MEMORY_POOL_LAST_POINTER(objectStack)->parsedChildren] = korl_jsmn_getF32(chunk->data, jsonToken);
-                break;}
             case KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY_ELEMENT_BUFFER:{
                 Korl_Codec_Gltf_BufferView*const currentBufferView = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_BUFFER_VIEWS_ARRAY, sizeof(*currentBufferView));
                 if(currentBufferView) currentBufferView->buffer = korl_checkCast_f32_to_u32(korl_jsmn_getF32(chunk->data, jsonToken));
@@ -1091,13 +1084,20 @@ korl_internal Korl_Codec_Gltf_Accessor* korl_codec_gltf_getAccessors(const Korl_
 {
     return KORL_C_CAST(Korl_Codec_Gltf_Accessor*, KORL_C_CAST(u8*, context) + context->accessors.byteOffset);
 }
-korl_internal Korl_Codec_Gltf_BufferView* korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context)
+korl_internal u8 korl_codec_gltf_accessor_getComponentCount(const Korl_Codec_Gltf_Accessor* context)
 {
-    return KORL_C_CAST(Korl_Codec_Gltf_BufferView*, KORL_C_CAST(u8*, context) + context->bufferViews.byteOffset);
-}
-korl_internal Korl_Codec_Gltf_Buffer* korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context)
-{
-    return KORL_C_CAST(Korl_Codec_Gltf_Buffer*, KORL_C_CAST(u8*, context) + context->buffers.byteOffset);
+    switch(context->type)
+    {
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_SCALAR:{ return 1;     break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC2  :{ return 2;     break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3  :{ return 3;     break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4  :{ return 4;     break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT2  :{ return 2 * 2; break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3  :{ return 3 * 3; break;}
+    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4  :{ return 4 * 4; break;}
+    }
+    korl_log(ERROR, "invalid Accessor type: %i", context->type);
+    return 0;
 }
 korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context, const Korl_Codec_Gltf_BufferView* bufferViewArray)
 {
@@ -1125,32 +1125,26 @@ korl_internal u32 korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Acces
         componentBytes = 4;
         break;}
     }
-    u32 componentMultiplier = 0;
-    switch(context->type)
-    {
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_SCALAR:{
-        componentMultiplier = 1;
-        break;}
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC2:{
-        componentMultiplier = 2;
-        break;}
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3:{
-        componentMultiplier = 3;
-        break;}
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4:{
-        componentMultiplier = 4;
-        break;}
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT2:{
-        componentMultiplier = 2 * 2;
-        break;}
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3:{
-        componentMultiplier = 3 * 3;
-        break;}
-    case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4:{
-        componentMultiplier = 4 * 4;
-        break;}
-    }
-    return componentBytes * componentMultiplier;
+    const u8 componentCount = korl_codec_gltf_accessor_getComponentCount(context);
+    return componentBytes * componentCount;
+}
+korl_internal const f32* korl_codec_gltf_accessor_getMin(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Accessor* accessor)
+{
+    korl_assert(accessor->min.byteOffset);
+    return KORL_C_CAST(f32*, KORL_C_CAST(u8*, context) + accessor->min.byteOffset);
+}
+korl_internal const f32* korl_codec_gltf_accessor_getMax(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Accessor* accessor)
+{
+    korl_assert(accessor->max.byteOffset);
+    return KORL_C_CAST(f32*, KORL_C_CAST(u8*, context) + accessor->max.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_BufferView* korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_BufferView*, KORL_C_CAST(u8*, context) + context->bufferViews.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Buffer* korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Buffer*, KORL_C_CAST(u8*, context) + context->buffers.byteOffset);
 }
 korl_internal Korl_Codec_Gltf_Texture* korl_codec_gltf_getTextures(const Korl_Codec_Gltf* context)
 {
@@ -1189,4 +1183,16 @@ korl_internal Korl_Codec_Gltf_Node* korl_codec_gltf_node_getChild(const Korl_Cod
 {
     const u32*const childNodeIndices = KORL_C_CAST(u32*, KORL_C_CAST(u8*, context) + node->children.byteOffset);
     return KORL_C_CAST(Korl_Codec_Gltf_Node*, KORL_C_CAST(u8*, context) + context->nodes.byteOffset) + childNodeIndices[childIndex];
+}
+korl_internal Korl_Codec_Gltf_Animation* korl_codec_gltf_getAnimations(const Korl_Codec_Gltf* context)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Animation*, KORL_C_CAST(u8*, context) + context->animations.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Animation_Sampler* korl_codec_gltf_getAnimationSamplers(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Animation* animation)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Animation_Sampler*, KORL_C_CAST(u8*, context) + animation->samplers.byteOffset);
+}
+korl_internal Korl_Codec_Gltf_Animation_Channel* korl_codec_gltf_getAnimationChannels(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Animation* animation)
+{
+    return KORL_C_CAST(Korl_Codec_Gltf_Animation_Channel*, KORL_C_CAST(u8*, context) + animation->channels.byteOffset);
 }

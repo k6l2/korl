@@ -124,7 +124,8 @@ typedef struct Korl_Codec_Gltf_Accessor
     Korl_Codec_Gltf_Accessor_Type          type;
     Korl_Codec_Gltf_Accessor_ComponentType componentType;
     u32                                    count;
-    Korl_Math_Aabb3f32                     aabb;
+    Korl_Codec_Gltf_Data                   min;// array size _must_ correspond to the # of elements defined by `type`, if defined
+    Korl_Codec_Gltf_Data                   max;// array size _must_ correspond to the # of elements defined by `type`, if defined
 } Korl_Codec_Gltf_Accessor;
 korl_global_const Korl_Codec_Gltf_Accessor KORL_CODEC_GLTF_ACCESSOR_DEFAULT = {.bufferView = -1};
 typedef struct Korl_Codec_Gltf_BufferView
@@ -248,21 +249,27 @@ typedef struct Korl_Codec_Gltf_Animation_Sampler
     Korl_Codec_Gltf_Animation_Sampler_Interpolation interpolation;// optional
     u32                                             output;       // _required_; Accessor index; contains keyframe output values
 } Korl_Codec_Gltf_Animation_Sampler;
-korl_internal Korl_Codec_Gltf*                korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
-korl_internal acu8                            korl_codec_gltf_getUtf8(const Korl_Codec_Gltf* context, Korl_Codec_Gltf_Data gltfData);
-korl_internal Korl_Codec_Gltf_Mesh*           korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
-korl_internal acu8                            korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
-korl_internal Korl_Codec_Gltf_Mesh_Primitive* korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
-korl_internal Korl_Codec_Gltf_Accessor*       korl_codec_gltf_getAccessors(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_BufferView*     korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Buffer*         korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context);
-korl_internal u32                             korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context, const Korl_Codec_Gltf_BufferView* bufferViewArray);
-korl_internal Korl_Codec_Gltf_Texture*        korl_codec_gltf_getTextures(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Image*          korl_codec_gltf_getImages(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Sampler*        korl_codec_gltf_getSamplers(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Material*       korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Skin*           korl_codec_gltf_getSkins(const Korl_Codec_Gltf* context);
-korl_internal const u32*                      korl_codec_gltf_skin_getJointIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin);
-korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex);
-korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_getNodes(const Korl_Codec_Gltf* context);
-korl_internal Korl_Codec_Gltf_Node*           korl_codec_gltf_node_getChild(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Node*const node, u32 childIndex);
+korl_internal Korl_Codec_Gltf*                   korl_codec_glb_decode(const void* glbData, u$ glbDataBytes, Korl_Memory_AllocatorHandle resultAllocator);
+korl_internal acu8                               korl_codec_gltf_getUtf8(const Korl_Codec_Gltf* context, Korl_Codec_Gltf_Data gltfData);
+korl_internal Korl_Codec_Gltf_Mesh*              korl_codec_gltf_getMeshes(const Korl_Codec_Gltf* context);
+korl_internal acu8                               korl_codec_gltf_mesh_getName(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
+korl_internal Korl_Codec_Gltf_Mesh_Primitive*    korl_codec_gltf_mesh_getPrimitives(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Mesh* mesh);
+korl_internal Korl_Codec_Gltf_Accessor*          korl_codec_gltf_getAccessors(const Korl_Codec_Gltf* context);
+korl_internal u8                                 korl_codec_gltf_accessor_getComponentCount(const Korl_Codec_Gltf_Accessor* context);
+korl_internal u32                                korl_codec_gltf_accessor_getStride(const Korl_Codec_Gltf_Accessor* context, const Korl_Codec_Gltf_BufferView* bufferViewArray);
+korl_internal const f32*                         korl_codec_gltf_accessor_getMin(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Accessor* accessor);
+korl_internal const f32*                         korl_codec_gltf_accessor_getMax(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Accessor* accessor);
+korl_internal Korl_Codec_Gltf_BufferView*        korl_codec_gltf_getBufferViews(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Buffer*            korl_codec_gltf_getBuffers(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Texture*           korl_codec_gltf_getTextures(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Image*             korl_codec_gltf_getImages(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Sampler*           korl_codec_gltf_getSamplers(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Material*          korl_codec_gltf_getMaterials(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Skin*              korl_codec_gltf_getSkins(const Korl_Codec_Gltf* context);
+korl_internal const u32*                         korl_codec_gltf_skin_getJointIndices(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin);
+korl_internal Korl_Codec_Gltf_Node*              korl_codec_gltf_skin_getJointNode(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Skin*const skin, u32 jointIndex);
+korl_internal Korl_Codec_Gltf_Node*              korl_codec_gltf_getNodes(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Node*              korl_codec_gltf_node_getChild(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Node*const node, u32 childIndex);
+korl_internal Korl_Codec_Gltf_Animation*         korl_codec_gltf_getAnimations(const Korl_Codec_Gltf* context);
+korl_internal Korl_Codec_Gltf_Animation_Sampler* korl_codec_gltf_getAnimationSamplers(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Animation* animation);
+korl_internal Korl_Codec_Gltf_Animation_Channel* korl_codec_gltf_getAnimationChannels(const Korl_Codec_Gltf* context, const Korl_Codec_Gltf_Animation* animation);

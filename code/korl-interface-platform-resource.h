@@ -92,3 +92,5 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneParentIndices(name)       const i32*                          name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneTopologicalOrder(name)    const u32*                          name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneInverseBindMatrices(name) const Korl_Math_M4f32*              name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getAnimationIndex(name)               u32                                 name(Korl_Resource_Handle handleResourceScene3d, acu8 utf8AnimationName)
+#define KORL_FUNCTION_korl_resource_scene3d_animation_seconds(name)               f32                                 name(Korl_Resource_Handle handleResourceScene3d, u32 animationIndex)

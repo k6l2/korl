@@ -4,6 +4,29 @@
 #include "utility/korl-checkCast.h"
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-algorithm.h"
+typedef struct _Korl_Resource_Scene3d_Animation_SampleSet
+{
+    // NOTE: this SampleSet's `keyFramesSeconds` array & `sample` array should have the exact same size
+    u32 keyFramesSecondsStartIndex;
+    u32 sampleStartIndex;
+    // the SampleSet's interpolation method is contained within this SampleSet's respective gltfSampler->interpolation
+} _Korl_Resource_Scene3d_Animation_SampleSet;
+typedef struct _Korl_Resource_Scene3d_Animation
+{
+    //@TODO: move all this data into a single allocation
+    f32                                         keyFrameSecondsStart;//@TODO: do I even need these members for calculation of animations?
+    f32                                         keyFrameSecondsEnd;  //@TODO: do I even need these members for calculation of animations?
+    _Korl_Resource_Scene3d_Animation_SampleSet* sampleSets;// array size == gltfAnimation->samplers.size
+    f32*                                        keyFramesSeconds;// array size == SUM(unique(gltfAnimation->samplers[i].input).count)
+    /** NOTE: we likely want to store our own f32 Samples like this because gltf 
+     * allows Animation Sampler Accessors to interpret the raw data buffer with 
+     * various component encodings; when the Animation is being transcoded, we 
+     * will just transcode the Sampler output data into raw floats, preventing 
+     * needless overhead associated with converting these values at runtime; it 
+     * _should_ also make the code needed to compute animations simpler, since 
+     * we only have to worry about one component primitive type */
+    f32*                                        samples;
+} _Korl_Resource_Scene3d_Animation;
 typedef struct _Korl_Resource_Scene3d_Skin
 {
     //@TODO: move all this data into a single allocation
@@ -32,6 +55,8 @@ typedef struct _Korl_Resource_Scene3d
     u16                                  meshPrimitivesSize;// should be == SUM(gltf->meshes[i].primitives.size)
     _Korl_Resource_Scene3d_Skin*         skins;             // pre-baked data needed to instantiate a Korl_Resource_Scene3d_Skin
     u16                                  skinsSize;         // should be == gltf->skins.size
+    _Korl_Resource_Scene3d_Animation*    animations;
+    u16                                  animationsSize;    // should be == gltf->animations.size
 } _Korl_Resource_Scene3d;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
 {
@@ -47,6 +72,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreat
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_scene3d_descriptorStructDestroy)
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
+    for(u16 a = 0; a < scene3d->animationsSize; a++)
+    {
+        korl_free(allocator, scene3d->animations[a].sampleSets);
+        korl_free(allocator, scene3d->animations[a].keyFramesSeconds);
+        korl_free(allocator, scene3d->animations[a].samples);
+    }
+    korl_free(allocator, scene3d->animations);
     for(u16 s = 0; s < scene3d->skinsSize; s++)
     {
         korl_free(allocator, scene3d->skins[s].boneInverseBindMatrices);
@@ -348,6 +380,119 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             korl_log(ERROR, "skin topological sort failed; invalid bone DAG (graph has cycles?)");
         korl_algorithm_graphDirected_destroy(&graphDirected);
     }
+    /* transcode animations; note that, as with skins, most of the data we 
+        actually need at runtime is stored inside scene3d->gltf; the important 
+        data we need to extract is the buffered Sampler data 
+        (inputs/keyframeTimes & outputs/keyframeSamples) */
+    const Korl_Codec_Gltf_Animation*const gltfAnimations = korl_codec_gltf_getAnimations(scene3d->gltf);
+    if(scene3d->gltf->animations.size)
+        if(scene3d->animations)
+            // constrain scene3d re-transcodes to maintain the same # of textures between loads
+            korl_assert(scene3d->animationsSize == scene3d->gltf->animations.size);
+        else
+            scene3d->animations = korl_allocate(scene3d->allocator, scene3d->gltf->animations.size * sizeof(*scene3d->animations));
+    scene3d->animationsSize = korl_checkCast_u$_to_u16(scene3d->gltf->skins.size);
+    for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
+    {
+        const Korl_Codec_Gltf_Animation*const         gltfAnimation    = gltfAnimations + a;
+        const Korl_Codec_Gltf_Animation_Sampler*const gltfAnimSamplers = korl_codec_gltf_getAnimationSamplers(scene3d->gltf, gltfAnimation);
+        _Korl_Resource_Scene3d_Animation*const        animation        = scene3d->animations + a;
+        animation->sampleSets           = korl_reallocate(scene3d->allocator, animation->sampleSets, gltfAnimation->samplers.size * sizeof(*animation->sampleSets));
+        animation->keyFrameSecondsStart = KORL_F32_MAX;
+        animation->keyFrameSecondsEnd   = 0;
+        /* transcode key frame I/O data; 
+            for inputs: 
+                compute how many total keyframe timestamps there are; 
+                transcode offsets into the appropriate SampleSet; 
+                allocate buffer for transcoded storage 
+            for outputs: 
+                compute how many total keyframe samples there are; 
+                transcode offsets into the appropriate SampleSet; 
+                allocate buffer for transcoded storage */
+        u32 keyFramesSecondsSize = 0;
+        u32 samplesSize          = 0;
+        for(u32 s = 0; s < gltfAnimation->samplers.size; s++)
+        {
+            const Korl_Codec_Gltf_Animation_Sampler*const    gltfAnimSampler = gltfAnimSamplers      + s;
+            _Korl_Resource_Scene3d_Animation_SampleSet*const sampleSet       = animation->sampleSets + s;
+            /* transcode key frame seconds */
+            /* check if any previous sampler's use the same sampler inputs; 
+                if so, we can just use the same start index */
+            const _Korl_Resource_Scene3d_Animation_SampleSet* previousSharedInputSampleSet = NULL;
+            for(u32 s2 = 0; s2 < s && !previousSharedInputSampleSet; s2++)
+            {
+                const Korl_Codec_Gltf_Animation_Sampler*const gltfAnimSampler2 = gltfAnimSamplers + s;
+                if(   gltfAnimSampler2->input == gltfAnimSampler->input
+                   && !previousSharedInputSampleSet)
+                    previousSharedInputSampleSet = animation->sampleSets + s2;
+            }
+            if(previousSharedInputSampleSet)
+                sampleSet->keyFramesSecondsStartIndex = previousSharedInputSampleSet->keyFramesSecondsStartIndex;
+            else
+            {
+                const Korl_Codec_Gltf_Accessor*const inputAccessor = gltfAccessors + gltfAnimSampler->input;
+                sampleSet->keyFramesSecondsStartIndex = keyFramesSecondsSize;
+                keyFramesSecondsSize                 += inputAccessor->count;
+                animation->keyFramesSeconds           = korl_reallocate(scene3d->allocator, animation->keyFramesSeconds, keyFramesSecondsSize * sizeof(*animation->keyFramesSeconds));
+                const void*const viewedBuffer         = _korl_resource_scene3d_transcode_getViewedBuffer(scene3d, data, inputAccessor->bufferView);
+                korl_memory_copy(animation->keyFramesSeconds + sampleSet->keyFramesSecondsStartIndex, viewedBuffer, inputAccessor->count * sizeof(*animation->keyFramesSeconds));
+                /* input Accessors for Animation_Sampler inputs _must_ have a defined "min" & "max"; 
+                    we can use this data to calculate the animation's start/end times */
+                korl_assert(inputAccessor->min.size == 1);
+                korl_assert(inputAccessor->max.size == 1);
+                const f32*const inputAccesssorMin = korl_codec_gltf_accessor_getMin(scene3d->gltf, inputAccessor);
+                const f32*const inputAccesssorMax = korl_codec_gltf_accessor_getMax(scene3d->gltf, inputAccessor);
+                KORL_MATH_ASSIGN_CLAMP_MAX(animation->keyFrameSecondsStart, inputAccesssorMin[0]);
+                KORL_MATH_ASSIGN_CLAMP_MIN(animation->keyFrameSecondsEnd  , inputAccesssorMax[0]);
+                korl_assert(animation->keyFrameSecondsStart < animation->keyFrameSecondsEnd);
+            }
+            /* transcode key frame samples */
+            const Korl_Codec_Gltf_Accessor*const   outputAccessor               = gltfAccessors + gltfAnimSampler->output;
+            const u8                               outputAccessorComponentCount = korl_codec_gltf_accessor_getComponentCount(outputAccessor);
+            const void*const                       viewedBuffer                 = _korl_resource_scene3d_transcode_getViewedBuffer(scene3d, data, outputAccessor->bufferView);
+            const Korl_Codec_Gltf_BufferView*const outputBufferView             = gltfBufferViews + outputAccessor->bufferView;
+            korl_assert(outputBufferView->byteStride == 0);// gltf 2.0 spec. 3.6.2.1.: Accessors not used for vertex attributes _must_ be tightly packed
+            sampleSet->sampleStartIndex  = samplesSize;
+            samplesSize                 += outputAccessor->count * outputAccessorComponentCount;
+            animation->samples           = korl_reallocate(scene3d->allocator, animation->samples, samplesSize * sizeof(*animation->samples));
+            if(outputAccessor->componentType == KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_F32)
+                /* if the sample outputs are f32s, we can just do a simple memcpy for all sample outputs */
+                korl_memory_copy(animation->samples + sampleSet->sampleStartIndex, viewedBuffer, outputAccessor->count * outputAccessorComponentCount * sizeof(f32));
+            else
+            {/* otherwise, we have to iterate over each sample output f32 component & perform a integer=>float conversion (as described by gltf 2.0 spec. 3.11) */
+                for(u32 c = 0; c < outputAccessor->count * outputAccessorComponentCount; c++)
+                {
+                    switch(outputAccessor->type)
+                    {
+                    case KORL_CODEC_GLTF_ACCESSOR_TYPE_SCALAR:
+                    case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4:{
+                        switch(outputAccessor->componentType)
+                        {/* int=>float conversion formulas from gltf 2.0 spec 3.11 */
+                        case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_I8 :
+                            animation->samples[sampleSet->sampleStartIndex + c] = KORL_MATH_MAX(  KORL_C_CAST(f32, KORL_C_CAST(const i8*, viewedBuffer)[c]) 
+                                                                                                / (KORL_C_CAST(f32, KORL_U8_MAX) / 2.f)
+                                                                                               ,-1.f);
+                            break;
+                        case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U8 :
+                            animation->samples[sampleSet->sampleStartIndex + c] = KORL_C_CAST(const u8*, viewedBuffer)[c] / KORL_C_CAST(f32, KORL_U8_MAX);
+                            break;
+                        case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_I16:
+                            animation->samples[sampleSet->sampleStartIndex + c] = KORL_MATH_MAX(  KORL_C_CAST(f32, KORL_C_CAST(const i16*, viewedBuffer)[c]) 
+                                                                                                / (KORL_C_CAST(f32, KORL_U16_MAX) / 2.f)
+                                                                                               ,-1.f);
+                            break;
+                        case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U16:
+                            animation->samples[sampleSet->sampleStartIndex + c] = KORL_C_CAST(const u16*, viewedBuffer)[c] / KORL_C_CAST(f32, KORL_U16_MAX);
+                            break;
+                        default: korl_log(ERROR, "invalid Accessor componentType: %i", outputAccessor->componentType);
+                        }
+                        break;}
+                    default: korl_log(ERROR, "invalid Accessor type: %i", outputAccessor->type);
+                    }
+                }
+            }
+        }
+    }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_scene3d_clearTransientData)
 {
@@ -473,4 +618,26 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneInverseBindMatrice
     korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
     const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
     return _skin->boneInverseBindMatrices;
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_getAnimationIndex(korl_resource_scene3d_getAnimationIndex)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return KORL_U32_MAX;
+    const Korl_Codec_Gltf_Animation*const gltfAnimations = korl_codec_gltf_getAnimations(scene3d->gltf);
+    for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
+        if(korl_string_equalsAcu8(korl_codec_gltf_getUtf8(scene3d->gltf, gltfAnimations[a].rawUtf8Name), utf8AnimationName))
+            return a;
+    korl_log(WARNING, "animation name \"%.*hs\" not found", utf8AnimationName.size, utf8AnimationName.data);
+    return KORL_U32_MAX;
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_animation_seconds(korl_resource_scene3d_animation_seconds)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return 0;
+    if(animationIndex >= scene3d->gltf->animations.size)
+        return 0;
+    const _Korl_Resource_Scene3d_Animation*const animation = scene3d->animations + animationIndex;
+    return animation->keyFrameSecondsEnd - animation->keyFrameSecondsStart;
 }
