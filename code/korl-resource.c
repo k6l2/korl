@@ -16,62 +16,11 @@
 #include "korl-resource-scene3d.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
-korl_global_const u$ _KORL_RESOURCE_UNIQUE_ID_MAX = 0x0FFFFFFFFFFFFFFF;
-typedef enum _Korl_Resource_Type
-    {_KORL_RESOURCE_TYPE_INVALID // this value indicates the entire Resource Handle is not valid
-    ,_KORL_RESOURCE_TYPE_FILE    // Resource is derived from a korl-assetCache file
-    ,_KORL_RESOURCE_TYPE_RUNTIME // Resource is derived from data that is generated at runtime
-} _Korl_Resource_Type;
-typedef enum _Korl_Resource_MultimediaType
-    {_KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS// this resource maps to a vulkan device-local allocation, or similar type of data
-    ,_KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO
-} _Korl_Resource_MultimediaType;
-typedef struct _Korl_Resource_Handle_Unpacked
-{
-    _Korl_Resource_Type           type;
-    _Korl_Resource_MultimediaType multimediaType;
-    u$                            uniqueId;
-} _Korl_Resource_Handle_Unpacked;
-typedef enum _Korl_Resource_Graphics_Type
-    {_KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN
-    ,_KORL_RESOURCE_GRAPHICS_TYPE_IMAGE
-    ,_KORL_RESOURCE_GRAPHICS_TYPE_BUFFER
-    ,_KORL_RESOURCE_GRAPHICS_TYPE_SHADER
-    ,_KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D
-} _Korl_Resource_Graphics_Type;
 typedef struct _Korl_Resource
 {
     // _Korl_Resource_MultimediaType type;// we don't actually need the type here, since type is part of the resource handle, and that is the hash key of the database!
     union
     {
-        struct
-        {
-            _Korl_Resource_Graphics_Type type;
-            union
-            {
-                struct
-                {
-                    Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
-                    Korl_Vulkan_CreateInfoTexture             createInfo;
-                } image;
-                struct
-                {
-                    Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
-                    Korl_Resource_CreateInfoBuffer            createInfo;
-                } buffer;
-                struct
-                {
-                    Korl_Vulkan_ShaderHandle handle;
-                } shader;
-                struct
-                {
-                    Korl_Codec_Gltf*                          gltf;
-                    Korl_Vulkan_DeviceMemory_AllocationHandle meshPrimitiveBuffer;// used to store _all_ vertex/index data for _all_ MeshPrimitives; must be freed when this Resource is destroyed
-                    Korl_Gfx_VertexStagingMeta*               meshPrimitiveVertexMeta;// an array with enough elements to store all glTF MeshPrimitives; stored in "transient" memory
-                    Korl_Gfx_Material*                        meshPrimitiveMaterials;// an array with enough elements to store all glTF MeshPrimitives; stored in "transient" memory
-                } scene3d;
-            } subType;
-        } graphics;
         struct
         {
             Korl_Audio_Format format;
@@ -86,11 +35,6 @@ typedef struct _Korl_Resource
     Korl_AssetCache_Get_Flags assetCacheGetFlags;// only valid for file-backed resources
     //KORL-FEATURE-000-000-046: resource: right now it is very difficult to trace the owner of a resource; modify API to require FILE:LINE information for Resource allocations
 } _Korl_Resource;
-typedef struct _Korl_Resource_Map
-{
-    Korl_Resource_Handle key;
-    _Korl_Resource       value;
-} _Korl_Resource_Map;
 #endif
 typedef struct _Korl_Resource_Descriptor
 {
@@ -122,16 +66,9 @@ typedef struct _Korl_Resource_Item
              * memoryState load operation */
             void* data;
             bool  transcodingIsUpdated;
+            bool  isTransient;// true if the runtime resource was created with the `transient` parameter set to true
+            bool  transientDestroy;// raised when we reach a condition where transient runtime resources should be destroyed, such as after loading a korl-memoryState
         } runtime;
-        #if 0
-        //@TODO: is this design good?  
-        //           or do we just add `parentResourceHandle` to the `runtime` subtype?  
-        //           or perhaps should _all_ Resource_Items be capable of having a parent Resource_Item?...
-        struct
-        {
-            Korl_Resource_Handle resourceHandle;
-        } parent;
-        #endif
     } backingSubType;
 } _Korl_Resource_Item;
 typedef struct _Korl_Resource_Map
@@ -148,148 +85,12 @@ typedef struct _Korl_Resource_Context
     Korl_Pool                   resourcePool;// stored in runtime memory; pool of _Korl_Resource_Item
     _Korl_Resource_Map*         stbShFileResources;// stored in runtime memory; acceleration data structure allowing the user to more efficiently obtain the same file-backed Resource
     #if 0//@TODO: delete/recycle
-    _Korl_Resource_Map*         stbHmResources;
-    Korl_Resource_Handle*       stbDsDirtyResourceHandles;
-    u$                          nextUniqueId;// this counter will increment each time we add a _non-file_ resource to the database; file-based resources will have a unique id generated from a hash of the asset file name
-    Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store the file name strings of file resources, allowing us to hot-reload resources when the underlying korl-asset is hot-reloaded
     Korl_Audio_Format           audioRendererFormat;// the currently configured audio renderer format, likely to be set by korl-sfx; when this is changed via `korl_resource_setAudioFormat`, all audio resources will be resampled to match this format, and that resampled audio data is what will be mixed into korl-audio; we do this to sacrifice memory for speed, as it should be much better performance to not have to worry about audio resampling algorithms at runtime
     bool                        audioResamplesPending;// set when `audioRendererFormat` changes, or we lazy-load a file resource via `korl_resource_fromFile`; once set, each call to `korl_resource_flushUpdates` will incur iteration over all audio resources to ensure that they are all resampled to `audioRendererFormat`'s specifications; only cleared when `korl_resource_flushUpdates` finds that all audio resources are loaded & resampled
     #endif
 } _Korl_Resource_Context;
 korl_global_variable _Korl_Resource_Context* _korl_resource_context;
 #if 0//@TODO: delete/recycle
-korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_handle_unpack(Korl_Resource_Handle handle)
-{
-    KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
-    unpackedHandle.type           = (handle >> 62) & 0b11;
-    unpackedHandle.multimediaType = (handle >> 60) & 0b11;
-    unpackedHandle.uniqueId       =  handle        & _KORL_RESOURCE_UNIQUE_ID_MAX;
-    return unpackedHandle;
-}
-korl_internal Korl_Resource_Handle _korl_resource_handle_pack(_Korl_Resource_Handle_Unpacked unpackedHandle)
-{
-    return ((KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.type)           & 0b11) << 62)
-         | ((KORL_C_CAST(Korl_Resource_Handle, unpackedHandle.multimediaType) & 0b11) << 60)
-         | (                                   unpackedHandle.uniqueId        & _KORL_RESOURCE_UNIQUE_ID_MAX);
-}
-korl_internal bool _korl_resource_isLoaded(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
-{
-    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-        switch(resource->subType.graphics.type)
-        {
-        case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
-            return 0 != resource->subType.graphics.subType.shader.handle;}
-        case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
-            return resource->subType.graphics.subType.scene3d.gltf;}
-        default: break;
-        }
-    return resource->data;
-}
-korl_internal void _korl_resource_unload(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-    {
-        switch(resource->subType.graphics.type)
-        {
-        case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
-            korl_vulkan_shader_destroy(resource->subType.graphics.subType.shader.handle);
-            resource->subType.graphics.subType.shader.handle = 0;
-            break;}
-        case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
-            korl_vulkan_deviceAsset_destroy(resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer);
-            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials);
-            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta);
-            korl_free(context->allocatorHandleTransient, resource->subType.graphics.subType.scene3d.gltf);
-            resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer     = 0;
-            resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  = NULL;
-            resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta = NULL;
-            resource->subType.graphics.subType.scene3d.gltf                    = NULL;
-            break;}
-        default: break;
-        }
-    }
-    korl_free(context->allocatorHandleTransient, resource->data);// ASSUMPTION: this function is run _after_ the memory state allocators/allocations are loaded!
-    resource->data      = NULL;
-    resource->dataBytes = 0;
-}
-korl_internal _Korl_Resource_Handle_Unpacked _korl_resource_fileNameToUnpackedHandle(acu16 fileName, _Korl_Resource_Graphics_Type* out_graphicsType)
-{
-    KORL_ZERO_STACK(_Korl_Resource_Handle_Unpacked, unpackedHandle);
-    /* automatically determine the type of multimedia this resource is based on the file extension */
-    _Korl_Resource_Graphics_Type graphicsType = _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN;
-    {
-        korl_shared_const u16* IMAGE_EXTENSIONS[] = {L".png", L".jpg", L".jpeg"};
-        for(u32 i = 0; i < korl_arraySize(IMAGE_EXTENSIONS); i++)
-        {
-            const u$ extensionSize = korl_string_sizeUtf16(IMAGE_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
-            if(fileName.size < extensionSize)
-                continue;
-            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, IMAGE_EXTENSIONS[i]}))
-            {
-                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
-                graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE;
-                goto multimediaTypeFound;
-            }
-        }
-    }
-    {
-        korl_shared_const u16* SHADER_EXTENSIONS[] = {L".spv"};
-        for(u32 i = 0; i < korl_arraySize(SHADER_EXTENSIONS); i++)
-        {
-            const u$ extensionSize = korl_string_sizeUtf16(SHADER_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
-            if(fileName.size < extensionSize)
-                continue;
-            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, SHADER_EXTENSIONS[i]}))
-            {
-                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
-                graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SHADER;
-                goto multimediaTypeFound;
-            }
-        }
-    }
-    {
-        korl_shared_const u16* SCENE3D_EXTENSIONS[] = {L".glb"};
-        for(u32 i = 0; i < korl_arraySize(SCENE3D_EXTENSIONS); i++)
-        {
-            const u$ extensionSize = korl_string_sizeUtf16(SCENE3D_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
-            if(fileName.size < extensionSize)
-                continue;
-            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, SCENE3D_EXTENSIONS[i]}))
-            {
-                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS;
-                graphicsType                  = _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D;
-                goto multimediaTypeFound;
-            }
-        }
-    }
-    {
-        korl_shared_const u16* AUDIO_EXTENSIONS[] = {L".wav", L".ogg"};
-        for(u32 i = 0; i < korl_arraySize(AUDIO_EXTENSIONS); i++)
-        {
-            const u$ extensionSize = korl_string_sizeUtf16(AUDIO_EXTENSIONS[i], KORL_DEFAULT_C_STRING_SIZE_LIMIT);
-            if(fileName.size < extensionSize)
-                continue;
-            if(0 == korl_memory_compare_acu16((acu16){extensionSize, fileName.data + fileName.size - extensionSize}, (acu16){extensionSize, AUDIO_EXTENSIONS[i]}))
-            {
-                unpackedHandle.multimediaType = _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO;
-                goto multimediaTypeFound;
-            }
-        }
-    }
-    goto returnUnpackedHandle;
-    multimediaTypeFound:
-        /* hash the file name, generate our resource handle */
-        unpackedHandle.type     = _KORL_RESOURCE_TYPE_FILE;
-        unpackedHandle.uniqueId = korl_string_hashAcu16(fileName);
-        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-        {
-            korl_assert(graphicsType != _KORL_RESOURCE_GRAPHICS_TYPE_UNKNOWN);
-            *out_graphicsType = graphicsType;
-        }
-    returnUnpackedHandle:
-        return unpackedHandle;
-}
 korl_internal void _korl_resource_resampleAudio(_Korl_Resource* resource)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
@@ -327,217 +128,6 @@ korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const reso
     {
         switch(unpackedHandle.multimediaType)
         {
-        case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-            switch(resource->subType.graphics.type)
-            {
-            case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                int imageSizeX = 0, imageSizeY = 0, imageChannels = 0;
-                ///KORL-PERFORMANCE-000-000-032: resource: stbi API unfortunately doesn't seem to have the ability for the user to provide their own allocator, so we need an extra alloc/copy/free here
-                {
-                    stbi_uc*const stbiPixels = stbi_load_from_memory(assetData.data, assetData.dataBytes, &imageSizeX, &imageSizeY, &imageChannels, STBI_rgb_alpha);
-                    korl_assert(stbiPixels);
-                    const u$ pixelBytes = imageSizeX * imageSizeY * imageChannels;
-                    resource->data      = korl_allocate(context->allocatorHandleTransient, pixelBytes);
-                    resource->dataBytes = pixelBytes;
-                    korl_memory_copy(resource->data, stbiPixels, pixelBytes);
-                    stbi_image_free(stbiPixels);
-                    /* pre-multiply alpha channel into all file images by default */
-                    Korl_Gfx_Color4u8*const colorData = KORL_C_CAST(Korl_Gfx_Color4u8*, resource->data);
-                    for(int i = 0; i < imageSizeX * imageSizeY; i++)
-                    {
-                        const f32 alpha = KORL_C_CAST(f32, colorData[i].a) / KORL_C_CAST(f32, KORL_U8_MAX);
-                        colorData[i].r = korl_math_round_f32_to_u8(alpha * KORL_C_CAST(f32, colorData[i].r));
-                        colorData[i].g = korl_math_round_f32_to_u8(alpha * KORL_C_CAST(f32, colorData[i].g));
-                        colorData[i].b = korl_math_round_f32_to_u8(alpha * KORL_C_CAST(f32, colorData[i].b));
-                    }
-                }
-                resource->subType.graphics.subType.image.createInfo.size              = (Korl_Math_V2u32){korl_checkCast_i$_to_u32(imageSizeX), korl_checkCast_i$_to_u32(imageSizeY)};
-                resource->subType.graphics.subType.image.deviceMemoryAllocationHandle = korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.subType.image.createInfo, 0/*0 => generate new handle*/);
-                korl_vulkan_texture_update(resource->subType.graphics.subType.image.deviceMemoryAllocationHandle, resource->data);
-                break;}
-            case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
-                KORL_ZERO_STACK(Korl_Vulkan_CreateInfoShader, createInfoShader);// just keep this data on the stack, since the underlying data is transient anyway, and we don't really need this data to re-create the shader later
-                createInfoShader.data      = assetData.data;
-                createInfoShader.dataBytes = assetData.dataBytes;
-                resource->subType.graphics.subType.shader.handle = korl_vulkan_shader_create(&createInfoShader, 0);
-                break;}
-            case _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D:{
-                Korl_Codec_Gltf*const            gltf        = korl_codec_glb_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient);
-                Korl_Codec_Gltf_Mesh*const       meshes      = korl_codec_gltf_getMeshes(gltf);
-                Korl_Codec_Gltf_Accessor*const   accessors   = korl_codec_gltf_getAccessors(gltf);
-                Korl_Codec_Gltf_BufferView*const bufferViews = korl_codec_gltf_getBufferViews(gltf);
-                Korl_Codec_Gltf_Buffer*const     buffers     = korl_codec_gltf_getBuffers(gltf);
-                korl_assert(gltf->buffers.size == 1);// safe to assume GLB files have 1 buffer
-                if(gltf->meshes.size)
-                {
-                    u$ meshPrimitivesTotal = 0;
-                    for(u32 m = 0; m < gltf->meshes.size; m++)
-                    {
-                        Korl_Codec_Gltf_Mesh*const mesh = meshes + m;
-                        meshPrimitivesTotal += mesh->primitives.size;
-                    }
-                    resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  = korl_allocate(context->allocatorHandleTransient, meshPrimitivesTotal * sizeof(*resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials));
-                    resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta = korl_allocate(context->allocatorHandleTransient, meshPrimitivesTotal * sizeof(*resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta));
-                }
-                /* creation of the mesh primitive's vertex buffer; chances are good that there is a lot more data in the GLB's 
-                    binary chunk (raw image data, etc.), so we must figure out which vertex attributes we need for the vertex buffer, 
-                    then use the Accessor + BufferView for each vertex attribute we can determine the range of the binary chunk the data 
-                    occupies, as well as accumulate the total byte size of the entire vertex buffer; note that we are going to 
-                    use a single buffer to store _all_ the vertex/index data for _all_ MeshPrimitives; we don't know what the 
-                    usage of the buffer is going to be until we iterate over all the MeshPrimitives, so we have to defer buffer 
-                    creation after accumulating this data, and while we're at it, we might as well accumulate the total bytes 
-                    required so that we can just do a single device buffer allocation (no reallocs) */
-                KORL_ZERO_STACK(Korl_Resource_CreateInfoBuffer, createInfoBuffer);
-                u$ meshPrimitiveOffset = 0;// the offset in the meshPrimitiveDrawModes array in which the current mesh's meshPrimitives begin
-                for(u32 m = 0; m < gltf->meshes.size; m++)
-                {
-                    const Korl_Codec_Gltf_Mesh*const           mesh           = meshes + m;
-                    const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_mesh_getPrimitives(gltf, mesh);
-                    for(u32 mp = 0; mp < mesh->primitives.size; mp++)
-                    {
-                        const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive           = meshPrimitives + mp;
-                        Korl_Gfx_Material*const                    meshPrimitiveMaterial   = resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  + meshPrimitiveOffset + mp;
-                        Korl_Gfx_VertexStagingMeta*const           meshPrimitiveVertexMeta = resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta + meshPrimitiveOffset + mp;
-                        /* transcode vertex index meta data */
-                        if(meshPrimitive->indices >= 0)
-                        {
-                            const Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->indices;
-                            const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
-                            switch(accessor->componentType)
-                            {
-                            case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U16: meshPrimitiveVertexMeta->indexType = KORL_GFX_VERTEX_INDEX_TYPE_U16; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U32: meshPrimitiveVertexMeta->indexType = KORL_GFX_VERTEX_INDEX_TYPE_U32; break;
-                            default:
-                                korl_log(ERROR, "invalid index accessor componentType: %u", accessor->componentType);
-                            }
-                            meshPrimitiveVertexMeta->indexCount            = accessor->count;
-                            meshPrimitiveVertexMeta->indexByteOffsetBuffer = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
-                            createInfoBuffer.bytes += bufferView->byteLength;
-                            createInfoBuffer.usageFlags |= KORL_RESOURCE_BUFFER_USAGE_FLAG_INDEX;
-                        }
-                        /* transcode vertex attribute meta data */
-                        struct
-                        {
-                            i32                             attributeIndex;
-                            Korl_Gfx_VertexAttributeBinding vertexAttributeBinding;
-                        } const attributes[] = {{meshPrimitive->attributes.position , KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION}
-                                               ,{meshPrimitive->attributes.normal   , KORL_GFX_VERTEX_ATTRIBUTE_BINDING_NORMAL}
-                                               ,{meshPrimitive->attributes.texCoord0, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV}};
-                        for(u8 i = 0; i < korl_arraySize(attributes); i++)
-                        {
-                            const i32                             attributeIndex         = attributes[i].attributeIndex;
-                            const Korl_Gfx_VertexAttributeBinding vertexAttributeBinding = attributes[i].vertexAttributeBinding;
-                            const Korl_Codec_Gltf_Accessor*const  accessor               = accessors + attributeIndex;
-                            if(i == 0)
-                            {
-                                /* special case to determine vertexCount */
-                                korl_assert(attributeIndex >= 0);// vertex position attribute is _required_
-                                meshPrimitiveVertexMeta->vertexCount = accessor->count;
-                            }
-                            else
-                            {
-                                if(attributeIndex < 0)
-                                    continue;
-                                korl_assert(accessor->count == meshPrimitiveVertexMeta->vertexCount);// enforce that all vertex attributes have equivalent counts
-                            }
-                            const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_assert(bufferView->buffer == 0);// for now, only support the GLB binary chunk 0
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer = korl_checkCast_u$_to_u32(createInfoBuffer.bytes);
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteStride       = korl_codec_gltf_accessor_getStride(accessor, bufferViews);
-                            meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].inputRate        = KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX;
-                            switch(accessor->componentType)
-                            {
-                            case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U8 : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].elementType = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U8;  break;
-                            case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U32: meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].elementType = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_F32: meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].elementType = KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32; break;
-                            default:
-                                korl_log(ERROR, "unsupported componentType: %u", accessor->componentType);
-                            }
-                            switch(accessor->type)
-                            {
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_SCALAR: meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize =     1; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC2  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize =     2; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC3  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize =     3; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_VEC4  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize =     4; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT2  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize = 2 * 2; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize = 3 * 3; break;
-                            case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4  : meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].vectorSize = 4 * 4; break;
-                            }
-                            createInfoBuffer.bytes += bufferView->byteLength;
-                            createInfoBuffer.usageFlags |= KORL_RESOURCE_BUFFER_USAGE_FLAG_VERTEX;
-                        }
-                        /* transcode mesh primitive draw mode */
-                        *meshPrimitiveMaterial = korl_gfx_material_defaultLit(KORL_GFX_MATERIAL_PRIMITIVE_TYPE_INVALID
-                                                                             ,  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE
-                                                                              | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST);
-                        switch(meshPrimitive->mode)
-                        {
-                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_TRIANGLES: meshPrimitiveMaterial->modes.primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES; break;
-                        case KORL_CODEC_GLTF_MESH_PRIMITIVE_MODE_LINES    : meshPrimitiveMaterial->modes.primitiveType = KORL_GFX_MATERIAL_PRIMITIVE_TYPE_LINES;     break;
-                        default:
-                            korl_log(ERROR, "unsupported mesh primitive mode: %i", meshPrimitive->mode);
-                        }
-                    }
-                    meshPrimitiveOffset += mesh->primitives.size;
-                }
-                /* create the buffer device object to store the transcoded vertex index/attribute data for all MeshPrimitives */
-                resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer = korl_vulkan_deviceAsset_createBuffer(&createInfoBuffer, 0/*0 => generate new handle*/);
-                void* stagingBuffer = korl_vulkan_buffer_getStagingBuffer(resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer, createInfoBuffer.bytes, 0);// get a staging buffer for the entire buffer region, since we're going to write to the entire buffer
-                /* update the device buffer with all MeshPrimitive data;
-                    as a reminder, the only reason we're doing this instead of just uploading the entire binary chunk0 to the graphics device 
-                    is because we could _potentially_ have various other crap embedded in the GLB binary chunk, such as raw PNG files, etc.; 
-                    if we don't want to support such a thing (ensure that artists do _not_ store non-vertex data in the GLB binary chunk0), 
-                    then we can get rid of a lot of code in here */
-                meshPrimitiveOffset = 0;// the offset in the meshPrimitiveDrawModes array in which the current mesh's meshPrimitives begin
-                for(u32 m = 0; m < gltf->meshes.size; m++)
-                {
-                    const Korl_Codec_Gltf_Mesh*const           mesh           = meshes + m;
-                    const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitives = korl_codec_gltf_mesh_getPrimitives(gltf, mesh);
-                    for(u32 mp = 0; mp < mesh->primitives.size; mp++)
-                    {
-                        const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive           = meshPrimitives + mp;
-                        const Korl_Gfx_VertexStagingMeta*const     meshPrimitiveVertexMeta = resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta + meshPrimitiveOffset + mp;
-                        if(meshPrimitiveVertexMeta->indexType != KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
-                        {
-                            const Korl_Codec_Gltf_Accessor*const   accessor   = accessors   + meshPrimitive->indices;
-                            const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->indexByteOffsetBuffer
-                                            ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
-                                            ,meshPrimitiveVertexMeta->indexCount * korl_codec_gltf_accessor_getStride(accessor, bufferViews));
-                        }
-                        struct
-                        {
-                            i32                             attributeIndex;
-                            Korl_Gfx_VertexAttributeBinding vertexAttributeBinding;
-                        } const attributes[] = {{meshPrimitive->attributes.position , KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION}
-                                               ,{meshPrimitive->attributes.normal   , KORL_GFX_VERTEX_ATTRIBUTE_BINDING_NORMAL}
-                                               ,{meshPrimitive->attributes.texCoord0, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV}};
-                        for(u8 i = 0; i < korl_arraySize(attributes); i++)
-                        {
-                            const i32                             attributeIndex         = attributes[i].attributeIndex;
-                            const Korl_Gfx_VertexAttributeBinding vertexAttributeBinding = attributes[i].vertexAttributeBinding;
-                            if(attributeIndex < 0)
-                                continue;
-                            const Korl_Codec_Gltf_Accessor*const   accessor   = accessors + attributeIndex;
-                            const Korl_Codec_Gltf_BufferView*const bufferView = bufferViews + accessor->bufferView;
-                            korl_assert(bufferView->byteStride == 0);//KORL-ISSUE-000-000-177: gltf: support interleaved MeshPrimitive attributes; we are assuming that all our attributes are tightly-packed/disjoint!
-                            korl_memory_copy(KORL_C_CAST(u8*, stagingBuffer) + meshPrimitiveVertexMeta->vertexAttributeDescriptors[vertexAttributeBinding].byteOffsetBuffer
-                                            ,KORL_C_CAST(u8*, gltf) + gltf->bytes + bufferView->byteOffset
-                                            ,bufferView->byteLength);
-                        }
-                    }
-                    meshPrimitiveOffset += mesh->primitives.size;
-                }
-                /**/
-                //KORL-ISSUE-000-000-158: resource: decode textures from the GLB binary chunk & upload to graphics device
-                resource->subType.graphics.subType.scene3d.gltf = gltf;
-                break;}
-            default:
-                korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
-                break;
-            }
-            break;}
         case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
             resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient, &resource->dataBytes, &resource->subType.audio.format);
             korl_assert(resource->data);
@@ -592,7 +182,7 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_for
         const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
         korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
         fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
-        transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes);
+        transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes, context->allocatorHandleTransient);
         resourceItem->backingSubType.assetCache.isTranscoded = true;
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
@@ -683,9 +273,10 @@ korl_internal KORL_FUNCTION_korl_resource_create(korl_resource_create)
     /* add a new resource item & run the create function with the provided create info */
     _Korl_Resource_Item* newResource;
     const Korl_Resource_Handle newResourceHandle = korl_pool_add(&context->resourcePool, resourceType, &newResource);
-    newResource->descriptorIndex  = resourceType;
-    newResource->descriptorStruct = descriptorStructCreate(context->allocatorHandleRuntime);
-    newResource->backingType      = _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA;
+    newResource->descriptorIndex                    = resourceType;
+    newResource->descriptorStruct                   = descriptorStructCreate(context->allocatorHandleRuntime);
+    newResource->backingType                        = _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA;
+    newResource->backingSubType.runtime.isTransient = transient;
     createRuntimeData(newResource->descriptorStruct, descriptorCreateInfo, context->allocatorHandleRuntime, &newResource->backingSubType.runtime.data);
     createRuntimeMedia(newResource->descriptorStruct);
     return newResourceHandle;
@@ -699,53 +290,10 @@ korl_internal KORL_FUNCTION_korl_resource_destroy(korl_resource_destroy)
     const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
     fnSig_korl_resource_descriptorCallback_unload*const                  unload                  = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_unload*                 , korl_functionDynamo_get(descriptor->callbacks.unload));
     fnSig_korl_resource_descriptorCallback_descriptorStructDestroy*const descriptorStructDestroy = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_descriptorStructDestroy*, korl_functionDynamo_get(descriptor->callbacks.descriptorStructDestroy));
-    unload(resourceItem->descriptorStruct);
+    unload(resourceItem->descriptorStruct, context->allocatorHandleTransient);
     descriptorStructDestroy(resourceItem->descriptorStruct, context->allocatorHandleRuntime);
     korl_free(context->allocatorHandleRuntime, resourceItem->backingSubType.runtime.data);
     korl_pool_remove(&context->resourcePool, &resourceHandle);
-    #if 0//@TODO: delete/recycle
-    if(!resourceHandle)
-        return;// silently do nothing for NULL handles
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandle);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceHandle);
-    /* destroy the transcoded multimedia asset */
-    switch(unpackedHandle.multimediaType)
-    {
-    case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-        switch(resource->subType.graphics.type)
-        {
-        case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-            korl_vulkan_deviceAsset_destroy(resource->subType.graphics.subType.image.deviceMemoryAllocationHandle);
-            break;}
-        case _KORL_RESOURCE_GRAPHICS_TYPE_BUFFER:{
-            korl_vulkan_deviceAsset_destroy(resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle);
-            break;}
-        case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
-            korl_vulkan_shader_destroy(resource->subType.graphics.subType.shader.handle);
-            break;}
-        default:
-            korl_log(ERROR, "graphics type not implemented: %u", resource->subType.graphics.type);
-        }
-        break;}
-    case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
-        korl_free(context->allocatorHandleTransient, resource->subType.audio.resampledData);
-        break;}
-    default:{
-        korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
-        break;}
-    }
-    /* if the resource backed by a file, we should destroy the cached file name string */
-    string_free(&resource->stringFileName);
-    /* destroy the cached decoded raw asset data */
-    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME)
-        korl_free(context->allocatorHandleRuntime, resource->data);
-    else
-        korl_free(context->allocatorHandleTransient, resource->data);
-    /* remove the resource from the database */
-    mchmdel(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, resourceHandle);
-    #endif
 }
 korl_internal KORL_FUNCTION_korl_resource_update(korl_resource_update)
 {
@@ -851,10 +399,18 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_flushUpdates_forEach)
     if(resourceItem->backingSubType.runtime.transcodingIsUpdated)
         return KORL_POOL_FOR_EACH_CONTINUE;
     _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+    if(resourceItem->backingSubType.runtime.isTransient && resourceItem->backingSubType.runtime.transientDestroy)
+    {
+        /* note that there is no need to call `unload` here, since transient data has already been unloaded */
+        fnSig_korl_resource_descriptorCallback_descriptorStructDestroy*const descriptorStructDestroy = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_descriptorStructDestroy*, korl_functionDynamo_get(descriptor->callbacks.descriptorStructDestroy));
+        descriptorStructDestroy(resourceItem->descriptorStruct, context->allocatorHandleRuntime);
+        korl_free(context->allocatorHandleRuntime, resourceItem->backingSubType.runtime.data);
+        return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+    }
     fnSig_korl_resource_descriptorCallback_transcode*const    transcode    = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*   , korl_functionDynamo_get(descriptor->callbacks.transcode));
     fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
     const u$ resourceBytes = runtimeBytes(resourceItem->descriptorStruct);
-    transcode(resourceItem->descriptorStruct, resourceItem->backingSubType.runtime.data, resourceBytes);
+    transcode(resourceItem->descriptorStruct, resourceItem->backingSubType.runtime.data, resourceBytes, context->allocatorHandleTransient);
     resourceItem->backingSubType.runtime.transcodingIsUpdated = true;
     return KORL_POOL_FOR_EACH_CONTINUE;
 }
@@ -863,43 +419,6 @@ korl_internal void korl_resource_flushUpdates(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_pool_forEach(&context->resourcePool, _korl_resource_flushUpdates_forEach, NULL);
     #if 0//@TODO: delete/recycle
-    const Korl_Resource_Handle*const dirtyHandlesEnd = context->stbDsDirtyResourceHandles + arrlen(context->stbDsDirtyResourceHandles);
-    for(const Korl_Resource_Handle* dirtyHandle = context->stbDsDirtyResourceHandles; dirtyHandle < dirtyHandlesEnd; dirtyHandle++)
-    {
-        const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, *dirtyHandle);
-        if(hashMapIndex < 0)
-        {
-            //KORL-ISSUE-000-000-128: gui: (minor) WARNING logged on memory state load due to frivolous resource destruction
-            korl_log(WARNING, "updated resource handle invalid (update + delete in same frame, etc.): 0x%X", *dirtyHandle);
-            continue;
-        }
-        _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-        korl_assert(resource->dirty);
-        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(*dirtyHandle);
-        korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_RUNTIME);
-        switch(unpackedHandle.multimediaType)
-        {
-        case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-            switch(resource->subType.graphics.type)
-            {
-            case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                korl_vulkan_texture_update(resource->subType.graphics.subType.image.deviceMemoryAllocationHandle, resource->data);
-                break;}
-            case _KORL_RESOURCE_GRAPHICS_TYPE_BUFFER:{
-                korl_vulkan_buffer_update(resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle, resource->data, resource->dataBytes, 0);
-                break;}
-            default:{
-                korl_log(ERROR, "invalid graphics type: %i", resource->subType.graphics.type);
-                break;}
-            }
-            break;}
-        default:{
-            korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
-            break;}
-        }
-        resource->dirty = false;
-    }
-    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, 0);
     /* once per frame, if we have any audio resources that are pending generation 
         of cached resampled audio data to match the audio renderer's format, we 
         attempt to resample as many of these as possible; once all audio 
@@ -983,55 +502,6 @@ korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audi
     #endif
     return (acu8){0};//@TODO
 }
-korl_internal void korl_resource_scene3d_getMeshDrawData(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName, u32* o_meshPrimitiveCount, Korl_Vulkan_DeviceMemory_AllocationHandle* o_meshPrimitiveBuffer, const Korl_Gfx_VertexStagingMeta** o_meshPrimitiveVertexMetas, const Korl_Gfx_Material** o_meshMaterials)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    if(!handleResourceScene3d)
-        goto returnNothing;
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handleResourceScene3d);
-    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handleResourceScene3d);
-    korl_assert(hashMapIndex >= 0);
-    _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    korl_assert(resource->subType.graphics.type == _KORL_RESOURCE_GRAPHICS_TYPE_SCENE3D);
-    if(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE)
-        _korl_resource_fileResourceLoadStep(resource, unpackedHandle);
-    if(!resource->subType.graphics.subType.scene3d.gltf)
-        goto returnNothing;
-    /* at this point, we know the glTF data is loaded & ready to render */
-    const Korl_Codec_Gltf*const                gltf               = resource->subType.graphics.subType.scene3d.gltf;
-    const Korl_Codec_Gltf_Mesh*const           meshes             = korl_codec_gltf_getMeshes(gltf);
-    /* find which mesh the user wants to draw based on the requested name */
-    const Korl_Codec_Gltf_Mesh* mesh = NULL;
-    u$                          meshPrimitiveOffset = 0;
-    for(u32 m = 0; m < gltf->meshes.size && !mesh; m++)
-    {
-        const Korl_Codec_Gltf_Mesh*const meshCurrent = meshes + m;
-        const acu8 meshName = korl_codec_gltf_mesh_getName(gltf, meshCurrent);
-        if(0 == korl_memory_compare_acu8(utf8MeshName, meshName))
-            mesh = meshCurrent;
-        else
-            meshPrimitiveOffset += meshCurrent->primitives.size;
-    }
-    if(!mesh)
-    {
-        korl_log(ERROR, "failed to find mesh \"%.*hs\" in SCENE3D resource", utf8MeshName.size, utf8MeshName.data);
-        goto returnNothing;
-    }
-    /* the render data structs for all this mesh's MeshPrimitives was already 
-        constructed when the Resource finished loading & decoding; all we need 
-        to do is return this const data array to the user */
-    *o_meshPrimitiveCount       = mesh->primitives.size;
-    *o_meshPrimitiveBuffer      = resource->subType.graphics.subType.scene3d.meshPrimitiveBuffer;
-    *o_meshPrimitiveVertexMetas = resource->subType.graphics.subType.scene3d.meshPrimitiveVertexMeta + meshPrimitiveOffset;
-    *o_meshMaterials            = resource->subType.graphics.subType.scene3d.meshPrimitiveMaterials  + meshPrimitiveOffset;
-    return;
-    returnNothing:
-        *o_meshPrimitiveCount  = 0;
-        *o_meshPrimitiveBuffer = 0;
-    #endif
-}
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
     #if 0//@TODO: delete/recycle
@@ -1077,6 +547,13 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_memoryStateRead_forEach
         clearTransientData(resourceItem->descriptorStruct);
         return KORL_POOL_FOR_EACH_CONTINUE;}
     case _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA:{
+        if(resourceItem->backingSubType.runtime.isTransient)
+        {
+            /* if RUNTIME-backed resource is `transient`, don't create runtime 
+                media since it's about to be destroyed anyway */
+            resourceItem->backingSubType.runtime.transientDestroy = true;
+            return KORL_POOL_FOR_EACH_CONTINUE;
+        }
         /* for runtime-data-backed resources, all we have to do is re-create 
             multimedia assets & raise a flag to ensure the multimedia assets are 
             updated at the next end-of-frame */
@@ -1115,56 +592,6 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
             context->audioResamplesPending = true;
             resource->subType.audio.resampledData = NULL;// NOTE: there is no need to call free on this allocation, as the entire transient allocator has been wiped
         }
-        switch(unpackedHandle.type)
-        {
-        case _KORL_RESOURCE_TYPE_FILE:{
-            /* just reset the resource to the unloaded state;  the external 
-                device memory allocations should all be invalid at this point, 
-                so we should be able to just nullify this struct */
-            const _Korl_Resource resourceTemporaryCopy = *resource;
-            korl_memory_zero(resource, sizeof(*resource));
-            resource->stringFileName     = resourceTemporaryCopy.stringFileName;
-            resource->assetCacheGetFlags = resourceTemporaryCopy.assetCacheGetFlags;
-            if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS)
-                resource->subType.graphics.type = resourceTemporaryCopy.subType.graphics.type;
-            break;}
-        case _KORL_RESOURCE_TYPE_RUNTIME:{
-            /* here we can just re-create each device memory allocation & mark 
-                each asset as dirty, and they will get updated at the end of the 
-                frame, since we already have all the CPU-encoded asset data from 
-                the memory state */
-            switch(unpackedHandle.multimediaType)
-            {
-            case _KORL_RESOURCE_MULTIMEDIA_TYPE_GRAPHICS:{
-                switch(resource->subType.graphics.type)
-                {
-                case _KORL_RESOURCE_GRAPHICS_TYPE_IMAGE:{
-                    // korl_log(VERBOSE, "creating IMAGE Resource 0x%llX=>0x%llX", resourceMapItem->key, resource->subType.graphics.subType.image.deviceMemoryAllocationHandle);
-                    korl_vulkan_deviceAsset_createTexture(&resource->subType.graphics.subType.image.createInfo, resource->subType.graphics.subType.image.deviceMemoryAllocationHandle);
-                    break;}
-                case _KORL_RESOURCE_GRAPHICS_TYPE_BUFFER:{
-                    // korl_log(VERBOSE, "creating VERTEX_BUFFER Resource 0x%llX=>0x%llX", resourceMapItem->key, resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle);
-                    korl_vulkan_deviceAsset_createBuffer(&resource->subType.graphics.subType.buffer.createInfo, resource->subType.graphics.subType.buffer.deviceMemoryAllocationHandle);
-                    break;}
-                case _KORL_RESOURCE_GRAPHICS_TYPE_SHADER:{
-                    korl_log(ERROR, "RUNTIME GRAPHICS SHADER resources are not supported");// KORL currently requires all shaders to be SPIR-V file assets
-                    break;}
-                default:
-                    korl_log(ERROR, "invalid graphics type %i", resource->subType.graphics.type);
-                    break;
-                }
-                break;}
-            default:
-                korl_log(ERROR, "invalid multimedia type %i", unpackedHandle.multimediaType);
-                break;
-            }
-            mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDsDirtyResourceHandles, resourceMapItem->key);
-            resource->dirty = true;
-            break;}
-        default:
-            korl_log(ERROR, "invalid resource type %i", unpackedHandle.type);
-            break;
-        }
     }
     #endif
 }
@@ -1187,7 +614,7 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAss
     _Korl_Resource_Descriptor*const descriptor      = context->stbDaDescriptors + descriptorIndex;
     korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE);
     fnSig_korl_resource_descriptorCallback_unload*const unload = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_unload*, korl_functionDynamo_get(descriptor->callbacks.unload));
-    unload(resourceItem->descriptorStruct);
+    unload(resourceItem->descriptorStruct, context->allocatorHandleTransient);
     resourceItem->backingSubType.assetCache.isTranscoded = false;
     cleanUp:
         korl_free(context->allocatorHandleRuntime, KORL_C_CAST(void*, utf8FileName.data));

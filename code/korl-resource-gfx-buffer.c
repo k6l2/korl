@@ -7,11 +7,11 @@ typedef struct _Korl_Resource_GfxBuffer
 } _Korl_Resource_GfxBuffer;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_gfxBuffer_descriptorStructCreate)
 {
-    return korl_allocate(allocator, sizeof(_Korl_Resource_GfxBuffer));
+    return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_GfxBuffer));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_gfxBuffer_descriptorStructDestroy)
 {
-    korl_free(allocator, resourceDescriptorStruct);
+    korl_free(allocatorRuntime, resourceDescriptorStruct);
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource_gfxBuffer_unload)
 {
@@ -29,7 +29,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(_ko
     _Korl_Resource_GfxBuffer*const                 gfxBuffer  = resourceDescriptorStruct;
     const Korl_Resource_GfxBuffer_CreateInfo*const createInfo = descriptorCreateInfo;
     gfxBuffer->createInfo = *createInfo;
-    *o_data               = korl_allocate(allocator, createInfo->bytes);
+    *o_data               = korl_allocate(allocatorRuntime, createInfo->bytes);
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(_korl_resource_gfxBuffer_createRuntimeMedia)
 {
@@ -45,7 +45,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(_korl_r
 {
     _Korl_Resource_GfxBuffer*const gfxBuffer = resourceDescriptorStruct;
     gfxBuffer->createInfo.bytes = bytes;
-    *io_data                    = korl_reallocate(allocator, *io_data, bytes);
+    *io_data                    = korl_reallocate(allocatorRuntime, *io_data, bytes);
     korl_vulkan_buffer_resize(&gfxBuffer->deviceMemoryAllocationHandle, bytes);
 }
 korl_internal void korl_resource_gfxBuffer_register(void)

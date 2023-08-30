@@ -63,7 +63,7 @@ korl_internal void korl_gfx_initializePostRendererLogicalDevice(void)
     KORL_ZERO_STACK(Korl_Resource_Texture_CreateInfo, createInfoBlankTexture);
     createInfoBlankTexture.formatImage = KORL_RESOURCE_TEXTURE_FORMAT_R8G8B8A8_UNORM;
     createInfoBlankTexture.size        = KORL_MATH_V2U32_ONE;
-    _korl_gfx_context->blankTexture = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfoBlankTexture);
+    _korl_gfx_context->blankTexture = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfoBlankTexture, false);
     const Korl_Gfx_Color4u8 blankTextureColor = KORL_COLOR4U8_WHITE;
     korl_resource_update(_korl_gfx_context->blankTexture, &blankTextureColor, sizeof(blankTextureColor), 0);
     /* initiate loading of all built-in shaders */

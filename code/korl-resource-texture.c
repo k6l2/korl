@@ -8,11 +8,11 @@ typedef struct _Korl_Resource_Texture
 } _Korl_Resource_Texture;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_texture_descriptorStructCreate)
 {
-    return korl_allocate(allocator, sizeof(_Korl_Resource_Texture));
+    return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Texture));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_texture_descriptorStructDestroy)
 {
-    korl_free(allocator, resourceDescriptorStruct);
+    korl_free(allocatorRuntime, resourceDescriptorStruct);
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_texture_clearTransientData)
 {
@@ -77,7 +77,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(_ko
     {
         /* only create runtime data if the user did _not_ provide an image file memory buffer */
         korl_assert(createInfo->formatImage != KORL_RESOURCE_TEXTURE_FORMAT_UNDEFINED);
-        *o_data = korl_allocate(allocator, createInfo->size.x * createInfo->size.y * KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[texture->createInfo.formatImage]);
+        *o_data = korl_allocate(allocatorRuntime, createInfo->size.x * createInfo->size.y * KORL_RESOURCE_TEXTURE_FORMAT_BYTE_STRIDES[texture->createInfo.formatImage]);
     }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(_korl_resource_texture_createRuntimeMedia)

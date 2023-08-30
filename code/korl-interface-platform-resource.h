@@ -3,15 +3,15 @@
 #include "utility/korl-pool.h"
 #include "utility/korl-utility-math.h"
 typedef Korl_Pool_Handle Korl_Resource_Handle;
-#define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(name)  void* name(Korl_Memory_AllocatorHandle allocator)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(name) void  name(void* resourceDescriptorStruct, Korl_Memory_AllocatorHandle allocator)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)                  void  name(void* resourceDescriptorStruct)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)               void  name(void* resourceDescriptorStruct, const void* data, u$ dataBytes)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(name)  void* name(Korl_Memory_AllocatorHandle allocatorRuntime)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(name) void  name(void* resourceDescriptorStruct, Korl_Memory_AllocatorHandle allocatorRuntime)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_unload(name)                  void  name(void* resourceDescriptorStruct, Korl_Memory_AllocatorHandle allocatorTransient)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_transcode(name)               void  name(void* resourceDescriptorStruct, const void* data, u$ dataBytes, Korl_Memory_AllocatorHandle allocatorTransient)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(name)      void  name(void* resourceDescriptorStruct)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(name)       void  name(void* resourceDescriptorStruct, const void* descriptorCreateInfo, Korl_Memory_AllocatorHandle allocator, void** o_data)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData(name)       void  name(void* resourceDescriptorStruct, const void* descriptorCreateInfo, Korl_Memory_AllocatorHandle allocatorRuntime, void** o_data)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia(name)      void  name(void* resourceDescriptorStruct)
 #define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes(name)            u$    name(const void* resourceDescriptorStruct)
-#define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(name)           void  name(void* resourceDescriptorStruct, u$ bytes, Korl_Memory_AllocatorHandle allocator, void** io_data)
+#define KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(name)           void  name(void* resourceDescriptorStruct, u$ bytes, Korl_Memory_AllocatorHandle allocatorRuntime, void** io_data)
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate (fnSig_korl_resource_descriptorCallback_descriptorStructCreate);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(fnSig_korl_resource_descriptorCallback_descriptorStructDestroy);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_unload                 (fnSig_korl_resource_descriptorCallback_unload);
@@ -65,7 +65,7 @@ typedef struct Korl_Resource_Font_TextMetrics
 } Korl_Resource_Font_TextMetrics;
 #define KORL_FUNCTION_korl_resource_descriptor_add(name)                          void                                name(const Korl_Resource_DescriptorManifest* descriptorManifest)
 #define KORL_FUNCTION_korl_resource_fromFile(name)                                Korl_Resource_Handle                name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
-#define KORL_FUNCTION_korl_resource_create(name)                                  Korl_Resource_Handle                name(acu8 utf8DescriptorName, const void* descriptorCreateInfo)
+#define KORL_FUNCTION_korl_resource_create(name)                                  Korl_Resource_Handle                name(acu8 utf8DescriptorName, const void* descriptorCreateInfo, bool transient)
 #define KORL_FUNCTION_korl_resource_getDescriptorStruct(name)                     void*                               name(Korl_Resource_Handle handle)
 #define KORL_FUNCTION_korl_resource_resize(name)                                  void                                name(Korl_Resource_Handle handle, u$ newByteSize)
 #define KORL_FUNCTION_korl_resource_shift(name)                                   void                                name(Korl_Resource_Handle handle, i$ byteShiftCount)

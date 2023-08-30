@@ -43,57 +43,25 @@ typedef struct _Korl_Resource_Scene3d_Mesh
 } _Korl_Resource_Scene3d_Mesh;
 typedef struct _Korl_Resource_Scene3d
 {
-    Korl_Memory_AllocatorHandle          allocator;
+    // _all_ of the dynamic allocations we will manage will be stored in transient memory; it all can & will be reconstructed in the event that we are loading from a korl-memoryState
     Korl_Codec_Gltf*                     gltf;
     //@TODO: move all this transient data into a single allocation? this might introduce issues if we decide to actually clear transient data in `*_clearTransientData` though...
     Korl_Resource_Handle*                textures;
-    u16                                  texturesSize;      // should be == gltf->textures.size
     Korl_Resource_Handle                 vertexBuffer;      // single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
     _Korl_Resource_Scene3d_Mesh*         meshes;            // meta data (acceleration, mappings, etc.) for each gltf->mesh
-    u16                                  meshesSize;        // should be == gltf->meshes.size
     Korl_Resource_Scene3d_MeshPrimitive* meshPrimitives;    // array containing _all_ mesh primitives for all meshes
     u16                                  meshPrimitivesSize;// should be == SUM(gltf->meshes[i].primitives.size)
     _Korl_Resource_Scene3d_Skin*         skins;             // pre-baked data needed to instantiate a Korl_Resource_Scene3d_Skin
-    u16                                  skinsSize;         // should be == gltf->skins.size
     _Korl_Resource_Scene3d_Animation*    animations;
-    u16                                  animationsSize;    // should be == gltf->animations.size
 } _Korl_Resource_Scene3d;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
 {
-    _Korl_Resource_Scene3d*const scene3d = korl_allocate(allocator, sizeof(_Korl_Resource_Scene3d));
-    scene3d->allocator = allocator;
-    KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoVertexBuffer);
-    createInfoVertexBuffer.bytes = 1024;// some arbitrary base size; we expect this to be resized when this resource gets transcoded
-    createInfoVertexBuffer.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_INDEX 
-                                      | KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX;
-    scene3d->vertexBuffer = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoVertexBuffer);
-    return scene3d;
+    return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Scene3d));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_scene3d_descriptorStructDestroy)
 {
-    _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
-    for(u16 a = 0; a < scene3d->animationsSize; a++)
-    {
-        korl_free(allocator, scene3d->animations[a].sampleSets);
-        korl_free(allocator, scene3d->animations[a].keyFramesSeconds);
-        korl_free(allocator, scene3d->animations[a].samples);
-    }
-    korl_free(allocator, scene3d->animations);
-    for(u16 s = 0; s < scene3d->skinsSize; s++)
-    {
-        korl_free(allocator, scene3d->skins[s].boneInverseBindMatrices);
-        korl_free(allocator, scene3d->skins[s].boneTopologicalOrder);
-        korl_free(allocator, scene3d->skins[s].boneParentIndices);
-        korl_free(allocator, scene3d->skins[s].nodeIndex_to_boneIndex);
-    }
-    korl_free(allocator, scene3d->skins);
-    korl_free(allocator, scene3d->meshes);
-    korl_free(allocator, scene3d->meshPrimitives);
-    korl_resource_destroy(scene3d->vertexBuffer);
-    for(u16 t = 0; t < scene3d->texturesSize; t++)
-        korl_resource_destroy(scene3d->textures[t]);
-    korl_free(allocator, scene3d->textures);
-    korl_free(allocator, scene3d);
+    /* all our data is stored in the transient allocator */
+    korl_free(allocatorRuntime, resourceDescriptorStruct);
 }
 korl_internal const void* _korl_resource_scene3d_transcode_getViewedBuffer(_Korl_Resource_Scene3d*const scene3d, const void* glbFileData, i32 bufferViewIndex)
 {
@@ -137,20 +105,14 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
     korl_assert(!scene3d->gltf);
-    scene3d->gltf = korl_codec_glb_decode(data, dataBytes, scene3d->allocator);
+    scene3d->gltf = korl_codec_glb_decode(data, dataBytes, allocatorTransient);
     const Korl_Codec_Gltf_BufferView*const gltfBufferViews = korl_codec_gltf_getBufferViews(scene3d->gltf);
     const Korl_Codec_Gltf_Buffer*const     gltfBuffers     = korl_codec_gltf_getBuffers(scene3d->gltf);
     /* transcode materials */
     const Korl_Codec_Gltf_Texture*const    gltfTextures = korl_codec_gltf_getTextures(scene3d->gltf);
     const Korl_Codec_Gltf_Image*const      gltfImages   = korl_codec_gltf_getImages(scene3d->gltf);
     const Korl_Codec_Gltf_Sampler*const    gltfSamplers = korl_codec_gltf_getSamplers(scene3d->gltf);
-    if(scene3d->gltf->textures.size)
-        if(scene3d->textures)
-            // constrain scene3d re-transcodes to maintain the same # of textures between loads
-            korl_assert(scene3d->texturesSize == scene3d->gltf->textures.size);
-        else
-            scene3d->textures = korl_allocate(scene3d->allocator, scene3d->gltf->textures.size * sizeof(*scene3d->textures));
-    scene3d->texturesSize = korl_checkCast_u$_to_u16(scene3d->gltf->textures.size);
+    scene3d->textures = korl_allocate(allocatorTransient, scene3d->gltf->textures.size * sizeof(*scene3d->textures));
     for(u32 t = 0; t < scene3d->gltf->textures.size; t++)
     {
         const Korl_Codec_Gltf_Sampler*const sampler = gltfTextures[t].sampler < 0 ? &KORL_CODEC_GLTF_SAMPLER_DEFAULT : gltfSamplers + gltfTextures[t].sampler;
@@ -169,7 +131,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             /* destroy the old texture resource */
             // @TODO: this works for _now_, but if we want the ability to pass this resource around & store it elsewhere, we might need the ability to as korl-resource "re-create" a resource; perhaps we can just modify korl_resource_create to take a Resource_Handle param, & perform alternate logic based on this value (if 0, just make a new resource, otherwise we get the previous resource from the pool & unload it)
             korl_resource_destroy(scene3d->textures[t]);
-        scene3d->textures[t] = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfo);
+        scene3d->textures[t] = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfo, true);
     }
     /* transcode meshes */
     const Korl_Codec_Gltf_Accessor*const gltfAccessors = korl_codec_gltf_getAccessors(scene3d->gltf);
@@ -181,16 +143,17 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         - build a gfx-buffer holding all the index/attribute data */
     u$ vertexBufferBytes     = 1024;
     u$ vertexBufferBytesUsed = 0;// after we extract all the index/attribute data, we will resize the gfx-buffer to match this value exactly
-    korl_resource_resize(scene3d->vertexBuffer, vertexBufferBytes);// reset our vertexBuffer to some base size
+    {/* create a new transient vertex buffer to store all the mesh vertex data */
+        korl_assert(!scene3d->vertexBuffer);
+        KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoVertexBuffer);
+        createInfoVertexBuffer.bytes = vertexBufferBytes;// some arbitrary base size; we expect this to be resized when this resource gets transcoded
+        createInfoVertexBuffer.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_INDEX 
+                                          | KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX;
+        scene3d->vertexBuffer = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoVertexBuffer, true);
+    }
     const Korl_Codec_Gltf_Mesh*const gltfMeshes = korl_codec_gltf_getMeshes(scene3d->gltf);
     const Korl_Codec_Gltf_Node*const gltfNodes  = korl_codec_gltf_getNodes(scene3d->gltf);
-    if(scene3d->gltf->meshes.size)
-        if(scene3d->meshes)
-            // constrain scene3d re-transcodes to maintain the same # of meshes between loads
-            korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
-        else
-            scene3d->meshes = korl_allocate(scene3d->allocator, scene3d->gltf->meshes.size * sizeof(*scene3d->meshes));
-    scene3d->meshesSize = korl_checkCast_u$_to_u16(scene3d->gltf->meshes.size);
+    scene3d->meshes = korl_allocate(allocatorTransient, scene3d->gltf->meshes.size * sizeof(*scene3d->meshes));
     u16 meshPrimitiveCount = 0;
     for(u32 m = 0; m < scene3d->gltf->meshes.size; m++)
     {
@@ -202,7 +165,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             // constrain scene3d re-transcodes to maintain the same # of mesh primitives between loads
             korl_assert(scene3d->meshPrimitivesSize == meshPrimitiveCount);
         else
-            scene3d->meshPrimitives = korl_allocate(scene3d->allocator, meshPrimitiveCount * sizeof(*scene3d->meshPrimitives));
+            scene3d->meshPrimitives = korl_allocate(allocatorTransient, meshPrimitiveCount * sizeof(*scene3d->meshPrimitives));
     scene3d->meshPrimitivesSize = meshPrimitiveCount;
     for(u32 m = 0; m < scene3d->gltf->meshes.size; m++)
     {
@@ -318,21 +281,15 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
     }
     /* transcode skins */
     const Korl_Codec_Gltf_Skin*const gltfSkins = korl_codec_gltf_getSkins(scene3d->gltf);
-    if(scene3d->gltf->skins.size)
-        if(scene3d->skins)
-            // constrain scene3d re-transcodes to maintain the same # of textures between loads
-            korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
-        else
-            scene3d->skins = korl_allocate(scene3d->allocator, scene3d->gltf->skins.size * sizeof(*scene3d->skins));
-    scene3d->skinsSize = korl_checkCast_u$_to_u16(scene3d->gltf->skins.size);
+    scene3d->skins = korl_allocate(allocatorTransient, scene3d->gltf->skins.size * sizeof(*scene3d->skins));
     for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
     {
         const Korl_Codec_Gltf_Skin*const  gltfSkin = gltfSkins      + s;
         _Korl_Resource_Scene3d_Skin*const skin     = scene3d->skins + s;
-        skin->boneInverseBindMatrices = korl_reallocate(scene3d->allocator, skin->boneInverseBindMatrices, gltfSkin->joints.size * sizeof(*skin->boneInverseBindMatrices));
-        skin->boneTopologicalOrder    = korl_reallocate(scene3d->allocator, skin->boneTopologicalOrder   , gltfSkin->joints.size * sizeof(*skin->boneTopologicalOrder));
-        skin->boneParentIndices       = korl_reallocate(scene3d->allocator, skin->boneParentIndices      , gltfSkin->joints.size * sizeof(*skin->boneParentIndices));
-        skin->nodeIndex_to_boneIndex  = korl_reallocate(scene3d->allocator, skin->nodeIndex_to_boneIndex , scene3d->gltf->nodes.size * sizeof(*skin->nodeIndex_to_boneIndex));
+        skin->boneInverseBindMatrices = korl_reallocate(allocatorTransient, skin->boneInverseBindMatrices, gltfSkin->joints.size * sizeof(*skin->boneInverseBindMatrices));
+        skin->boneTopologicalOrder    = korl_reallocate(allocatorTransient, skin->boneTopologicalOrder   , gltfSkin->joints.size * sizeof(*skin->boneTopologicalOrder));
+        skin->boneParentIndices       = korl_reallocate(allocatorTransient, skin->boneParentIndices      , gltfSkin->joints.size * sizeof(*skin->boneParentIndices));
+        skin->nodeIndex_to_boneIndex  = korl_reallocate(allocatorTransient, skin->nodeIndex_to_boneIndex , scene3d->gltf->nodes.size * sizeof(*skin->nodeIndex_to_boneIndex));
         /* transcode nodeIndex=>boneIndex lookup table */
         const u32*const skinJointIndices = korl_codec_gltf_skin_getJointIndices(scene3d->gltf, gltfSkin);
         for(u32 n = 0; n < scene3d->gltf->nodes.size; n++)
@@ -359,7 +316,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             korl_log(ERROR, "implicit inverseBindMatrices not implemented");
         /* transcode topological bone order & the parent index array */
         KORL_ZERO_STACK(Korl_Algorithm_GraphDirected_CreateInfo, graphCreateInfo);
-        graphCreateInfo.allocator = scene3d->allocator;
+        graphCreateInfo.allocator = allocatorTransient;
         graphCreateInfo.nodesSize = gltfSkin->joints.size;
         Korl_Algorithm_GraphDirected graphDirected = korl_algorithm_graphDirected_create(&graphCreateInfo);
         for(u32 j = 0; j < gltfSkin->joints.size; j++)
@@ -385,19 +342,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         data we need to extract is the buffered Sampler data 
         (inputs/keyframeTimes & outputs/keyframeSamples) */
     const Korl_Codec_Gltf_Animation*const gltfAnimations = korl_codec_gltf_getAnimations(scene3d->gltf);
-    if(scene3d->gltf->animations.size)
-        if(scene3d->animations)
-            // constrain scene3d re-transcodes to maintain the same # of textures between loads
-            korl_assert(scene3d->animationsSize == scene3d->gltf->animations.size);
-        else
-            scene3d->animations = korl_allocate(scene3d->allocator, scene3d->gltf->animations.size * sizeof(*scene3d->animations));
-    scene3d->animationsSize = korl_checkCast_u$_to_u16(scene3d->gltf->skins.size);
+    scene3d->animations = korl_allocate(allocatorTransient, scene3d->gltf->animations.size * sizeof(*scene3d->animations));
     for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
     {
         const Korl_Codec_Gltf_Animation*const         gltfAnimation    = gltfAnimations + a;
         const Korl_Codec_Gltf_Animation_Sampler*const gltfAnimSamplers = korl_codec_gltf_getAnimationSamplers(scene3d->gltf, gltfAnimation);
         _Korl_Resource_Scene3d_Animation*const        animation        = scene3d->animations + a;
-        animation->sampleSets           = korl_reallocate(scene3d->allocator, animation->sampleSets, gltfAnimation->samplers.size * sizeof(*animation->sampleSets));
+        animation->sampleSets           = korl_reallocate(allocatorTransient, animation->sampleSets, gltfAnimation->samplers.size * sizeof(*animation->sampleSets));
         animation->keyFrameSecondsStart = KORL_F32_MAX;
         animation->keyFrameSecondsEnd   = 0;
         /* transcode key frame I/O data; 
@@ -433,7 +384,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 const Korl_Codec_Gltf_Accessor*const inputAccessor = gltfAccessors + gltfAnimSampler->input;
                 sampleSet->keyFramesSecondsStartIndex = keyFramesSecondsSize;
                 keyFramesSecondsSize                 += inputAccessor->count;
-                animation->keyFramesSeconds           = korl_reallocate(scene3d->allocator, animation->keyFramesSeconds, keyFramesSecondsSize * sizeof(*animation->keyFramesSeconds));
+                animation->keyFramesSeconds           = korl_reallocate(allocatorTransient, animation->keyFramesSeconds, keyFramesSecondsSize * sizeof(*animation->keyFramesSeconds));
                 const void*const viewedBuffer         = _korl_resource_scene3d_transcode_getViewedBuffer(scene3d, data, inputAccessor->bufferView);
                 korl_memory_copy(animation->keyFramesSeconds + sampleSet->keyFramesSecondsStartIndex, viewedBuffer, inputAccessor->count * sizeof(*animation->keyFramesSeconds));
                 /* input Accessors for Animation_Sampler inputs _must_ have a defined "min" & "max"; 
@@ -454,7 +405,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             korl_assert(outputBufferView->byteStride == 0);// gltf 2.0 spec. 3.6.2.1.: Accessors not used for vertex attributes _must_ be tightly packed
             sampleSet->sampleStartIndex  = samplesSize;
             samplesSize                 += outputAccessor->count * outputAccessorComponentCount;
-            animation->samples           = korl_reallocate(scene3d->allocator, animation->samples, samplesSize * sizeof(*animation->samples));
+            animation->samples           = korl_reallocate(allocatorTransient, animation->samples, samplesSize * sizeof(*animation->samples));
             if(outputAccessor->componentType == KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_F32)
                 /* if the sample outputs are f32s, we can just do a simple memcpy for all sample outputs */
                 korl_memory_copy(animation->samples + sampleSet->sampleStartIndex, viewedBuffer, outputAccessor->count * outputAccessorComponentCount * sizeof(f32));
@@ -497,12 +448,37 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_scene3d_clearTransientData)
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
-    korl_free(scene3d->allocator, scene3d->gltf);
-    scene3d->gltf = NULL;
+    /* no need to explicitly free/destroy transient data, since this function is 
+        only called when transient data has been wiped anyway; we just need to 
+        reset the state of the descriptor struct */
+    korl_memory_zero(scene3d, sizeof(*scene3d));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource_scene3d_unload)
 {
-    _korl_resource_scene3d_clearTransientData(resourceDescriptorStruct);
+    _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
+    for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
+    {
+        korl_free(allocatorTransient, scene3d->animations[a].sampleSets);
+        korl_free(allocatorTransient, scene3d->animations[a].keyFramesSeconds);
+        korl_free(allocatorTransient, scene3d->animations[a].samples);
+    }
+    korl_free(allocatorTransient, scene3d->animations);
+    for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
+    {
+        korl_free(allocatorTransient, scene3d->skins[s].boneInverseBindMatrices);
+        korl_free(allocatorTransient, scene3d->skins[s].boneTopologicalOrder);
+        korl_free(allocatorTransient, scene3d->skins[s].boneParentIndices);
+        korl_free(allocatorTransient, scene3d->skins[s].nodeIndex_to_boneIndex);
+    }
+    korl_free(allocatorTransient, scene3d->skins);
+    korl_free(allocatorTransient, scene3d->meshes);
+    korl_free(allocatorTransient, scene3d->meshPrimitives);
+    korl_resource_destroy(scene3d->vertexBuffer);
+    for(u32 t = 0; t < scene3d->gltf->textures.size; t++)
+        korl_resource_destroy(scene3d->textures[t]);
+    korl_free(allocatorTransient, scene3d->textures);
+    korl_free(allocatorTransient, scene3d->gltf);
+    korl_memory_zero(scene3d, sizeof(*scene3d));
 }
 korl_internal void korl_resource_scene3d_register(void)
 {
@@ -546,8 +522,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(korl_res
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return 0;
-    korl_assert(meshIndex           <  scene3d->gltf->meshes.size);
-    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
+    korl_assert(meshIndex < scene3d->gltf->meshes.size);
     return korl_codec_gltf_getMeshes(scene3d->gltf)[meshIndex].primitives.size;
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(korl_resource_scene3d_getMeshPrimitive)
@@ -555,8 +530,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(korl_resource
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Resource_Scene3d_MeshPrimitive);
-    korl_assert(meshIndex           <  scene3d->gltf->meshes.size);
-    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
+    korl_assert(meshIndex < scene3d->gltf->meshes.size);
     korl_assert(primitiveIndex < korl_codec_gltf_getMeshes(scene3d->gltf)[meshIndex].primitives.size);
     const u32 sceneMeshPrimitiveIndex = scene3d->meshes[meshIndex].meshPrimitivesOffset + primitiveIndex;
     korl_assert(sceneMeshPrimitiveIndex < scene3d->meshPrimitivesSize);
@@ -567,8 +541,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_newSkin(korl_resource_scene3d_
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Resource_Scene3d_Skin);
-    korl_assert(meshIndex           <  scene3d->gltf->meshes.size);
-    korl_assert(scene3d->meshesSize == scene3d->gltf->meshes.size);
+    korl_assert(meshIndex < scene3d->gltf->meshes.size);
     const _Korl_Resource_Scene3d_Mesh*const mesh = scene3d->meshes + meshIndex;
     korl_assert(mesh->skinIndex >= 0);
     const _Korl_Resource_Scene3d_Skin*const _skin    = scene3d->skins + mesh->skinIndex;
@@ -594,8 +567,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneParentIndices(korl
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return NULL;
-    korl_assert(skinIndex          <  scene3d->gltf->skins.size);
-    korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+    korl_assert(skinIndex < scene3d->gltf->skins.size);
     const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
     return _skin->boneParentIndices;
 }
@@ -604,8 +576,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneTopologicalOrder(k
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return NULL;
-    korl_assert(skinIndex          <  scene3d->gltf->skins.size);
-    korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+    korl_assert(skinIndex < scene3d->gltf->skins.size);
     const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
     return _skin->boneTopologicalOrder;
 }
@@ -614,8 +585,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_getBoneInverseBindMatrice
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return NULL;
-    korl_assert(skinIndex          <  scene3d->gltf->skins.size);
-    korl_assert(scene3d->skinsSize == scene3d->gltf->skins.size);
+    korl_assert(skinIndex < scene3d->gltf->skins.size);
     const _Korl_Resource_Scene3d_Skin*const _skin = scene3d->skins + skinIndex;
     return _skin->boneInverseBindMatrices;
 }

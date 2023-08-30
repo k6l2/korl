@@ -117,7 +117,7 @@
   [x] transcode animations
     - MVP: user can apply animations to mesh skins to render an animated MESH
 [x] investigate looped skin animations having hitched frame(s) near the loop point
-[ ] eliminate TRANSIENT memory from allocators that are saved to korl-memoryState
+[x] eliminate TRANSIENT memory from allocators that are saved to korl-memoryState
 [ ] add AUDIO Resource (last resource type)
 [ ] perform defragmentation on korl-resource persistent memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?
@@ -137,6 +137,8 @@
         - at the end of file, a manifest containing a directory of all contained assets
           - by using a trailing manifest at end-of-file, this allows us to easily merge the "assets.bin" file with the game's executable to create a 1-file distributable (if desired)
           - maybe include the file's "last-edited" timestamp here, so we can still implement a reasonably efficient hot-reloading solution
+  - ISSUE: what if a resource asset file contains a reference to another asset file? ☹
+    - we can't easily detect this condition unfortunately, since the way any given resource encodes an asset file string is going to greatly differ
 [ ] test hot-reloading of code module that contains a registered resource descriptor
   - followed by hot-reload of one of the resources using said descriptor
   - to ensure that we are updating function pointers of resource descriptor callbacks

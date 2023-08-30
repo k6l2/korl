@@ -37,6 +37,7 @@ typedef struct Korl_Pool
 } Korl_Pool;
 typedef enum Korl_Pool_ForEachResult
     {KORL_POOL_FOR_EACH_CONTINUE
+    ,KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE// destroy the current item from the pool & continue iterating over items
     ,KORL_POOL_FOR_EACH_DONE
 } Korl_Pool_ForEachResult;
 #define KORL_POOL_CALLBACK_FOR_EACH(name) Korl_Pool_ForEachResult name(void* userData, void* item)

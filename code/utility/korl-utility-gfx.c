@@ -37,7 +37,7 @@ korl_internal Korl_Gfx_Text* korl_gfx_text_create(Korl_Memory_AllocatorHandle al
     result->textPixelHeight          = textPixelHeight;
     result->resourceHandleFont       = resourceHandleFont;
     result->transform                = korl_math_transform3d_identity();
-    result->resourceHandleBufferText = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBufferText);
+    result->resourceHandleBufferText = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBufferText, false);
     // defer adding the vertex indices until _just_ before we draw the text, as this will allow us to shift the entire buffer to effectively delete lines of text @korl-gfx-text-defer-index-buffer
     result->vertexStagingMeta.indexCount = korl_arraySize(_KORL_UTILITY_GFX_TRI_QUAD_INDICES);
     result->vertexStagingMeta.indexType  = KORL_GFX_VERTEX_INDEX_TYPE_U16; korl_assert(sizeof(*_KORL_UTILITY_GFX_TRI_QUAD_INDICES) == sizeof(u16));
@@ -641,7 +641,7 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_runtimeDrawable(const Korl_Gfx_CreateI
         KORL_ZERO_STACK(Korl_Resource_GfxBuffer_CreateInfo, createInfoBuffer);
         createInfoBuffer.bytes      = createInfo->interleavedAttributes ? attributeCount * interleavedByteStride : byteOffsetBuffer;
         createInfoBuffer.usageFlags = KORL_RESOURCE_GFX_BUFFER_USAGE_FLAG_VERTEX;
-        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBuffer);
+        result.subType.runtime.subType.multiFrame.resourceHandleBuffer = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER), &createInfoBuffer, false);
         break;
     }
     return result;

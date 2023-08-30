@@ -6,11 +6,11 @@ typedef struct _Korl_Resource_Shader
 } _Korl_Resource_Shader;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_shader_descriptorStructCreate)
 {
-    return korl_allocate(allocator, sizeof(_Korl_Resource_Shader));
+    return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Shader));
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestroy(_korl_resource_shader_descriptorStructDestroy)
 {
-    korl_free(allocator, resourceDescriptorStruct);
+    korl_free(allocatorRuntime, resourceDescriptorStruct);
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_korl_resource_shader_clearTransientData)
 {

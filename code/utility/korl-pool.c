@@ -154,7 +154,15 @@ korl_internal void korl_pool_forEach(Korl_Pool* context, korl_pool_callback_forE
         Korl_Pool_ItemMeta*const itemMeta = context->items.metas + i;
         if(itemMeta->type == 0)
             continue;
-        callback(callbackUserData, item);
+        switch(callback(callbackUserData, item))
+        {
+        case KORL_POOL_FOR_EACH_CONTINUE: break;// no need to take any action; just continue iterating...
+        case KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE:{
+            Korl_Pool_Handle poolHandle = _korl_pool_handle_pack(KORL_STRUCT_INITIALIZE(_Korl_Pool_HandleUnpacked){.index = i, .type = itemMeta->type, .salt = itemMeta->salt});
+            korl_pool_remove(context, &poolHandle);
+            break;}
+        case KORL_POOL_FOR_EACH_DONE: i = context->capacity; break;
+        }
     }
 }
 korl_internal Korl_Pool_Handle korl_pool_nextHandle(Korl_Pool* context, Korl_Pool_ItemType itemType, Korl_Pool_Handle previousHandle)
