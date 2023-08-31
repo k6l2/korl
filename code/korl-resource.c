@@ -16,27 +16,6 @@
 #include "korl-resource-scene3d.h"
 #include "korl-resource-audio.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
-#if 0//@TODO: delete/recycle
-typedef struct _Korl_Resource
-{
-    // _Korl_Resource_MultimediaType type;// we don't actually need the type here, since type is part of the resource handle, and that is the hash key of the database!
-    union
-    {
-        struct
-        {
-            Korl_Audio_Format format;
-            void*             resampledData;// this should be the same audio data as in the `data` member, but resampled to be compatible with the `audioRendererFormat` member of the korl-resource context; NOTE: the # of channels will remain the same as in the `format` member, all other aspects of `format` will be modified to match `audioRendererFormat`; if the aforementioned condition is already met (this audio resource just so happens to have the same format as the context, excluding `channels`), then this member is expected to be NULL, as we can just feed `data` directly to the audio mixer
-            u$                resampledDataBytes;
-        } audio;
-    } subType;
-    void* data;// this is a pointer to a memory allocation holding the raw _decoded_ resource; this is the data which should be passed in to the platform module which utilizes this Resource's MultimediaType _unless_ that multimedia type requires further processing to prepare it for the rendering process, such as is the case with audio, as we must resample all audio data to match the format of the audio renderer; examples: an image resource data will point to an RGBA bitmap, an audio resource will point to raw PCM waveform data, in some sample format defined by the `audio.format` member
-    u$    dataBytes;
-    bool dirty;// IMPORTANT: raising this flag is _not_ sufficient to mark this Resource as dirty, you _must_ also add the handle to this resource to the stbDsDirtyResourceHandles list in the korl-resource context!  If this is true, the multimedia-encoded asset will be updated at the end of the frame, then the flag will be reset
-    Korl_StringPool_String    stringFileName;    // only valid for file-backed resources
-    Korl_AssetCache_Get_Flags assetCacheGetFlags;// only valid for file-backed resources
-    //KORL-FEATURE-000-000-046: resource: right now it is very difficult to trace the owner of a resource; modify API to require FILE:LINE information for Resource allocations
-} _Korl_Resource;
-#endif
 typedef struct _Korl_Resource_Descriptor
 {
     Korl_StringPool_String                     name;
@@ -86,63 +65,8 @@ typedef struct _Korl_Resource_Context
     Korl_StringPool*            stringPool;// @korl-string-pool-no-data-segment-storage; used to store: Descriptor names, callback API names
     Korl_Pool                   resourcePool;// stored in runtime memory; pool of _Korl_Resource_Item
     _Korl_Resource_Map*         stbShFileResources;// stored in runtime memory; acceleration data structure allowing the user to more efficiently obtain the same file-backed Resource
-    #if 0//@TODO: delete/recycle
-    Korl_Audio_Format           audioRendererFormat;// the currently configured audio renderer format, likely to be set by korl-sfx; when this is changed via `korl_resource_setAudioFormat`, all audio resources will be resampled to match this format, and that resampled audio data is what will be mixed into korl-audio; we do this to sacrifice memory for speed, as it should be much better performance to not have to worry about audio resampling algorithms at runtime
-    bool                        audioResamplesPending;// set when `audioRendererFormat` changes, or we lazy-load a file resource via `korl_resource_fromFile`; once set, each call to `korl_resource_flushUpdates` will incur iteration over all audio resources to ensure that they are all resampled to `audioRendererFormat`'s specifications; only cleared when `korl_resource_flushUpdates` finds that all audio resources are loaded & resampled
-    #endif
 } _Korl_Resource_Context;
 korl_global_variable _Korl_Resource_Context* _korl_resource_context;
-#if 0//@TODO: delete/recycle
-korl_internal void _korl_resource_resampleAudio(_Korl_Resource* resource)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    korl_assert(!resource->subType.audio.resampledData);
-    if(   resource->subType.audio.format.bytesPerSample == context->audioRendererFormat.bytesPerSample
-       && resource->subType.audio.format.sampleFormat   == context->audioRendererFormat.sampleFormat
-       && resource->subType.audio.format.frameHz        == context->audioRendererFormat.frameHz)
-       return;
-    Korl_Audio_Format resampledFormat = context->audioRendererFormat;
-    resampledFormat.channels = resource->subType.audio.format.channels;
-    const u$  bytesPerFrame    = resource->subType.audio.format.bytesPerSample * resource->subType.audio.format.channels;
-    const u$  frames           = resource->dataBytes / bytesPerFrame;
-    const f64 seconds          = KORL_C_CAST(f64, frames) / KORL_C_CAST(f64, resource->subType.audio.format.frameHz);
-    const u$  newFrames        = resource->subType.audio.format.frameHz == resampledFormat.frameHz
-                                 ? frames
-                                 : KORL_C_CAST(u$, seconds * resampledFormat.frameHz);
-    const u$  newBytesPerFrame = resampledFormat.bytesPerSample * resampledFormat.channels;
-    resource->subType.audio.resampledDataBytes = newFrames * newBytesPerFrame;
-    resource->subType.audio.resampledData      = korl_allocate(context->allocatorHandleTransient, resource->subType.audio.resampledDataBytes);
-    korl_codec_audio_resample(&resource->subType.audio.format, resource->data, resource->dataBytes
-                             ,&resampledFormat, resource->subType.audio.resampledData, resource->subType.audio.resampledDataBytes);
-}
-korl_internal void _korl_resource_fileResourceLoadStep(_Korl_Resource*const resource, const _Korl_Resource_Handle_Unpacked unpackedHandle)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    korl_assert(unpackedHandle.type == _KORL_RESOURCE_TYPE_FILE);
-    if(_korl_resource_isLoaded(resource, unpackedHandle))
-        return;
-    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
-    const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resource->stringFileName), resource->assetCacheGetFlags, &assetData);
-    if(resource->assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
-        korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
-    /* if the asset for this resource was just loaded, create the multimedia resource now */
-    if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
-    {
-        switch(unpackedHandle.multimediaType)
-        {
-        case _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO:{
-            resource->data = korl_codec_audio_decode(assetData.data, assetData.dataBytes, context->allocatorHandleTransient, &resource->dataBytes, &resource->subType.audio.format);
-            korl_assert(resource->data);
-            break;}
-        default:{
-            korl_log(ERROR, "invalid multimedia type: %i", unpackedHandle.multimediaType);
-            break;}
-        }
-    }
-    if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
-        context->audioResamplesPending = true;
-}
-#endif
 korl_internal void korl_resource_initialize(void)
 {
     KORL_ZERO_STACK(Korl_Heap_CreateInfo, heapCreateInfo);
@@ -481,89 +405,6 @@ korl_internal void korl_resource_flushUpdates(void)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_pool_forEach(&context->resourcePool, _korl_resource_flushUpdates_forEach, NULL);
-    #if 0//@TODO: delete/recycle
-    /* once per frame, if we have any audio resources that are pending generation 
-        of cached resampled audio data to match the audio renderer's format, we 
-        attempt to resample as many of these as possible; once all audio 
-        resources have been resampled, there is no need to do this each frame 
-        anymore, so the flag is cleared */
-    if(   !korl_memory_isNull(&context->audioRendererFormat, sizeof(context->audioRendererFormat))
-       && context->audioResamplesPending)
-    {
-        u$ resampledResources    = 0;
-        u$ pendingAudioResamples = 0;
-        const _Korl_Resource_Map*const resourcesEnd = context->stbHmResources + hmlen(context->stbHmResources);
-        for(_Korl_Resource_Map* resourceMapIt = context->stbHmResources; resourceMapIt < resourcesEnd; resourceMapIt++)
-        {
-            const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapIt->key);
-            if(unpackedHandle.multimediaType != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
-                continue;
-            _Korl_Resource*const resource = &resourceMapIt->value;
-            if(!resource->data)
-            {
-                if(resource->stringFileName.handle)
-                    /* if this is a file-backed resource, attempt to get the lazy-loaded file one more time: */
-                    korl_resource_fromFile(string_getRawAcu16(&resource->stringFileName), KORL_ASSETCACHE_GET_FLAG_LAZY);
-                /* if we _still_ have no resource data, we have no choice but to consider this audio resource as "pending" */
-                if(!resource->data)
-                {
-                    pendingAudioResamples++;
-                    continue;// we can't resample the audio resource if the data has not yet been loaded!
-                }
-            }
-            if(resource->subType.audio.resampledData)
-                continue;// we're already resampled
-            _korl_resource_resampleAudio(resource);
-            resampledResources++;
-        }
-        context->audioResamplesPending = pendingAudioResamples > 0;
-        if(pendingAudioResamples)
-            korl_log(VERBOSE, "pendingAudioResamples=%llu", pendingAudioResamples);
-        korl_log(VERBOSE, "resampledResources=%llu", resampledResources);
-    }
-    #endif
-}
-korl_internal void korl_resource_setAudioFormat(const Korl_Audio_Format* audioFormat)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    if(0 == korl_memory_compare(&context->audioRendererFormat, audioFormat, sizeof(*audioFormat)))
-        return;
-    context->audioRendererFormat   = *audioFormat;
-    context->audioResamplesPending = true;
-    /* invalidate all resampled audio from previous audio formats */
-    const _Korl_Resource_Map*const resourcesEnd = context->stbHmResources + hmlen(context->stbHmResources);
-    for(_Korl_Resource_Map* resourceMapIt = context->stbHmResources; resourceMapIt < resourcesEnd; resourceMapIt++)
-    {
-        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapIt->key);
-        if(unpackedHandle.multimediaType != _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
-            continue;
-        _Korl_Resource*const resource = &resourceMapIt->value;
-        korl_free(context->allocatorHandleTransient, resource->subType.audio.resampledData);
-        resource->subType.audio.resampledData = NULL;
-    }
-    #endif
-}
-korl_internal acu8 korl_resource_getAudio(Korl_Resource_Handle handle, Korl_Audio_Format* o_resourceAudioFormat)
-{
-    _Korl_Resource_Context*const context = _korl_resource_context;
-    #if 0//@TODO: delete/recycle
-    if(!handle || context->audioResamplesPending)
-        return KORL_STRUCT_INITIALIZE_ZERO(acu8);// silently return a NULL device memory allocation handle if the resource handle is NULL _or_ if korl-resource has a pending resampling operation
-    const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(handle);
-    korl_assert(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO);
-    const ptrdiff_t hashMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbHmResources, handle);
-    korl_assert(hashMapIndex >= 0);
-    const _Korl_Resource*const resource = &(context->stbHmResources[hashMapIndex].value);
-    *o_resourceAudioFormat = context->audioRendererFormat;
-    o_resourceAudioFormat->channels = resource->subType.audio.format.channels;
-    if(resource->subType.audio.resampledData)
-        /* if this audio had to be resampled, we need to use its resampled data */
-        return (acu8){.data=resource->subType.audio.resampledData, .size=resource->subType.audio.resampledDataBytes};
-    /* otherwise, we can just directly use the audio data */
-    return (acu8){.data=resource->data, .size=resource->dataBytes};
-    #endif
-    return (acu8){0};//@TODO
 }
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {

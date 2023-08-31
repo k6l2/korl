@@ -3,6 +3,7 @@
 #include "korl-resource.h"
 #include "korl-memoryPool.h"
 #include "korl-interface-platform.h"
+#include "korl-resource-audio.h"
 #define _KORL_SFX_APPLY_MASTER_FILTER 0
 #define _KORL_SFX_MIX(name) void name(void* resultSample, const void* sourceSample, f64 sourceFactor)
 typedef _KORL_SFX_MIX(_fnSig_korl_sfx_mix);
@@ -112,37 +113,37 @@ korl_internal void korl_sfx_mix(void)
     const Korl_Audio_Format       audioFormat        = korl_audio_format();
     const u32                     audioBytesPerFrame = audioFormat.channels * audioFormat.bytesPerSample;
     _fnSig_korl_sfx_mix*          mix                = NULL;
-#if _KORL_SFX_APPLY_MASTER_FILTER
+    #if _KORL_SFX_APPLY_MASTER_FILTER
     _fnSig_korl_sfx_sampleDecode* sampleDecode       = NULL;
     _fnSig_korl_sfx_sampleEncode* sampleEncode       = NULL;
-#endif
+    #endif
     switch(audioFormat.sampleFormat)
     {
     case KORL_AUDIO_SAMPLE_FORMAT_PCM_SIGNED:{
         switch(audioFormat.bytesPerSample)
         {
-#if _KORL_SFX_APPLY_MASTER_FILTER
+        #if _KORL_SFX_APPLY_MASTER_FILTER
         case 1: mix = _korl_sfx_mix_i8;  sampleDecode = _korl_sfx_sampleDecode_i8;  sampleEncode = _korl_sfx_sampleEncode_i8;  break;
         case 2: mix = _korl_sfx_mix_i16; sampleDecode = _korl_sfx_sampleDecode_i16; sampleEncode = _korl_sfx_sampleEncode_i16; break;
         case 4: mix = _korl_sfx_mix_i32; sampleDecode = _korl_sfx_sampleDecode_i32; sampleEncode = _korl_sfx_sampleEncode_i32; break;
-#else
+        #else
         case 1: mix = _korl_sfx_mix_i8;  break;
         case 2: mix = _korl_sfx_mix_i16; break;
         case 4: mix = _korl_sfx_mix_i32; break;
-#endif
+        #endif
         default: break;
         }
         break;}
     case KORL_AUDIO_SAMPLE_FORMAT_FLOAT:{
         switch(audioFormat.bytesPerSample)
         {
-#if _KORL_SFX_APPLY_MASTER_FILTER
+        #if _KORL_SFX_APPLY_MASTER_FILTER
         case 4: mix = _korl_sfx_mix_f32; sampleDecode = _korl_sfx_sampleDecode_f32; sampleEncode = _korl_sfx_sampleEncode_f32; break;
         case 8: mix = _korl_sfx_mix_f64; sampleDecode = _korl_sfx_sampleDecode_f64; sampleEncode = _korl_sfx_sampleEncode_f64; break;
-#else
+        #else
         case 4: mix = _korl_sfx_mix_f32; break;
         case 8: mix = _korl_sfx_mix_f64; break;
-#endif
+        #endif
         default: break;
         }
         break;}
@@ -158,7 +159,7 @@ korl_internal void korl_sfx_mix(void)
             by ending the execution of this function for this frame */
         return;
     }
-    korl_resource_setAudioFormat(&audioFormat);// we need to make sure all our audio resources are resampled to a format that is compatible with our renderer
+    korl_resource_audio_setFormat(&audioFormat);// we need to make sure all our audio resources are (eventually) resampled to a format that is compatible with our renderer
     Korl_Audio_WriteBuffer audioBuffer = korl_audio_writeBufferGet();
     u32 framesWritten = 0;
     /* mix Tapes into audioBuffer */
@@ -193,15 +194,19 @@ korl_internal void korl_sfx_mix(void)
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio;
         korl_assert(uniformVolumeRatio >= 0.f && uniformVolumeRatio <= 1.f);
         KORL_ZERO_STACK(Korl_Audio_Format, tapeAudioFormat);
-        acu8 tapeAudio = korl_resource_getAudio(tapeDeck->resource, &tapeAudioFormat);
-        if(!tapeAudio.data)
-            continue;
+        Korl_Resource_Audio_Data tapeAudio = korl_resource_audio_getData(tapeDeck->resource);
+        if(!tapeAudio.raw.data)
+            continue;// if the audio resource isn't transcoded, do nothing with this tape
+        if(   tapeAudioFormat.bytesPerSample == audioFormat.bytesPerSample
+           || tapeAudioFormat.sampleFormat   == audioFormat.sampleFormat
+           || tapeAudioFormat.frameHz        == audioFormat.frameHz)
+            continue;// if we obtain an incompatible audio format from the tape's audio resource, defer doing anything until korl-resource-audio resamples it
         korl_assert(tapeAudioFormat.frameHz        >  0);
         korl_assert(tapeAudioFormat.bytesPerSample == audioFormat.bytesPerSample);
         korl_assert(tapeAudioFormat.sampleFormat   == audioFormat.sampleFormat);
         korl_assert(tapeAudioFormat.frameHz        == audioFormat.frameHz);
         const u32 tapeBytesPerFrame            = tapeAudioFormat.channels * tapeAudioFormat.bytesPerSample;
-        const u32 tapeFrames                   = korl_checkCast_u$_to_u32(tapeAudio.size) / tapeBytesPerFrame;
+        const u32 tapeFrames                   = korl_checkCast_u$_to_u32(tapeAudio.raw.size) / tapeBytesPerFrame;
         const u32 tapeLoopFrameStart           = KORL_C_CAST(u32, tapeDeck->control.loopStartSeconds * tapeAudioFormat.frameHz); korl_assert(tapeLoopFrameStart < tapeFrames);
         const u32 tapeLoopFrames               = tapeFrames - tapeLoopFrameStart;
         const u32 tapeFramesRemaining          = tapeDeck->control.loop 
@@ -229,7 +234,7 @@ korl_internal void korl_sfx_mix(void)
                                                  ? tapeLoopFrameStart + (((tapeDeck->frame + frame) - tapeLoopFrameStart) % tapeLoopFrames)
                                                  /* otherwise (for non-looping TapeDecks), we can just take the current frame */
                                                  : tapeDeck->frame + frame;
-            const u8*const tapeAudioFrame      = tapeAudio.data + (tapeAudioFrameIndex * tapeBytesPerFrame);
+            const u8*const tapeAudioFrame      = tapeAudio.raw.data + (tapeAudioFrameIndex * tapeBytesPerFrame);
             const f32      tapeVolumeRatio     = KORL_MATH_CLAMP(tapeDeck->control.volumeRatio + frame * tapeVolumeDeltaPerFrame, tapeVolumeRangeMin, tapeVolumeRangeMax);
             for(u8 channel = 0; channel < audioFormat.channels; channel++)// no matter what, we want to mix audio from this tape into all the channels of audioBuffer
             {
@@ -249,7 +254,9 @@ korl_internal void korl_sfx_mix(void)
             }
             else
             {
+                const u16 tapeDeckSalt = tapeDeck->salt;
                 korl_memory_zero(tapeDeck, sizeof(*tapeDeck));// although we only need to zero the `resource` member, might as well just wipe the whole thing
+                tapeDeck->salt = tapeDeckSalt + 1;// restore the tape deck's salt, so that we continue visiting more unique values, and increment it to immediately invalidate any handles to this deck
                 continue;// don't do anymore logic on this TapeDeck, as the Tape has been destroyed
             }
         }
@@ -265,7 +272,7 @@ korl_internal void korl_sfx_mix(void)
             }
         }
     }
-#if _KORL_SFX_APPLY_MASTER_FILTER
+    #if _KORL_SFX_APPLY_MASTER_FILTER
     /* apply master filters over all Tape outputs */
     for(u32 frame = 0; frame < framesWritten; frame++)
     {
@@ -279,7 +286,7 @@ korl_internal void korl_sfx_mix(void)
             sampleEncode(audioBufferSample, sampleRatio);
         }
     }
-#endif
+    #endif
     korl_audio_writeBufferRelease(framesWritten);
 }
 korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource)
@@ -306,7 +313,7 @@ korl_internal KORL_FUNCTION_korl_sfx_playResource(korl_sfx_playResource)
             /* we will overwrite the Tape with the lowest prioity */
             d = lowestTapePriorityIndex;
     _Korl_Sfx_TapeDeck*const tapeDeck = &(_korl_sfx_context.tapeDecks[d]);
-    const u16 salt = tapeDeck->salt + 1;
+    const u16 salt = tapeDeck->salt;
     korl_memory_zero(tapeDeck, sizeof(*tapeDeck));
     tapeDeck->resource = resourceHandleAudio;
     tapeDeck->control  = tapeDeckControl;
@@ -345,7 +352,9 @@ korl_internal KORL_FUNCTION_korl_sfx_tape_stop(korl_sfx_tape_stop)
        || korl_math_isNearlyZero(tapeDeck->control.volumeRatio))
     {
         /* if the stop command is immediate, we can just destroy the tape right away */
+        const u16 tapeDeckSalt = tapeDeck->salt;
         korl_memory_zero(tapeDeck, sizeof(*tapeDeck));
+        tapeDeck->salt = tapeDeckSalt + 1;
         goto invalidateHandle;
     }
     /* otherwise, we configure the TapeDeck to fade out the volume & destroy the 
