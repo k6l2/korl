@@ -42,6 +42,8 @@ typedef struct Korl_Resource_DescriptorManifest_Callbacks
 typedef struct Korl_Resource_DescriptorManifest
 {
     acu8                                       utf8DescriptorName;
+    const void*                                descriptorContext;// optional; if != NULL, this allows a descriptor to declare & initialize a "context struct" which all resources of this descriptor type can utilize
+    u$                                         descriptorContextBytes;// _must_ be != 0 if `descriptorContext` != NULL
     Korl_Resource_DescriptorManifest_Callbacks callbacks;
 } Korl_Resource_DescriptorManifest;
 /** to calculate the total spacing between two lines, use the formula: (ascent - decent) + lineGap */
@@ -63,9 +65,17 @@ typedef struct Korl_Resource_Font_TextMetrics
     Korl_Math_V2f32 aabbSize;//@TODO: is this properly scaled by nearestSupportedPixelHeight?
     u32             visibleGlyphCount;
 } Korl_Resource_Font_TextMetrics;
+typedef enum Korl_Resource_ForEach_Result
+    {KORL_RESOURCE_FOR_EACH_RESULT_STOP
+    ,KORL_RESOURCE_FOR_EACH_RESULT_CONTINUE
+} Korl_Resource_ForEach_Result;
+#define KORL_RESOURCE_FOR_EACH_CALLBACK(name) Korl_Resource_ForEach_Result name(void* userData, void* resourceDescriptorStruct, bool* isTranscoded)
+typedef KORL_RESOURCE_FOR_EACH_CALLBACK(korl_resource_callback_forEach);
+//@TODO: rename to `korl_resource_descriptor_register`
 #define KORL_FUNCTION_korl_resource_descriptor_add(name)                          void                                name(const Korl_Resource_DescriptorManifest* descriptorManifest)
 #define KORL_FUNCTION_korl_resource_fromFile(name)                                Korl_Resource_Handle                name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 #define KORL_FUNCTION_korl_resource_create(name)                                  Korl_Resource_Handle                name(acu8 utf8DescriptorName, const void* descriptorCreateInfo, bool transient)
+#define KORL_FUNCTION_korl_resource_getDescriptorContextStruct(name)              void*                               name(acu8 utf8DescriptorName)
 #define KORL_FUNCTION_korl_resource_getDescriptorStruct(name)                     void*                               name(Korl_Resource_Handle handle)
 #define KORL_FUNCTION_korl_resource_resize(name)                                  void                                name(Korl_Resource_Handle handle, u$ newByteSize)
 #define KORL_FUNCTION_korl_resource_shift(name)                                   void                                name(Korl_Resource_Handle handle, i$ byteShiftCount)
@@ -74,6 +84,7 @@ typedef struct Korl_Resource_Font_TextMetrics
 #define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)                         void*                               name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
 #define KORL_FUNCTION_korl_resource_getByteSize(name)                             u$                                  name(Korl_Resource_Handle handle)
 #define KORL_FUNCTION_korl_resource_isLoaded(name)                                bool                                name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_forEach(name)                                 void                                name(acu8 utf8DescriptorName, korl_resource_callback_forEach* callback, void* callbackUserData)
 #define KORL_FUNCTION_korl_resource_texture_getSize(name)                         Korl_Math_V2u32                     name(Korl_Resource_Handle handleResourceTexture)
 #define KORL_FUNCTION_korl_resource_texture_getRowByteStride(name)                u32                                 name(Korl_Resource_Handle handleResourceTexture)
 #define KORL_FUNCTION_korl_resource_font_getMetrics(name)                         Korl_Resource_Font_Metrics          name(Korl_Resource_Handle handleResourceFont, f32 textPixelHeight)

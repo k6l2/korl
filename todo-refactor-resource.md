@@ -119,7 +119,8 @@
 [x] investigate looped skin animations having hitched frame(s) near the loop point
 [x] eliminate TRANSIENT memory from allocators that are saved to korl-memoryState
 [ ] add AUDIO Resource (last resource type)
-[ ] perform defragmentation on korl-resource persistent memory
+[ ] perform defragmentation on korl-resource memory
+  - there's no point in not doing this on both `runtime` & `transient` memory
 [ ] we're going to have to add some kind of system at some point to pre-process file resources, which requires having a "resource-manifest" file; why not just add this functionality now?
   - user defines a "resource-manifest.txt" file somewhere
   - KORL contains an internal tool "korl-inventory"

@@ -14,6 +14,7 @@
 #include "korl-resource-texture.h"
 #include "korl-resource-font.h"
 #include "korl-resource-scene3d.h"
+#include "korl-resource-audio.h"
 #define _LOCAL_STRING_POOL_POINTER (_korl_resource_context->stringPool)
 #if 0//@TODO: delete/recycle
 typedef struct _Korl_Resource
@@ -40,6 +41,7 @@ typedef struct _Korl_Resource_Descriptor
 {
     Korl_StringPool_String                     name;
     Korl_Resource_DescriptorManifest_Callbacks callbacks;
+    void*                                      context;
 } _Korl_Resource_Descriptor;
 typedef enum _Korl_Resource_Item_BackingType
     {_KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE
@@ -161,6 +163,7 @@ korl_internal void korl_resource_initialize(void)
     korl_resource_texture_register();
     korl_resource_font_register();
     korl_resource_scene3d_register();
+    korl_resource_audio_register();
 }
 korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
 {
@@ -192,6 +195,19 @@ korl_internal void korl_resource_transcodeFileAssets(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_pool_forEach(&context->resourcePool, _korl_resource_transcodeFileAssets_forEach, NULL);
 }
+korl_internal KORL_FUNCTION_korl_resource_getDescriptorContextStruct(korl_resource_getDescriptorContextStruct)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    /* get the Resource_Descriptor */
+    const _Korl_Resource_Descriptor*const descriptorsEnd = context->stbDaDescriptors + arrlen(context->stbDaDescriptors);
+    _Korl_Resource_Descriptor* descriptor = context->stbDaDescriptors;
+    for(; descriptor < descriptorsEnd; descriptor++)
+        if(string_equalsAcu8(&descriptor->name, utf8DescriptorName))
+            break;
+    korl_assert(descriptor < descriptorsEnd);
+    /**/
+    return descriptor->context;
+}
 korl_internal KORL_FUNCTION_korl_resource_getDescriptorStruct(korl_resource_getDescriptorStruct)
 {
     _Korl_Resource_Context*const context      = _korl_resource_context;
@@ -217,6 +233,12 @@ korl_internal KORL_FUNCTION_korl_resource_descriptor_add(korl_resource_descripto
     newDescriptor.name      = string_newAcu8(descriptorManifest->utf8DescriptorName);
     newDescriptor.callbacks = descriptorManifest->callbacks;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
+    if(descriptorManifest->descriptorContext)// if the user wants this descriptor to have a "context" struct, we need to create/initialize it here
+    {
+        korl_assert(descriptorManifest->descriptorContextBytes);
+        newDescriptor.context = korl_allocateDirty(context->allocatorHandleRuntime, descriptorManifest->descriptorContextBytes);
+        korl_memory_copy(newDescriptor.context, descriptorManifest->descriptorContext, descriptorManifest->descriptorContextBytes);
+    }
     korl_log(INFO, "resource descriptor \"%.*hs\" added", descriptorManifest->utf8DescriptorName.size, descriptorManifest->utf8DescriptorName.data);
 }
 korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
@@ -344,6 +366,47 @@ korl_internal KORL_FUNCTION_korl_resource_isLoaded(korl_resource_isLoaded)
     }
     korl_log(ERROR, "invalid resource backingType: %i", resourceItem->backingType);
     return false;
+}
+typedef struct _Korl_Resource_ForEach_PoolForEachContext
+{
+    korl_resource_callback_forEach* resourceForEachCallback;
+    void*                           resourceForEachUserData;
+    u16                             descriptorIndex;
+} _Korl_Resource_ForEach_PoolForEachContext;
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_forEach_poolForEachCallback)
+{
+    const _Korl_Resource_ForEach_PoolForEachContext*const forEachContext = userData;
+    _Korl_Resource_Item*const                             resourceItem   = KORL_C_CAST(_Korl_Resource_Item*, item);
+    if(resourceItem->descriptorIndex != forEachContext->descriptorIndex)
+        return KORL_POOL_FOR_EACH_CONTINUE;
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE);// for now, only support iterating over ASSET_CACHE backed resources, for the sake of passing the isTranscoded flag
+    const Korl_Resource_ForEach_Result resourceForEachResult = forEachContext->resourceForEachCallback(forEachContext->resourceForEachUserData
+                                                                                                      ,resourceItem->descriptorStruct
+                                                                                                      ,&resourceItem->backingSubType.assetCache.isTranscoded);
+    switch(resourceForEachResult)
+    {
+    case KORL_RESOURCE_FOR_EACH_RESULT_STOP    : return KORL_POOL_FOR_EACH_DONE;
+    case KORL_RESOURCE_FOR_EACH_RESULT_CONTINUE: return KORL_POOL_FOR_EACH_CONTINUE;
+    }
+    korl_log(ERROR, "invalid resource for-each callback result: %i", resourceForEachResult);
+    return KORL_POOL_FOR_EACH_CONTINUE;
+}
+korl_internal KORL_FUNCTION_korl_resource_forEach(korl_resource_forEach)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    /* get the Resource_Descriptor */
+    const _Korl_Resource_Descriptor*const descriptorsEnd = context->stbDaDescriptors + arrlen(context->stbDaDescriptors);
+    _Korl_Resource_Descriptor* descriptor = context->stbDaDescriptors;
+    for(; descriptor < descriptorsEnd; descriptor++)
+        if(string_equalsAcu8(&descriptor->name, utf8DescriptorName))
+            break;
+    korl_assert(descriptor < descriptorsEnd);
+    /**/
+    KORL_ZERO_STACK(_Korl_Resource_ForEach_PoolForEachContext, forEachContext)
+    forEachContext.resourceForEachCallback = callback;
+    forEachContext.resourceForEachUserData = callbackUserData;
+    forEachContext.descriptorIndex         = korl_checkCast_i$_to_u16(descriptor - context->stbDaDescriptors);
+    korl_pool_forEach(&context->resourcePool, _korl_resource_forEach_poolForEachCallback, &forEachContext);
 }
 korl_internal KORL_FUNCTION_korl_resource_resize(korl_resource_resize)
 {
@@ -577,23 +640,6 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
         since we should expect that when a memory state is loaded all multimedia 
         device assets are invalidated! */
     korl_pool_forEach(&context->resourcePool, _korl_resource_memoryStateRead_forEach, NULL);
-    #if 0//@TODO: delete/recycle
-    for(u$ r = 0; r < hmlenu(context->stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
-    {
-        _Korl_Resource_Map*const resourceMapItem = &(context->stbHmResources[r]);
-        const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapItem->key);
-        _Korl_Resource*const resource = &resourceMapItem->value;
-        /* regardless of whether or not the resource is backed by a file, we 
-            must ensure that all AUDIO resources are resampled to match the 
-            audio renderer; ergo, we wipe the transient resampledData and raise 
-            the pending resample flag */
-        if(unpackedHandle.multimediaType == _KORL_RESOURCE_MULTIMEDIA_TYPE_AUDIO)
-        {
-            context->audioResamplesPending = true;
-            resource->subType.audio.resampledData = NULL;// NOTE: there is no need to call free on this allocation, as the entire transient allocator has been wiped
-        }
-    }
-    #endif
 }
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload)
 {
