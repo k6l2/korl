@@ -156,13 +156,13 @@ korl_internal KORL_FUNCTION_korl_resource_descriptor_add(korl_resource_descripto
     KORL_ZERO_STACK(_Korl_Resource_Descriptor, newDescriptor);
     newDescriptor.name      = string_newAcu8(descriptorManifest->utf8DescriptorName);
     newDescriptor.callbacks = descriptorManifest->callbacks;
-    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
     if(descriptorManifest->descriptorContext)// if the user wants this descriptor to have a "context" struct, we need to create/initialize it here
     {
         korl_assert(descriptorManifest->descriptorContextBytes);
         newDescriptor.context = korl_allocateDirty(context->allocatorHandleRuntime, descriptorManifest->descriptorContextBytes);
         korl_memory_copy(newDescriptor.context, descriptorManifest->descriptorContext, descriptorManifest->descriptorContextBytes);
     }
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbDaDescriptors, newDescriptor);
     korl_log(INFO, "resource descriptor \"%.*hs\" added", descriptorManifest->utf8DescriptorName.size, descriptorManifest->utf8DescriptorName.data);
 }
 korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
