@@ -1470,11 +1470,19 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         if(!defragmentPointer->pDefragmentPointer->parent)
             continue;
         const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->parent);
-        //@TODO: handle the case where parentMapIndex fails; the parent pointer must not exist in this allocator, and is assumed to be immutable for the duration of this function's execution
-        korl_assert(parentMapIndex >= 0);
-        _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
-        parent->childrenCapacity++;
-        totalChildren++;
+        if(parentMapIndex < 0)
+        {
+            /* if the parent's DefragmentPointer was not provided, then we 
+                _must_ assume that the parent of this DefragmentPointer is _immutable_ */
+            /* sanity check: make sure the parent does _not_ exist within this heap */
+            //@TODO
+        }
+        else
+        {
+            _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
+            parent->childrenCapacity++;
+            totalChildren++;
+        }
     }
     /* create a pool of Korl_Heap_DefragmentPointer* called `childPool` to store the child lists of each defrag pointer, of size `totalChildren` - size(<=n), as each DefragmentPointer can only have one parent */
     Korl_Heap_DefragmentPointer** childPool            = totalChildren ? korl_heap_linear_allocate(stackAllocator, stackAllocatorName, totalChildren * sizeof(*childPool), __FILEW__, __LINE__, true/*no need to clear these, as they are all going to be fully re-written*/, 1) : NULL;
@@ -1486,7 +1494,11 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         if(!defragmentPointer->pDefragmentPointer->parent)
             continue;
         const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->parent);
-        korl_assert(parentMapIndex >= 0);
+        if(parentMapIndex < 0)
+            /* if the parent's DefragmentPointer was not provided, then we 
+                _must_ assume that the parent of this DefragmentPointer is _immutable_; 
+                ergo, no need to manage its list of children */
+            continue;
         _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
         if(!parent->children)
         {

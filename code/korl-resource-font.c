@@ -223,7 +223,17 @@ korl_internal const _Korl_Resource_Font_BakedGlyph* _korl_resource_font_getGlyph
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_font_collectDefragmentPointers)
 {
     _Korl_Resource_Font*const font = resourceDescriptorStruct;
-    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stbDaMemoryContext, pStbDaDefragmentPointers, font->stbHmBakedGlyphs, parent);
+    if(korlResourceAllocatorIsTransient)
+    {
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, font->stbDaGlyphPages, parent);
+        const _Korl_Resource_Font_GlyphPage*const glyphPagesEnd = font->stbDaGlyphPages + arrlen(font->stbDaGlyphPages);
+        for(_Korl_Resource_Font_GlyphPage* glyphPage = font->stbDaGlyphPages; glyphPage < glyphPagesEnd; glyphPage++)
+            KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, glyphPage->stbDaPackRows, font->stbDaGlyphPages);
+    }
+    else
+    {
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stbDaMemoryContext, pStbDaDefragmentPointers, font->stbHmBakedGlyphs, parent);
+    }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_font_descriptorStructCreate)
 {
