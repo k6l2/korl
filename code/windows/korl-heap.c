@@ -1250,7 +1250,8 @@ korl_internal void korl_heap_linear_empty(_Korl_Heap_Linear*const allocator)
 }
 korl_internal void* korl_heap_linear_allocate(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, u$ bytes, const wchar_t* file, int line, bool fastAndDirty, u$ byteAlignment)
 {
-    korl_assert(bytes);
+    if(!bytes)
+        return NULL;
     const u$       heapBytes          = 2 * _KORL_HEAP_SENTINEL_PADDING_BYTES + sizeof(*allocator);
     const u$       heapVirtualBytes   = allocator->virtualPages * korl_memory_pageBytes();
     u8*const       heapVirtualBase    = KORL_C_CAST(u8*, allocator) - _KORL_HEAP_SENTINEL_PADDING_BYTES;
@@ -1410,7 +1411,6 @@ korl_internal KORL_ALGORITHM_COMPARE_CONTEXT(_korl_heap_linear_compareDefragment
 korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator, const wchar_t* allocatorName, Korl_Heap_DefragmentPointer* defragmentPointers, u$ defragmentPointersSize, _Korl_Heap_Linear* stackAllocator, const wchar_t* stackAllocatorName, Korl_Memory_AllocatorHandle handleStackAllocator)
 {
     //KORL-ISSUE-000-000-165: heap: defragmentation does not respect each allocation's alignment requirements; we probably want to store byte alignment of each allocation as meta data, because I don't think there's a good way of just "knowing" what the allocation alignment should be
-    korl_assert(defragmentPointersSize > 0);// the user _must_ pass a non-zero # of allocation pointers, otherwise this functionality would be impossible/pointless
     allocator->isFragmented = false;// assume we will, in fact, fully de-fragment the allocator; if we can't, we'll just raise this flag once more
     /* UH OH - we have another major issue; assume the heap looks like so:
             [FREE][allocA][allocB]
