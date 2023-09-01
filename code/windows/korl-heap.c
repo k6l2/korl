@@ -1439,6 +1439,16 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         perform custom actions on newly-moved allocations, such as manually offsetting a pointer to memory within the same allocation; 
         although honestly, going forward I am going to enforce a policy of _no_ allocation-local pointers stored in structs, in favor 
         of byte offsets which can be used to derive the pointers at run-time, at least for my own code */
+    /* who would have guessed by now? we have yet _another_ major issue with this; given the following scenario: 
+        - allocators {A, B}
+        - allocations {A::a, B::b}, where `X::y` indicates `allocator_name::allocation_name` 
+        - `a` holds the address of `b`
+        the user is _unable_ to defragment allocator `B`, because this algorithm currently does not support cross-allocator parent addresses! 
+        solutions: 
+        - simply allow the user to set a Korl_Heap_DefragmentPointer's `parent` to be an address that is not within the allocator, and handle it as a special case in here
+            - sanity check; if the parentMapIndex lookup fails, assert that the parent address does _not_ belong to this allocator
+            - at this point, we assume that the `parent` of this DefragmentPointer is immutable
+            - keep all the rest of the logic in here the same */
     //KORL-ISSUE-000-000-183: heap-linear: can we simplify this with `korl_algorithm_graphDirected_sortTopological`?
     /* create a copy of defragmentPointers that we can shuffle, allowing the `parent` pointers to remain valid - size(n) - O(n) memory_copy*/
     _Korl_Heap_DefragmentPointer*const sortedDefragmentPointers = korl_heap_linear_allocate(stackAllocator, stackAllocatorName, defragmentPointersSize * sizeof(*defragmentPointers), __FILEW__, __LINE__, false/*clear all these*/, 1);
@@ -1460,6 +1470,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
         if(!defragmentPointer->pDefragmentPointer->parent)
             continue;
         const i$ parentMapIndex = mchmgeti(KORL_STB_DS_MC_CAST(handleStackAllocator), stbHm_userAddress_to_defragPointer, defragmentPointer->pDefragmentPointer->parent);
+        //@TODO: handle the case where parentMapIndex fails; the parent pointer must not exist in this allocator, and is assumed to be immutable for the duration of this function's execution
         korl_assert(parentMapIndex >= 0);
         _Korl_Heap_DefragmentPointer*const parent = stbHm_userAddress_to_defragPointer[parentMapIndex].value;
         parent->childrenCapacity++;

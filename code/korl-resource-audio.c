@@ -19,9 +19,11 @@ typedef struct _Korl_Resource_Audio
 } _Korl_Resource_Audio;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_audio_collectDefragmentPointers)
 {
+    _Korl_Resource_Audio*const audio = resourceDescriptorStruct;
     if(korlResourceAllocatorIsTransient)
     {
-        //@TODO
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, audio->data         , parent);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, audio->dataResampled, parent);
     }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_audio_descriptorStructCreate)
@@ -51,7 +53,6 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 {
     _Korl_Resource_Audio*const               audio        = resourceDescriptorStruct;
     const _Korl_Resource_Audio_Context*const audioContext = korl_resource_getDescriptorContextStruct(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_AUDIO));
-    korl_assert(!audio->dataResampled);
     if(!audio->data)/* if we have not yet decoded the raw audio data, do so now */
         audio->data = korl_codec_audio_decode(data, korl_checkCast_u$_to_u32(dataBytes), allocatorTransient, &audio->dataBytes, &audio->format);
     /* in all cases, we need to conditionally resample the audio->data to match the audioContext->format */

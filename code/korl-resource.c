@@ -429,8 +429,8 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_defragment_forEach)
     }
     else
     {
-        korl_assert(forEachContext->contextAllocator == _korl_resource_context->allocatorHandleTransient);
-        //@TODO
+        korl_assert(forEachContext->contextAllocator == _korl_resource_context->allocatorHandleTransient);// there are only two options: {runtime, transient}, and we already handled the RUNTIME memory case
+        collectDefragmentPointers(resourceItem->descriptorStruct, forEachContext->stbDaMemoryContext, forEachContext->pStbDaDefragmentPointers, resourceItem->descriptorStruct, forEachContext->contextAllocator, true);
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
 }
@@ -460,29 +460,13 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
     {
         Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
         mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
+        KORL_ZERO_STACK(_Korl_Resource_Defragment_ForEachContext, forEachContext);
+        forEachContext.contextAllocator         = _korl_resource_context->allocatorHandleTransient;
+        forEachContext.stbDaMemoryContext       = KORL_STB_DS_MC_CAST(stackAllocator);
+        forEachContext.pStbDaDefragmentPointers = &stbDaDefragmentPointers;
+        korl_pool_forEach(&_korl_resource_context->resourcePool, _korl_resource_defragment_forEach, &forEachContext);
         korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleTransient, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
     }
-    #if 0//@TODO: delete/recycle
-    if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleRuntime))
-    {
-        Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
-        mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
-        KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_resource_context);
-        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, &stbDaDefragmentPointers, _korl_resource_context->stbHmResources, _korl_resource_context);
-        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_resource_context->stbDsDirtyResourceHandles, _korl_resource_context);
-        korl_stringPool_collectDefragmentPointers(_korl_resource_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_resource_context);
-        for(u$ r = 0; r < hmlenu(_korl_resource_context->stbHmResources); r++)// stb_ds says we can iterate over hash maps the same way as dynamic arrays
-        {
-            _Korl_Resource_Map*const resourceMapItem = &(_korl_resource_context->stbHmResources[r]);
-            const _Korl_Resource_Handle_Unpacked unpackedHandle = _korl_resource_handle_unpack(resourceMapItem->key);
-            if(unpackedHandle.type != _KORL_RESOURCE_TYPE_RUNTIME)
-                continue;
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stackAllocator, stbDaDefragmentPointers, resourceMapItem->value.data, _korl_resource_context->stbHmResources);
-        }
-        korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleRuntime, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
-    }
-    // KORL-ISSUE-000-000-135: resource: defragment transient resource data
-    #endif
 }
 korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
 {
