@@ -193,21 +193,20 @@ korl_internal void korl_sfx_mix(void)
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio;
         korl_assert(uniformVolumeRatio >= 0.f && uniformVolumeRatio <= 1.f);
-        KORL_ZERO_STACK(Korl_Audio_Format, tapeAudioFormat);
         Korl_Resource_Audio_Data tapeAudio = korl_resource_audio_getData(tapeDeck->resource);
         if(!tapeAudio.raw.data)
             continue;// if the audio resource isn't transcoded, do nothing with this tape
-        if(   tapeAudioFormat.bytesPerSample == audioFormat.bytesPerSample
-           || tapeAudioFormat.sampleFormat   == audioFormat.sampleFormat
-           || tapeAudioFormat.frameHz        == audioFormat.frameHz)
+        if(   tapeAudio.format.bytesPerSample != audioFormat.bytesPerSample
+           || tapeAudio.format.sampleFormat   != audioFormat.sampleFormat
+           || tapeAudio.format.frameHz        != audioFormat.frameHz)
             continue;// if we obtain an incompatible audio format from the tape's audio resource, defer doing anything until korl-resource-audio resamples it
-        korl_assert(tapeAudioFormat.frameHz        >  0);
-        korl_assert(tapeAudioFormat.bytesPerSample == audioFormat.bytesPerSample);
-        korl_assert(tapeAudioFormat.sampleFormat   == audioFormat.sampleFormat);
-        korl_assert(tapeAudioFormat.frameHz        == audioFormat.frameHz);
-        const u32 tapeBytesPerFrame            = tapeAudioFormat.channels * tapeAudioFormat.bytesPerSample;
+        korl_assert(tapeAudio.format.frameHz        >  0);
+        korl_assert(tapeAudio.format.bytesPerSample == audioFormat.bytesPerSample);
+        korl_assert(tapeAudio.format.sampleFormat   == audioFormat.sampleFormat);
+        korl_assert(tapeAudio.format.frameHz        == audioFormat.frameHz);
+        const u32 tapeBytesPerFrame            = tapeAudio.format.channels * tapeAudio.format.bytesPerSample;
         const u32 tapeFrames                   = korl_checkCast_u$_to_u32(tapeAudio.raw.size) / tapeBytesPerFrame;
-        const u32 tapeLoopFrameStart           = KORL_C_CAST(u32, tapeDeck->control.loopStartSeconds * tapeAudioFormat.frameHz); korl_assert(tapeLoopFrameStart < tapeFrames);
+        const u32 tapeLoopFrameStart           = KORL_C_CAST(u32, tapeDeck->control.loopStartSeconds * tapeAudio.format.frameHz); korl_assert(tapeLoopFrameStart < tapeFrames);
         const u32 tapeLoopFrames               = tapeFrames - tapeLoopFrameStart;
         const u32 tapeFramesRemaining          = tapeDeck->control.loop 
                                                  ? audioBuffer.framesSize// if we're configured to loop, we'll just write as many frames as we can to the buffer
@@ -217,9 +216,9 @@ korl_internal void korl_sfx_mix(void)
         const u32 framesToMix                  = KORL_MATH_MIN(tapeFramesRemaining, audioBuffer.framesSize);
         const f32 tapeVolumeRatioTarget        = tapeDeck->control.volumeFade.enabled ? tapeDeck->control.volumeFade.volumeRatioTarget : tapeDeck->control.volumeRatio;
         const f32 tapeVolumeFadeDeltaPerSecond = !tapeDeck->control.volumeFade.enabled || korl_math_isNearlyZero(tapeDeck->control.volumeFade.seconds) 
-                                                 ? (tapeVolumeRatioTarget - tapeDeck->control.volumeRatio) / tapeAudioFormat.frameHz 
+                                                 ? (tapeVolumeRatioTarget - tapeDeck->control.volumeRatio) / tapeAudio.format.frameHz 
                                                  : (tapeVolumeRatioTarget - tapeDeck->control.volumeFade.volumeRatioStart) / tapeDeck->control.volumeFade.seconds;
-        const f32 tapeVolumeDeltaPerFrame      = tapeVolumeFadeDeltaPerSecond / tapeAudioFormat.frameHz;
+        const f32 tapeVolumeDeltaPerFrame      = tapeVolumeFadeDeltaPerSecond / tapeAudio.format.frameHz;
         const f32 tapeVolumeRangeMin           = KORL_MATH_MIN(tapeDeck->control.volumeRatio, tapeVolumeRatioTarget);
         const f32 tapeVolumeRangeMax           = KORL_MATH_MAX(tapeDeck->control.volumeRatio, tapeVolumeRatioTarget);
         if(framesToMix > framesWritten)
@@ -238,9 +237,9 @@ korl_internal void korl_sfx_mix(void)
             const f32      tapeVolumeRatio     = KORL_MATH_CLAMP(tapeDeck->control.volumeRatio + frame * tapeVolumeDeltaPerFrame, tapeVolumeRangeMin, tapeVolumeRangeMax);
             for(u8 channel = 0; channel < audioFormat.channels; channel++)// no matter what, we want to mix audio from this tape into all the channels of audioBuffer
             {
-                const u8 tapeChannel = (channel % tapeAudioFormat.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
-                mix(audioBufferFrame + (channel     *     audioFormat.bytesPerSample)
-                   ,tapeAudioFrame   + (tapeChannel * tapeAudioFormat.bytesPerSample), uniformVolumeRatio * tapeVolumeRatio * tapeDeck->control.channelVolumeRatios[channel]);
+                const u8 tapeChannel = (channel % tapeAudio.format.channels);// allow tapes to play, even if they have fewer channels than audioBuffer
+                mix(audioBufferFrame + (channel     *      audioFormat.bytesPerSample)
+                   ,tapeAudioFrame   + (tapeChannel * tapeAudio.format.bytesPerSample), uniformVolumeRatio * tapeVolumeRatio * tapeDeck->control.channelVolumeRatios[channel]);
             }
         }
         KORL_MATH_ASSIGN_CLAMP_MIN(framesWritten, framesToMix);

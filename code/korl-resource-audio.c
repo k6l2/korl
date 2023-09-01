@@ -134,6 +134,6 @@ korl_internal Korl_Resource_Audio_Data korl_resource_audio_getData(Korl_Resource
     if(!audio->data)
         return KORL_STRUCT_INITIALIZE_ZERO(Korl_Resource_Audio_Data);
     if(audio->dataResampled)
-        return KORL_STRUCT_INITIALIZE(Korl_Resource_Audio_Data){.format = audio->format, .raw = KORL_STRUCT_INITIALIZE(acu8){.size = audio->dataBytes, .data = audio->data}};
+        return KORL_STRUCT_INITIALIZE(Korl_Resource_Audio_Data){.format = audio->formatResampled, .raw = KORL_STRUCT_INITIALIZE(acu8){.size = audio->dataResampledBytes, .data = audio->dataResampled}};
     return KORL_STRUCT_INITIALIZE(Korl_Resource_Audio_Data){.format = audio->format, .raw = KORL_STRUCT_INITIALIZE(acu8){.size = audio->dataBytes, .data = audio->data}};
 }
