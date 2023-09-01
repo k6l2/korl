@@ -71,8 +71,7 @@ typedef enum Korl_Resource_ForEach_Result
 } Korl_Resource_ForEach_Result;
 #define KORL_RESOURCE_FOR_EACH_CALLBACK(name) Korl_Resource_ForEach_Result name(void* userData, void* resourceDescriptorStruct, bool* isTranscoded)
 typedef KORL_RESOURCE_FOR_EACH_CALLBACK(korl_resource_callback_forEach);
-//@TODO: rename to `korl_resource_descriptor_register`
-#define KORL_FUNCTION_korl_resource_descriptor_add(name)                          void                                name(const Korl_Resource_DescriptorManifest* descriptorManifest)
+#define KORL_FUNCTION_korl_resource_descriptor_register(name)                     void                                name(const Korl_Resource_DescriptorManifest* descriptorManifest)
 #define KORL_FUNCTION_korl_resource_fromFile(name)                                Korl_Resource_Handle                name(acu8 utf8DescriptorName, acu8 utf8FileName, Korl_AssetCache_Get_Flags assetCacheGetFlags)
 #define KORL_FUNCTION_korl_resource_create(name)                                  Korl_Resource_Handle                name(acu8 utf8DescriptorName, const void* descriptorCreateInfo, bool transient)
 #define KORL_FUNCTION_korl_resource_getDescriptorContextStruct(name)              void*                               name(acu8 utf8DescriptorName)

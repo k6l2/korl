@@ -88,7 +88,7 @@ korl_internal void korl_resource_audio_register(void)
     descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_audio_unload);
     descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_audio_transcode);
     descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_audio_clearTransientData);
-    korl_resource_descriptor_add(&descriptorManifest);
+    korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal KORL_RESOURCE_FOR_EACH_CALLBACK(_korl_resource_audio_setFormat_forEach)
 {

@@ -345,7 +345,7 @@ korl_internal void korl_resource_font_register(void)
     descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_font_clearTransientData);
     descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_font_unload);
     descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_font_transcode);
-    korl_resource_descriptor_add(&descriptorManifest);
+    korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal u8 _korl_resource_font_nearestSupportedPixelHeightIndex(f32 pixelHeight)
 {

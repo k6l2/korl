@@ -489,7 +489,7 @@ korl_internal void korl_resource_scene3d_register(void)
     descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_scene3d_unload);
     descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_scene3d_transcode);
     descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_scene3d_clearTransientData);
-    korl_resource_descriptor_add(&descriptorManifest);
+    korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(korl_resource_scene3d_getMaterialCount)
 {

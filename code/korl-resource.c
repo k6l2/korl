@@ -139,7 +139,7 @@ korl_internal KORL_FUNCTION_korl_resource_getDescriptorStruct(korl_resource_getD
     korl_assert(resourceItem);
     return resourceItem->descriptorStruct;
 }
-korl_internal KORL_FUNCTION_korl_resource_descriptor_add(korl_resource_descriptor_add)
+korl_internal KORL_FUNCTION_korl_resource_descriptor_register(korl_resource_descriptor_register)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
     /* ensure descriptor name is unique */

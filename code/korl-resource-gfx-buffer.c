@@ -60,7 +60,7 @@ korl_internal void korl_resource_gfxBuffer_register(void)
     descriptorManifest.callbacks.createRuntimeMedia      = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeMedia);
     descriptorManifest.callbacks.runtimeBytes            = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeBytes);
     descriptorManifest.callbacks.runtimeResize           = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeResize);
-    korl_resource_descriptor_add(&descriptorManifest);
+    korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handleResourceGfxBuffer)
 {

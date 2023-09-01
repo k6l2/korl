@@ -71,7 +71,6 @@
 typedef struct Korl_Audio_Format Korl_Audio_Format;
 korl_internal void                                           korl_resource_initialize(void);
 korl_internal void                                           korl_resource_transcodeFileAssets(void);
-korl_internal void*                                          korl_resource_getDescriptorStruct(Korl_Resource_Handle handle);
 korl_internal void                                           korl_resource_flushUpdates(void);
 korl_internal void                                           korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator);
 korl_internal u32                                            korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer);
