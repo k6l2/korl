@@ -5,6 +5,10 @@ typedef struct _Korl_Resource_GfxBuffer
     Korl_Resource_GfxBuffer_CreateInfo        createInfo;
     Korl_Vulkan_DeviceMemory_AllocationHandle deviceMemoryAllocationHandle;
 } _Korl_Resource_GfxBuffer;
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_gfxBuffer_collectDefragmentPointers)
+{
+    // nothing to do here; we are not managing any dynamic memory in the descriptor struct
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_gfxBuffer_descriptorStructCreate)
 {
     return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_GfxBuffer));
@@ -51,15 +55,16 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize(_korl_r
 korl_internal void korl_resource_gfxBuffer_register(void)
 {
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName                = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER);
-    descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_gfxBuffer_descriptorStructCreate);
-    descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_gfxBuffer_descriptorStructDestroy);
-    descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_gfxBuffer_transcode);
-    descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_gfxBuffer_unload);
-    descriptorManifest.callbacks.createRuntimeData       = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeData);
-    descriptorManifest.callbacks.createRuntimeMedia      = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeMedia);
-    descriptorManifest.callbacks.runtimeBytes            = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeBytes);
-    descriptorManifest.callbacks.runtimeResize           = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeResize);
+    descriptorManifest.utf8DescriptorName                  = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_GFX_BUFFER);
+    descriptorManifest.callbacks.collectDefragmentPointers = korl_functionDynamo_register(_korl_resource_gfxBuffer_collectDefragmentPointers);
+    descriptorManifest.callbacks.descriptorStructCreate    = korl_functionDynamo_register(_korl_resource_gfxBuffer_descriptorStructCreate);
+    descriptorManifest.callbacks.descriptorStructDestroy   = korl_functionDynamo_register(_korl_resource_gfxBuffer_descriptorStructDestroy);
+    descriptorManifest.callbacks.transcode                 = korl_functionDynamo_register(_korl_resource_gfxBuffer_transcode);
+    descriptorManifest.callbacks.unload                    = korl_functionDynamo_register(_korl_resource_gfxBuffer_unload);
+    descriptorManifest.callbacks.createRuntimeData         = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeData);
+    descriptorManifest.callbacks.createRuntimeMedia        = korl_functionDynamo_register(_korl_resource_gfxBuffer_createRuntimeMedia);
+    descriptorManifest.callbacks.runtimeBytes              = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeBytes);
+    descriptorManifest.callbacks.runtimeResize             = korl_functionDynamo_register(_korl_resource_gfxBuffer_runtimeResize);
     korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(Korl_Resource_Handle handleResourceGfxBuffer)

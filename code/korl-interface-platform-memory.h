@@ -9,7 +9,7 @@
  *    in \c b, \c 1 if the first byte that differs has a higher value in \c a 
  *    than in \c b, and \c 0 if the two memory blocks are equal */
 #define KORL_FUNCTION_korl_memory_compare(name) int  name(const void* a, const void* b, size_t bytes)
-typedef u16 Korl_Memory_AllocatorHandle;
+typedef u16 Korl_Memory_AllocatorHandle;// 0 => invalid handle, as usual
 typedef enum Korl_Memory_AllocatorType
     { KORL_MEMORY_ALLOCATOR_TYPE_CRT    // just call into CRT APIs to perform memory allocation; useful for debugging allocator crashes
     , KORL_MEMORY_ALLOCATOR_TYPE_LINEAR

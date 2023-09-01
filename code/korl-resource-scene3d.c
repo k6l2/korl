@@ -54,6 +54,13 @@ typedef struct _Korl_Resource_Scene3d
     _Korl_Resource_Scene3d_Skin*         skins;             // pre-baked data needed to instantiate a Korl_Resource_Scene3d_Skin
     _Korl_Resource_Scene3d_Animation*    animations;
 } _Korl_Resource_Scene3d;
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_scene3d_collectDefragmentPointers)
+{
+    if(korlResourceAllocatorIsTransient)
+    {
+        //@TODO
+    }
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
 {
     return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Scene3d));
@@ -483,12 +490,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource
 korl_internal void korl_resource_scene3d_register(void)
 {
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SCENE3D);
-    descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_scene3d_descriptorStructCreate);
-    descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_scene3d_descriptorStructDestroy);
-    descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_scene3d_unload);
-    descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_scene3d_transcode);
-    descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_scene3d_clearTransientData);
+    descriptorManifest.utf8DescriptorName                  = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SCENE3D);
+    descriptorManifest.callbacks.collectDefragmentPointers = korl_functionDynamo_register(_korl_resource_scene3d_collectDefragmentPointers);
+    descriptorManifest.callbacks.descriptorStructCreate    = korl_functionDynamo_register(_korl_resource_scene3d_descriptorStructCreate);
+    descriptorManifest.callbacks.descriptorStructDestroy   = korl_functionDynamo_register(_korl_resource_scene3d_descriptorStructDestroy);
+    descriptorManifest.callbacks.unload                    = korl_functionDynamo_register(_korl_resource_scene3d_unload);
+    descriptorManifest.callbacks.transcode                 = korl_functionDynamo_register(_korl_resource_scene3d_transcode);
+    descriptorManifest.callbacks.clearTransientData        = korl_functionDynamo_register(_korl_resource_scene3d_clearTransientData);
     korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(korl_resource_scene3d_getMaterialCount)

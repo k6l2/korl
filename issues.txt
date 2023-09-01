@@ -62,7 +62,7 @@
 [ ] KORL-ISSUE-000-000-130: gfx/font: (MAJOR) `font->stbtt_info` sets up pointers to data within `data`; if that data ever moves or gets wiped (defragment, memoryState-load, etc.), then `font->stbtt_info` will contain dangling pointers!; at the moment we don't need to fix this because all font resources are backed by assetCache, and assetCache is not yet deprecating/defragmenting asset memory
 [ ] KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 [ ] KORL-ISSUE-000-000-134: vulkan: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
-[ ] KORL-ISSUE-000-000-135: resource: defragment transient resource data
+[@TODO] KORL-ISSUE-000-000-135: resource: defragment transient resource data
 [ ] KORL-ISSUE-000-000-136: memoryState: after loading a memory state, "serialized" allocator allocations have invalid meta->file pointers
 [ ] KORL-ISSUE-000-000-137: gui: capture mouse; it's really annoying how when we are click+dragging on a widget and the mouse outside the program window, we stop processing events; https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcapture
 [ ] KORL-ISSUE-000-000-139: gui: user can still interact with minimized window (click+drag to move them around)

@@ -4,6 +4,10 @@ typedef struct _Korl_Resource_Shader
 {
     Korl_Vulkan_ShaderHandle vulkanShaderHandle;
 } _Korl_Resource_Shader;
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_shader_collectDefragmentPointers)
+{
+    // nothing to do here; we are not managing any dynamic memory in the descriptor struct
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_shader_descriptorStructCreate)
 {
     return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Shader));
@@ -35,12 +39,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 korl_internal void korl_resource_shader_register(void)
 {
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER);
-    descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_shader_descriptorStructCreate);
-    descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_shader_descriptorStructDestroy);
-    descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_shader_clearTransientData);
-    descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_shader_unload);
-    descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_shader_transcode);
+    descriptorManifest.utf8DescriptorName                  = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER);
+    descriptorManifest.callbacks.collectDefragmentPointers = korl_functionDynamo_register(_korl_resource_shader_collectDefragmentPointers);
+    descriptorManifest.callbacks.descriptorStructCreate    = korl_functionDynamo_register(_korl_resource_shader_descriptorStructCreate);
+    descriptorManifest.callbacks.descriptorStructDestroy   = korl_functionDynamo_register(_korl_resource_shader_descriptorStructDestroy);
+    descriptorManifest.callbacks.clearTransientData        = korl_functionDynamo_register(_korl_resource_shader_clearTransientData);
+    descriptorManifest.callbacks.unload                    = korl_functionDynamo_register(_korl_resource_shader_unload);
+    descriptorManifest.callbacks.transcode                 = korl_functionDynamo_register(_korl_resource_shader_transcode);
     korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal Korl_Vulkan_ShaderHandle korl_resource_shader_getHandle(Korl_Resource_Handle handleResourceShader)

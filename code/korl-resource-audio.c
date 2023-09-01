@@ -17,6 +17,13 @@ typedef struct _Korl_Resource_Audio
     void*             dataResampled;// in the form of `_Korl_Resource_Audio_Context::format`; if `format` does not match the context's format, we must resample `data` into here, and use this data instead
     u$                dataResampledBytes;
 } _Korl_Resource_Audio;
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_audio_collectDefragmentPointers)
+{
+    if(korlResourceAllocatorIsTransient)
+    {
+        //@TODO
+    }
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_audio_descriptorStructCreate)
 {
     return korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Audio));
@@ -80,14 +87,15 @@ korl_internal void korl_resource_audio_register(void)
 {
     KORL_ZERO_STACK(_Korl_Resource_Audio_Context, audioContext);
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName                = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_AUDIO);
-    descriptorManifest.descriptorContext                 = &audioContext;
-    descriptorManifest.descriptorContextBytes            = sizeof(audioContext);
-    descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_audio_descriptorStructCreate);
-    descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_audio_descriptorStructDestroy);
-    descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_audio_unload);
-    descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_audio_transcode);
-    descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_audio_clearTransientData);
+    descriptorManifest.utf8DescriptorName                  = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_AUDIO);
+    descriptorManifest.descriptorContext                   = &audioContext;
+    descriptorManifest.descriptorContextBytes              = sizeof(audioContext);
+    descriptorManifest.callbacks.collectDefragmentPointers = korl_functionDynamo_register(_korl_resource_audio_collectDefragmentPointers);
+    descriptorManifest.callbacks.descriptorStructCreate    = korl_functionDynamo_register(_korl_resource_audio_descriptorStructCreate);
+    descriptorManifest.callbacks.descriptorStructDestroy   = korl_functionDynamo_register(_korl_resource_audio_descriptorStructDestroy);
+    descriptorManifest.callbacks.unload                    = korl_functionDynamo_register(_korl_resource_audio_unload);
+    descriptorManifest.callbacks.transcode                 = korl_functionDynamo_register(_korl_resource_audio_transcode);
+    descriptorManifest.callbacks.clearTransientData        = korl_functionDynamo_register(_korl_resource_audio_clearTransientData);
     korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal KORL_RESOURCE_FOR_EACH_CALLBACK(_korl_resource_audio_setFormat_forEach)

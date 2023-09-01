@@ -406,8 +406,62 @@ korl_internal void korl_resource_flushUpdates(void)
     _Korl_Resource_Context*const context = _korl_resource_context;
     korl_pool_forEach(&context->resourcePool, _korl_resource_flushUpdates_forEach, NULL);
 }
+typedef struct _Korl_Resource_Defragment_ForEachContext
+{
+    Korl_Memory_AllocatorHandle   contextAllocator;
+    void*                         stbDaMemoryContext;
+    Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers;
+} _Korl_Resource_Defragment_ForEachContext;
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_defragment_forEach)
+{
+    _Korl_Resource_Defragment_ForEachContext*const                         forEachContext            = userData;
+    _Korl_Resource_Item*const                                              resourceItem              = item;
+    _Korl_Resource_Descriptor*const                                        descriptor                = _korl_resource_context->stbDaDescriptors + resourceItem->descriptorIndex;
+    fnSig_korl_resource_descriptorCallback_collectDefragmentPointers*const collectDefragmentPointers = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_collectDefragmentPointers*, korl_functionDynamo_get(descriptor->callbacks.collectDefragmentPointers));
+    if(forEachContext->contextAllocator == _korl_resource_context->allocatorHandleRuntime)
+    {
+        /* if we're defragmenting RUNTIME memory, we need to defragment the Resource_Item's descriptorStruct */
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(forEachContext->contextAllocator, *forEachContext->pStbDaDefragmentPointers, resourceItem->descriptorStruct, _korl_resource_context->resourcePool.items.datas);
+        if(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA)
+            /* for RUNTIME-backed resources, we also need to defragment the runtime Resource_Item's data block */
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(forEachContext->contextAllocator, *forEachContext->pStbDaDefragmentPointers, resourceItem->backingSubType.runtime.data, _korl_resource_context->resourcePool.items.datas);
+        collectDefragmentPointers(resourceItem->descriptorStruct, forEachContext->stbDaMemoryContext, forEachContext->pStbDaDefragmentPointers, resourceItem->descriptorStruct, forEachContext->contextAllocator, false);
+    }
+    else
+    {
+        korl_assert(forEachContext->contextAllocator == _korl_resource_context->allocatorHandleTransient);
+        //@TODO
+    }
+    return KORL_POOL_FOR_EACH_CONTINUE;
+}
 korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAllocator)
 {
+    if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleRuntime))
+    {
+        Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+        mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
+        KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_resource_context);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stackAllocator, &stbDaDefragmentPointers, _korl_resource_context->stbShFileResources, _korl_resource_context);
+        korl_stringPool_collectDefragmentPointers(_korl_resource_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_resource_context);
+        korl_pool_collectDefragmentPointers(&_korl_resource_context->resourcePool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_resource_context);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stackAllocator, stbDaDefragmentPointers, _korl_resource_context->stbDaDescriptors, _korl_resource_context);
+        const _Korl_Resource_Descriptor*const descriptorsEnd = _korl_resource_context->stbDaDescriptors + arrlen(_korl_resource_context->stbDaDescriptors);
+        for(_Korl_Resource_Descriptor* descriptor = _korl_resource_context->stbDaDescriptors; descriptor < descriptorsEnd; descriptor++)
+            if(descriptor->context)
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stackAllocator, stbDaDefragmentPointers, descriptor->context, _korl_resource_context->stbDaDescriptors);
+        KORL_ZERO_STACK(_Korl_Resource_Defragment_ForEachContext, forEachContext);
+        forEachContext.contextAllocator         = _korl_resource_context->allocatorHandleRuntime;
+        forEachContext.stbDaMemoryContext       = KORL_STB_DS_MC_CAST(stackAllocator);
+        forEachContext.pStbDaDefragmentPointers = &stbDaDefragmentPointers;
+        korl_pool_forEach(&_korl_resource_context->resourcePool, _korl_resource_defragment_forEach, &forEachContext);
+        korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleRuntime, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
+    }
+    if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleTransient))
+    {
+        Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
+        mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 64);
+        korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleTransient, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
+    }
     #if 0//@TODO: delete/recycle
     if(korl_memory_allocator_isFragmented(_korl_resource_context->allocatorHandleRuntime))
     {
@@ -427,8 +481,8 @@ korl_internal void korl_resource_defragment(Korl_Memory_AllocatorHandle stackAll
         }
         korl_memory_allocator_defragment(_korl_resource_context->allocatorHandleRuntime, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
     }
-    #endif
     // KORL-ISSUE-000-000-135: resource: defragment transient resource data
+    #endif
 }
 korl_internal u32 korl_resource_memoryStateWrite(void* memoryContext, Korl_Memory_ByteBuffer** pByteBuffer)
 {

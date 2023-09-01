@@ -65,7 +65,7 @@ typedef struct _Korl_Resource_Font
     Korl_Resource_Handle               resourceHandleSsboGlyphMeshVertices;// array of _Korl_Resource_Font_GlyphVertex; stores vertex data for all baked glyphs across _all_ glyph pages
     u32                                ssboGlyphMeshVerticesSize;
     _Korl_Resource_Font_BakedGlyphMap* stbHmBakedGlyphs;// stored in _runtime_ memory; we need this to persist across korl-memoryState loads so that we can re-bake glyph pages, as those are _transient_ memory
-    _Korl_Resource_Font_GlyphPage*     stbDaGlyphPages;
+    _Korl_Resource_Font_GlyphPage*     stbDaGlyphPages;// stored in _transient_ memory; this will be entirely reconstructed in the event of a korl-memoryState load
 } _Korl_Resource_Font;
 korl_internal u8 _korl_resource_font_glyphPage_insert(_Korl_Resource_Font*const font, const int sizeX, const int sizeY, u16* out_x0, u16* out_y0, u16* out_x1, u16* out_y1)
 {
@@ -220,6 +220,11 @@ korl_internal const _Korl_Resource_Font_BakedGlyph* _korl_resource_font_getGlyph
     korl_assert(glyph);
     return glyph;
 }
+KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_font_collectDefragmentPointers)
+{
+    _Korl_Resource_Font*const font = resourceDescriptorStruct;
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_HASHMAP_CHILD(stbDaMemoryContext, pStbDaDefragmentPointers, font->stbHmBakedGlyphs, parent);
+}
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_font_descriptorStructCreate)
 {
     _Korl_Resource_Font*const font = korl_allocate(allocatorRuntime, sizeof(_Korl_Resource_Font));
@@ -339,12 +344,13 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
 korl_internal void korl_resource_font_register(void)
 {
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
-    descriptorManifest.utf8DescriptorName                = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_FONT);
-    descriptorManifest.callbacks.descriptorStructCreate  = korl_functionDynamo_register(_korl_resource_font_descriptorStructCreate);
-    descriptorManifest.callbacks.descriptorStructDestroy = korl_functionDynamo_register(_korl_resource_font_descriptorStructDestroy);
-    descriptorManifest.callbacks.clearTransientData      = korl_functionDynamo_register(_korl_resource_font_clearTransientData);
-    descriptorManifest.callbacks.unload                  = korl_functionDynamo_register(_korl_resource_font_unload);
-    descriptorManifest.callbacks.transcode               = korl_functionDynamo_register(_korl_resource_font_transcode);
+    descriptorManifest.utf8DescriptorName                  = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_FONT);
+    descriptorManifest.callbacks.collectDefragmentPointers = korl_functionDynamo_register(_korl_resource_font_collectDefragmentPointers);
+    descriptorManifest.callbacks.descriptorStructCreate    = korl_functionDynamo_register(_korl_resource_font_descriptorStructCreate);
+    descriptorManifest.callbacks.descriptorStructDestroy   = korl_functionDynamo_register(_korl_resource_font_descriptorStructDestroy);
+    descriptorManifest.callbacks.clearTransientData        = korl_functionDynamo_register(_korl_resource_font_clearTransientData);
+    descriptorManifest.callbacks.unload                    = korl_functionDynamo_register(_korl_resource_font_unload);
+    descriptorManifest.callbacks.transcode                 = korl_functionDynamo_register(_korl_resource_font_transcode);
     korl_resource_descriptor_register(&descriptorManifest);
 }
 korl_internal u8 _korl_resource_font_nearestSupportedPixelHeightIndex(f32 pixelHeight)
