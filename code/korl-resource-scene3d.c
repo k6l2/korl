@@ -421,7 +421,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 const f32*const inputAccesssorMax = korl_codec_gltf_accessor_getMax(scene3d->gltf, inputAccessor);
                 KORL_MATH_ASSIGN_CLAMP_MAX(animation->keyFrameSecondsStart, inputAccesssorMin[0]);
                 KORL_MATH_ASSIGN_CLAMP_MIN(animation->keyFrameSecondsEnd  , inputAccesssorMax[0]);
-                korl_assert(animation->keyFrameSecondsStart < animation->keyFrameSecondsEnd);
+                korl_assert(animation->keyFrameSecondsStart <= animation->keyFrameSecondsEnd);
             }
             /* transcode key frame samples */
             const Korl_Codec_Gltf_Accessor*const   outputAccessor               = gltfAccessors + gltfAnimSampler->output;
