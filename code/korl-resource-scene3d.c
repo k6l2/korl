@@ -56,9 +56,28 @@ typedef struct _Korl_Resource_Scene3d
 } _Korl_Resource_Scene3d;
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPointers(_korl_resource_scene3d_collectDefragmentPointers)
 {
+    _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
     if(korlResourceAllocatorIsTransient)
     {
-        //@TODO
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->gltf, parent);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->textures, parent);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->meshes, parent);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->meshPrimitives, parent);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins, parent);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations, parent);
+        for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
+        {
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneInverseBindMatrices, scene3d->skins);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneTopologicalOrder, scene3d->skins);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneParentIndices, scene3d->skins);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].nodeIndex_to_boneIndex, scene3d->skins);
+        }
+        for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
+        {
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].samples, scene3d->animations);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].sampleSets, scene3d->animations);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].keyFramesSeconds, scene3d->animations);
+        }
     }
 }
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructCreate(_korl_resource_scene3d_descriptorStructCreate)
