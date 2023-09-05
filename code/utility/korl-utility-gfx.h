@@ -82,8 +82,8 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableCircle(const Korl_Gfx_CreateInf
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableUtf8(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight, Korl_Resource_Font_TextMetrics* o_textMetrics);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableUtf16(Korl_Gfx_Drawable_Runtime_Type type, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight, Korl_Resource_Font_TextMetrics* o_textMetrics);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableAxisNormalLines(Korl_Gfx_Drawable_Runtime_Type type);
-//@TODO: change utf8MeshName to u32 meshIndex
 korl_internal Korl_Gfx_Drawable korl_gfx_mesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName);
+korl_internal Korl_Gfx_Drawable korl_gfx_meshIndexed(Korl_Resource_Handle resourceHandleScene3d, u32 meshIndex);
 korl_internal void              korl_gfx_drawable_addInterleavedVertices(Korl_Gfx_Drawable*const context, u32 vertexCount);
 korl_internal u16*              korl_gfx_drawable_indexU16(const Korl_Gfx_Drawable*const context, u32 indicesIndex);
 korl_internal u32*              korl_gfx_drawable_attributeU32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex);
@@ -105,7 +105,7 @@ korl_internal void              korl_gfx_drawUtf83d(Korl_Math_V3f32 position, Ko
 korl_internal void              korl_gfx_drawUtf162d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Resource_Font_TextMetrics* o_textMetrics);
 korl_internal void              korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu16 utf16Text, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Resource_Font_TextMetrics* o_textMetrics);
 korl_internal void              korl_gfx_drawAabb3(Korl_Math_Aabb3f32 aabb, const Korl_Gfx_Material* material);
-//@TODO: change utf8MeshName to u32 meshIndex
 korl_internal void              korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin);
+korl_internal void              korl_gfx_drawMeshIndexed(Korl_Resource_Handle resourceHandleScene3d, u32 meshIndex, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin);
 korl_internal void              korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale);
 korl_internal void              korl_gfx_setRectangleUvAabb(Korl_Math_V2f32* uvs, const Korl_Math_Aabb2f32 aabb);

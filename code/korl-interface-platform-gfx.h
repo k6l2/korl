@@ -344,7 +344,7 @@ typedef struct Korl_Gfx_Drawable
             u8                          rawUtf8Scene3dMeshName[32];
             u8                          rawUtf8Scene3dMeshNameSize;// _excluding_ null-terminator
             u32                         meshIndex;// invalid until the scene3d resource becomes loaded
-            u8                          meshPrimitives;// 0 => scene3d resource has not yet been loaded; defines the maximum # of Materials the user can pass to korl_gfx_draw
+            u8                          meshPrimitives;// 0 => scene3d resource has not yet been loaded; set automatically when user calls korl_gfx_draw with this object; defines the maximum # of Materials the user can pass to korl_gfx_draw
         } mesh;
     } subType;
 } Korl_Gfx_Drawable;

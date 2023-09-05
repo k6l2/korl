@@ -840,6 +840,15 @@ korl_internal Korl_Gfx_Drawable korl_gfx_mesh(Korl_Resource_Handle resourceHandl
     result.subType.mesh.rawUtf8Scene3dMeshNameSize                = korl_checkCast_u$_to_u8(utf8MeshName.size);
     return result;
 }
+korl_internal Korl_Gfx_Drawable korl_gfx_meshIndexed(Korl_Resource_Handle resourceHandleScene3d, u32 meshIndex)
+{
+    KORL_ZERO_STACK(Korl_Gfx_Drawable, result);
+    result.type                               = KORL_GFX_DRAWABLE_TYPE_MESH;
+    result.transform                          = korl_math_transform3d_identity();
+    result.subType.mesh.resourceHandleScene3d = resourceHandleScene3d;
+    result.subType.mesh.meshIndex             = meshIndex;
+    return result;
+}
 korl_internal void korl_gfx_drawable_addInterleavedVertices(Korl_Gfx_Drawable*const context, u32 vertexCount)
 {
     korl_assert(context->type == KORL_GFX_DRAWABLE_TYPE_RUNTIME);
@@ -1189,6 +1198,13 @@ korl_internal void korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quat
 korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin)
 {
     Korl_Gfx_Drawable mesh = korl_gfx_mesh(resourceHandleScene3d, utf8MeshName);
+    mesh.transform         = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
+    mesh.subType.mesh.skin = skin;
+    korl_gfx_draw(&mesh, materials, materialsSize);
+}
+korl_internal void korl_gfx_drawMeshIndexed(Korl_Resource_Handle resourceHandleScene3d, u32 meshIndex, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin)
+{
+    Korl_Gfx_Drawable mesh = korl_gfx_meshIndexed(resourceHandleScene3d, meshIndex);
     mesh.transform         = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
     mesh.subType.mesh.skin = skin;
     korl_gfx_draw(&mesh, materials, materialsSize);

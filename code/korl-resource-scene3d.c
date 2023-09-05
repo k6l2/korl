@@ -544,6 +544,15 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshIndex(korl_resource_sce
     korl_log(WARNING, "mesh name \"%.*hs\" not found", utf8MeshName.size, utf8MeshName.data);
     return KORL_U32_MAX;
 }
+korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshName(korl_resource_scene3d_getMeshName)
+{
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return KORL_RAW_CONST_UTF8("SCENE3D UNLOADED");
+    korl_assert(meshIndex < scene3d->gltf->meshes.size);
+    const Korl_Codec_Gltf_Mesh*const gltfMeshes = korl_codec_gltf_getMeshes(scene3d->gltf);
+    return korl_codec_gltf_mesh_getName(scene3d->gltf, gltfMeshes + meshIndex);
+}
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(korl_resource_scene3d_getMeshPrimitiveCount)
 {
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);

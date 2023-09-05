@@ -322,11 +322,21 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     case KORL_GFX_DRAWABLE_TYPE_MESH:{
         if(!context->subType.mesh.meshPrimitives && korl_resource_isLoaded(context->subType.mesh.resourceHandleScene3d))
         {
-            const acu8 utf8MeshName       = (acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
-                                                  ,.data = context->subType.mesh.rawUtf8Scene3dMeshName};
-            const u32  meshIndex          = korl_resource_scene3d_getMeshIndex(context->subType.mesh.resourceHandleScene3d, utf8MeshName);
-            const u32  meshPrimitiveCount = korl_resource_scene3d_getMeshPrimitiveCount(context->subType.mesh.resourceHandleScene3d, meshIndex);
-            context->subType.mesh.meshIndex      = meshIndex;
+            /* the user has the option of initializing a MESH Drawable with either a meshIndex or a meshName; 
+                we can obtain all the rest of the mesh data with either of these */
+            if(context->subType.mesh.rawUtf8Scene3dMeshNameSize)
+                context->subType.mesh.meshIndex = korl_resource_scene3d_getMeshIndex(context->subType.mesh.resourceHandleScene3d
+                                                                                    ,(acu8){.size = context->subType.mesh.rawUtf8Scene3dMeshNameSize
+                                                                                           ,.data = context->subType.mesh.rawUtf8Scene3dMeshName});
+            else
+            {
+                const acu8 meshName = korl_resource_scene3d_getMeshName(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.meshIndex);
+                korl_assert(meshName.size < korl_arraySize(context->subType.mesh.rawUtf8Scene3dMeshName) - 1/*leave room for null-terminator*/);
+                context->subType.mesh.rawUtf8Scene3dMeshNameSize = korl_checkCast_u$_to_u8(meshName.size);
+                korl_memory_copy(context->subType.mesh.rawUtf8Scene3dMeshName, meshName.data, meshName.size * sizeof(*meshName.data));
+                context->subType.mesh.rawUtf8Scene3dMeshName[meshName.size] = '\0';
+            }
+            const u32 meshPrimitiveCount = korl_resource_scene3d_getMeshPrimitiveCount(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.meshIndex);
             context->subType.mesh.meshPrimitives = korl_checkCast_u$_to_u8(meshPrimitiveCount);
         }
         if(!context->subType.mesh.meshPrimitives)

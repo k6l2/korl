@@ -99,6 +99,7 @@ typedef KORL_RESOURCE_FOR_EACH_CALLBACK(korl_resource_callback_forEach);
 #define KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(name)                u32                                 name(Korl_Resource_Handle handleResourceScene3d)
 #define KORL_FUNCTION_korl_resource_scene3d_getMaterial(name)                     Korl_Gfx_Material                   name(Korl_Resource_Handle handleResourceScene3d, u32 materialIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshIndex(name)                    u32                                 name(Korl_Resource_Handle handleResourceScene3d, acu8 utf8MeshName)
+#define KORL_FUNCTION_korl_resource_scene3d_getMeshName(name)                     acu8                                name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(name)           u32                                 name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(name)                Korl_Resource_Scene3d_MeshPrimitive name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, u32 primitiveIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_newSkin(name)                         Korl_Resource_Scene3d_Skin          name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, Korl_Memory_AllocatorHandle allocator)
