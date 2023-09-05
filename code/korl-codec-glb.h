@@ -166,6 +166,8 @@ typedef struct Korl_Codec_Gltf_Material
     {
         Korl_Codec_Gltf_Data rawUtf8KorlShaderVertex;
         Korl_Codec_Gltf_Data rawUtf8KorlShaderFragment;
+        //@TODO: actually extract this data from GLTF JSON
+        bool                 korlIsUnlit;// by default we assume all GLTF materials use a default lighting model; if true, we use default unlit built-in shaders (if none are provided via other properties), otherwise we use default lit built-in shaders
     } extras;
 } Korl_Codec_Gltf_Material;
 korl_global_const Korl_Codec_Gltf_Material KORL_CODEC_GLTF_MATERIAL_DEFAULT = {.alphaCutoff            = 0.5f

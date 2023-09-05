@@ -65,18 +65,21 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_collectDefragmentPoin
         KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->meshPrimitives, parent);
         KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins, parent);
         KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations, parent);
-        for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
+        if(scene3d->gltf)
         {
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneInverseBindMatrices, scene3d->skins);
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneTopologicalOrder, scene3d->skins);
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneParentIndices, scene3d->skins);
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].nodeIndex_to_boneIndex, scene3d->skins);
-        }
-        for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
-        {
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].samples, scene3d->animations);
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].sampleSets, scene3d->animations);
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].keyFramesSeconds, scene3d->animations);
+            for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
+            {
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneInverseBindMatrices, scene3d->skins);
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneTopologicalOrder, scene3d->skins);
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].boneParentIndices, scene3d->skins);
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->skins[s].nodeIndex_to_boneIndex, scene3d->skins);
+            }
+            for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
+            {
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].samples, scene3d->animations);
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].sampleSets, scene3d->animations);
+                KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, scene3d->animations[a].keyFramesSeconds, scene3d->animations);
+            }
         }
     }
 }
@@ -103,7 +106,7 @@ korl_internal const void* _korl_resource_scene3d_transcode_getViewedBuffer(_Korl
     const void*const viewedBufferData = KORL_C_CAST(u8*, bufferData ) + bufferView->byteOffset;
     return viewedBufferData;
 }
-korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resource_Scene3d*const scene3d, u32 materialIndex)
+korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resource_Scene3d*const scene3d, u32 materialIndex, const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive)
 {
     korl_assert(materialIndex < scene3d->gltf->materials.size);
     const Korl_Codec_Gltf_Material*const gltfMaterial = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
@@ -117,12 +120,21 @@ korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resourc
     result.modes.cullMode = gltfMaterial->doubleSided ? KORL_GFX_MATERIAL_CULL_MODE_NONE : KORL_GFX_MATERIAL_CULL_MODE_BACK;
     if(gltfMaterial->extras.rawUtf8KorlShaderVertex.size)
         result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderVertex), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    else if(!gltfMaterial->extras.korlIsUnlit)
+        if(meshPrimitive && meshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_JOINTS_0] >= 0)
+            result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit-skinned.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        else
+            result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(gltfMaterial->extras.rawUtf8KorlShaderFragment.size)
         result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderFragment), KORL_ASSETCACHE_GET_FLAG_LAZY);
+    else if(!gltfMaterial->extras.korlIsUnlit)
+        result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
         result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
+    else
+        result.maps.resourceHandleTextureSpecular = korl_gfx_getBlankTexture();
     result.fragmentShaderUniform.factorColorSpecular = gltfMaterial->KHR_materials_specular.factors;
     result.fragmentShaderUniform.shininess           = 32;// not sure if we can actually store this in gltf; see: https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_specular/README.md
     return result;
@@ -291,7 +303,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             if(meshPrimitive->material < 0)
                 sceneMeshPrimitive->material = korl_gfx_material_defaultUnlit();
             else
-                sceneMeshPrimitive->material = _korl_resource_scene3d_getMaterial(scene3d, meshPrimitive->material);
+                sceneMeshPrimitive->material = _korl_resource_scene3d_getMaterial(scene3d, meshPrimitive->material, meshPrimitive);
         }
         /* enumerate Nodes to identify whether or not there is a skin compatible with this mesh */
         scene3d->meshes[m].skinIndex = -1;
@@ -530,7 +542,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterial(korl_resource_scen
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
     if(!scene3d || !scene3d->gltf)
         return korl_gfx_material_defaultUnlit();
-    return _korl_resource_scene3d_getMaterial(scene3d, materialIndex);
+    return _korl_resource_scene3d_getMaterial(scene3d, materialIndex, NULL);
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshIndex(korl_resource_scene3d_getMeshIndex)
 {
