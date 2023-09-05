@@ -694,7 +694,7 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_skin_applyAnimation(korl_resou
             const u32 kNext               = KORL_MATH_CLAMP(k + 1, 0, gltfAccessorInput->count - 1);
             const f32 keyframeCurrent     = animationSeconds - keyFramesSeconds[k];
             const f32 keyframeDuration    = keyFramesSeconds[kNext] - keyFramesSeconds[k];
-            const f32 interpolationFactor = keyframeCurrent / keyframeDuration;
+            const f32 interpolationFactor = korl_math_isNearlyZero(keyframeDuration) ? 0 : keyframeCurrent / keyframeDuration;
             korl_assert(   (interpolationFactor > 0 || korl_math_isNearlyZero(interpolationFactor))
                         && (interpolationFactor < 1 || korl_math_isNearlyEqual(interpolationFactor, 1)));
             switch(gltfAnimationChannel->target.path)

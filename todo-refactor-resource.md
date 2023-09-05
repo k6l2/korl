@@ -141,6 +141,7 @@
   - ISSUE: what if a resource asset file contains a reference to another asset file? ☹
     - we can't easily detect this condition unfortunately, since the way any given resource encodes an asset file string is going to greatly differ
   - I don't feel like I am gaining anything from this right now, so I will not do it
+[ ] test scene3d mesh with multiple MeshPrimitives
 [ ] test hot-reloading of code module that contains a registered resource descriptor
   - followed by hot-reload of one of the resources using said descriptor
   - to ensure that we are updating function pointers of resource descriptor callbacks
