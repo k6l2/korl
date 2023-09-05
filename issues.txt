@@ -62,7 +62,6 @@
 [ ] KORL-ISSUE-000-000-130: gfx/font: (MAJOR) `font->stbtt_info` sets up pointers to data within `data`; if that data ever moves or gets wiped (defragment, memoryState-load, etc.), then `font->stbtt_info` will contain dangling pointers!; at the moment we don't need to fix this because all font resources are backed by assetCache, and assetCache is not yet deprecating/defragmenting asset memory
 [ ] KORL-ISSUE-000-000-133: heap: re-write GENERAL heap; the current implementation of GENERAL heap is needlessly complex, slow, & _buggy_
 [ ] KORL-ISSUE-000-000-134: vulkan: add the ability to dynamically increase staging buffer arena capacity, as well as tune this initial value
-[@TODO] KORL-ISSUE-000-000-135: resource: defragment transient resource data
 [ ] KORL-ISSUE-000-000-136: memoryState: after loading a memory state, "serialized" allocator allocations have invalid meta->file pointers
 [ ] KORL-ISSUE-000-000-137: gui: capture mouse; it's really annoying how when we are click+dragging on a widget and the mouse outside the program window, we stop processing events; https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcapture
 [ ] KORL-ISSUE-000-000-139: gui: user can still interact with minimized window (click+drag to move them around)
@@ -241,6 +240,7 @@
 [x] KORL-ISSUE-000-000-129: gfx/font: move all "FontCache" functionality into korl-resource, replace all "fontAssetName" strings in korl-gfx data structures with FONT Korl_Resource_Handles; this has gotten ridiculous: all the FontCache stuff should be managed by korl-resource because we need to be able to invalidate/reload this data properly when the underlying font asset is hot-reloaded, or when we load a memoryState or something; all the FontCache APIs should be `korl_resource_font_*` APIs, or something similar
 [x] KORL-ISSUE-000-000-131: file: make `korl_file_create` iterate over each directory separator & ensure the directory exists, then we can likely just delete `korl_file_directory_create`
 [x] KORL-ISSUE-000-000-132: heap: multi-threading hazard; in order to use uniform context with this sort API on multiple threads, we would need to use thread-local storage or something
+[x] KORL-ISSUE-000-000-135: resource: defragment transient resource data
 [x] KORL-ISSUE-000-000-138: gui: crash when all windows are minimized
 [x] KORL-ISSUE-000-000-140: audio: support 24-bit signed PCM
 [x] KORL-ISSUE-000-000-143: asset/resource/gfx: not sure where the root of this issue is; sometimes randomly (but experimentally, most often from a cold start), a texture file-asset-backed resource will fail to render; after investigating a memoryState in renderdoc, it seems the texture is loading just fine, and the Batch UVs are all 0 for some reason?; this was actually resolved by commit a0922667fca8892dc3a7b738e425086fb621e11e I think
