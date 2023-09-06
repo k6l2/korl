@@ -64,7 +64,7 @@ korl_internal inline f32 korl_math_f32_nan(void)
     korl_shared_const u32 MAX_U32 = KORL_U32_MAX;
     return *KORL_C_CAST(f32*, &MAX_U32);
 }
-korl_internal inline f32 korl_math_lerp(f32 from, f32 to, f32 factor)
+korl_internal inline f32 korl_math_f32_lerp(f32 from, f32 to, f32 factor)
 {
     return from + factor*(to - from);
 }
@@ -486,7 +486,7 @@ korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_
 {
     Korl_Math_V4u8 result;
     for(u8 i = 0; i < korl_arraySize(result.elements); i++)
-        result.elements[i] = korl_math_round_f32_to_u8(korl_math_lerp(from.elements[i], to.elements[i], factor));
+        result.elements[i] = korl_math_round_f32_to_u8(korl_math_f32_lerp(from.elements[i], to.elements[i], factor));
     return result;
 }
 #pragma warning(pop)

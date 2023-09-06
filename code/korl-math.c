@@ -108,5 +108,5 @@ korl_internal inline KORL_FUNCTION_korl_math_exDecay(korl_math_exDecay)
 {
     // good resource on this:  
     //  https://www.rorydriscoll.com/2016/03/07/frame-rate-independent-damping-using-lerp/
-    return korl_math_lerp(to, from, expf(-lambdaFactor * deltaTime));
+    return korl_math_f32_lerp(to, from, expf(-lambdaFactor * deltaTime));
 }

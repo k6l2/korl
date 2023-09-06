@@ -188,7 +188,7 @@ korl_internal void korl_sfx_mix(void)
                     rendered more evenly across channels, and sounds further away will be more likely to favor the 
                     most relevant listener channel; this prevents a lot of harsh volume panning from occurring when 
                     Decks are extremely close to the listener */
-                tapeDeck->control.channelVolumeRatios[channel] = korl_math_lerp(attenuationFactor * orientationFactors[channel], attenuationFactor, attenuationFactor);
+                tapeDeck->control.channelVolumeRatios[channel] = korl_math_f32_lerp(attenuationFactor * orientationFactors[channel], attenuationFactor, attenuationFactor);
         }
         Korl_Sfx_TapeCategoryControl*const tapeCategoryControl = &_korl_sfx_context.tapeDeckControls[tapeDeck->control.category];
         const f32 uniformVolumeRatio = _korl_sfx_context.masterVolumeRatio * tapeCategoryControl->volumeRatio;
