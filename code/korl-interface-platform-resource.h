@@ -102,7 +102,7 @@ typedef KORL_RESOURCE_FOR_EACH_CALLBACK(korl_resource_callback_forEach);
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshName(name)                     acu8                                name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(name)           u32                                 name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(name)                Korl_Resource_Scene3d_MeshPrimitive name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, u32 primitiveIndex)
-#define KORL_FUNCTION_korl_resource_scene3d_newSkin(name)                         Korl_Resource_Scene3d_Skin          name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, Korl_Memory_AllocatorHandle allocator)
+#define KORL_FUNCTION_korl_resource_scene3d_newSkin(name)                         Korl_Resource_Scene3d_Skin*         name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneParentIndices(name)       const i32*                          name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneTopologicalOrder(name)    const u32*                          name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneInverseBindMatrices(name) const Korl_Math_M4f32*              name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)

@@ -349,20 +349,20 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
                 - multiply each bone matrix by their respective inverseBindMatrix
                 - set the appropriate vulkan DrawState to use the bone descriptor staging allocation */
             /* allocate descriptor staging memory for bone matrices */
-            const Korl_Vulkan_DescriptorStagingAllocation descriptorStagingAllocationBones = korl_vulkan_stagingAllocateDescriptorData(context->subType.mesh.skin->bonesCount * sizeof(Korl_Math_M4f32));
+            const Korl_Vulkan_DescriptorStagingAllocation descriptorStagingAllocationBones = korl_vulkan_stagingAllocateDescriptorData(context->subType.mesh.skin->bonesSize * sizeof(Korl_Math_M4f32));
             Korl_Math_M4f32*const boneMatrices = descriptorStagingAllocationBones.data;
             /* compute bone matrices with respect to topological order */
             const i32*const boneParentIndices    = korl_resource_scene3d_skin_getBoneParentIndices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
             const u32*const boneTopologicalOrder = korl_resource_scene3d_skin_getBoneTopologicalOrder(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
             {/* we treat the (topologically) first bone's computation specially, since it _must_ be the root bone */
-                korl_assert(context->subType.mesh.skin->bonesCount > 0);// ensure there is at least one bone in the skin
+                korl_assert(context->subType.mesh.skin->bonesSize > 0);// ensure there is at least one bone in the skin
                 const u32 boneRoot = boneTopologicalOrder[0];
                 korl_assert(boneParentIndices[boneRoot] < 0);// we expect the first bone in topological order to have _no_ parent, as it _must_ be the common root node
                 korl_assert(context->transform._m4f32IsUpdated);// this should have been updated at the top of this function
                 korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[boneRoot]);
                 boneMatrices[boneRoot] = korl_math_m4f32_multiply(&context->transform._m4f32, &context->subType.mesh.skin->bones[boneRoot]._m4f32);// the root bone node can simply be the local transform with context's model xform applied, preventing the need to apply the model xform to all vertices in the shader
             }
-            for(u32 bt = 1; bt < context->subType.mesh.skin->bonesCount; bt++)
+            for(u32 bt = 1; bt < context->subType.mesh.skin->bonesSize; bt++)
             {
                 const u32 b  = boneTopologicalOrder[bt];// index of the current bone to process
                 const u32 bp = boneParentIndices[b];    // index of the current bone's parent
@@ -373,7 +373,7 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             }
             /* pre-multiply bone matrices with their respective inverseBindMatrix */
             const Korl_Math_M4f32*const boneInverseBindMatrices = korl_resource_scene3d_skin_getBoneInverseBindMatrices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
-            for(u32 b = 0; b < context->subType.mesh.skin->bonesCount; b++)
+            for(u32 b = 0; b < context->subType.mesh.skin->bonesSize; b++)
                 boneMatrices[b] = korl_math_m4f32_multiply(boneMatrices + b, boneInverseBindMatrices + b);
             /* apply the bone matrix descriptor to vulkan DrawState */
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);

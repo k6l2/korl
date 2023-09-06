@@ -79,10 +79,9 @@ typedef struct Korl_Resource_Scene3d_MeshPrimitive
  * done to prevent memory leaks */
 typedef struct Korl_Resource_Scene3d_Skin
 {
-    Korl_Memory_AllocatorHandle allocator; // we need to store a skin instance somewhere in dynamic memory because we don't know how many bones a skin requires
-    u32                         skinIndex; // used for obtaining the pre-baked topologically sorted boneIndex array
-    u32                         bonesCount;
-    //@TODO: consider making this just a variable-length array embedded in the same allocation to reduce allocations
-    Korl_Math_Transform3d*      bones;     // the actual transforms which can be modified/animated at any time by the user; before being used to calculate vertex world-space positions, we must multiply these by their respective inverseBindMatrices which are baked in the scene3d resource
+    Korl_Memory_AllocatorHandle allocator;// we need to store a skin instance somewhere in dynamic memory because we don't know how many bones a skin requires
+    u32                         skinIndex;// used for obtaining the pre-baked topologically sorted boneIndex array
+    u32                         bonesSize;
+    Korl_Math_Transform3d       bones[];  // the actual transforms which can be modified/animated at any time by the user; before being used to calculate vertex world-space positions, we must multiply these by their respective inverseBindMatrices which are baked in the scene3d resource
 } Korl_Resource_Scene3d_Skin;
 korl_internal void korl_resource_scene3d_skin_destroy(Korl_Resource_Scene3d_Skin* context);
