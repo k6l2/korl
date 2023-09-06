@@ -95,6 +95,7 @@ typedef enum Korl_Gltf_Object_Type
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_VERTEX
     ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT
+    ,KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_IS_UNLIT
     ,KORL_GLTF_OBJECT_TEXTURES
     ,KORL_GLTF_OBJECT_TEXTURES_ARRAY
     ,KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT
@@ -532,6 +533,8 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_VERTEX;
                     else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("korl-shader-fragment")))
                         objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT;
+                    else if(0 == korl_memory_compare_acu8(tokenRawUtf8, KORL_RAW_CONST_UTF8("korl-isUnlit")))
+                        objectType = KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_IS_UNLIT;
                     break;}
                 case KORL_GLTF_OBJECT_TEXTURES:{
                     korl_assert(jsonToken->type == JSMN_ARRAY);
@@ -847,6 +850,10 @@ korl_internal u32 _korl_codec_glb_decodeChunkJson_processPass(_Korl_Codec_Glb_Ch
             case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_SHADER_FRAGMENT:{
                 Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
                 _korl_codec_glb_decodeChunkJson_processPass_getString(currentMaterial->extras.rawUtf8KorlShaderFragment);
+                break;}
+            case KORL_GLTF_OBJECT_MATERIALS_ARRAY_ELEMENT_EXTRAS_OBJECT_KORL_IS_UNLIT:{
+                Korl_Codec_Gltf_Material*const currentMaterial = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_MATERIALS_ARRAY, sizeof(*currentMaterial));
+                if(currentMaterial) currentMaterial->extras.korlIsUnlit = korl_jsmn_getBool(chunk->data, jsonToken);
                 break;}
             case KORL_GLTF_OBJECT_TEXTURES_ARRAY_ELEMENT_SAMPLER:{
                 Korl_Codec_Gltf_Texture*const currentTexture = _korl_codec_glb_decodeChunkJson_processPass_currentArrayItem(context, objectStack, KORL_MEMORY_POOL_SIZE(objectStack), KORL_GLTF_OBJECT_TEXTURES_ARRAY, sizeof(*currentTexture));
