@@ -1872,10 +1872,9 @@ korl_internal void korl_gui_frameEnd(void)
             if(!korl_resource_isLoaded(context->style.resourceHandleFont))
                 break;
             /* prepare the font/text metrics, but defer drawing until later, since we will be drawing some stuff behind the translucent text mesh */
-            const Korl_Resource_Font_Metrics     fontMetrics              = korl_resource_font_getMetrics(context->style.resourceHandleFont, context->style.windowTextPixelSizeY);
-            const f32                            sizeToSupportedSizeRatio = context->style.windowTextPixelSizeY / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
-            const f32                            textLineDeltaY           = sizeToSupportedSizeRatio * ((fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */);
-            const Korl_Resource_Font_TextMetrics textMetrics              = korl_resource_font_getUtf8Metrics(context->style.resourceHandleFont, context->style.windowTextPixelSizeY, string_getRawAcu8(&widget->subType.inputText.string));
+            const Korl_Resource_Font_Metrics     fontMetrics    = korl_resource_font_getMetrics(context->style.resourceHandleFont, context->style.windowTextPixelSizeY);
+            const f32                            textLineDeltaY = (fontMetrics.ascent - fontMetrics.decent) /*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */;
+            const Korl_Resource_Font_TextMetrics textMetrics    = korl_resource_font_getUtf8Metrics(context->style.resourceHandleFont, context->style.windowTextPixelSizeY, string_getRawAcu8(&widget->subType.inputText.string));
             usedWidget->transient.aabbContent.min.y -= textLineDeltaY;
             /* draw a simple box around the input widget itself */
             korl_assert(usedWidgetParent);// for now, we want to just have the INPUT_TEXT widget fill the remaining X space of our parent
@@ -1885,27 +1884,25 @@ korl_internal void korl_gui_frameEnd(void)
             korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x, widget->position.y, z}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT, contentAabbSize, 0, &materialBackground, NULL, NULL, NULL);
             /* draw the selection region _behind_ the text, if our cursor defines a selection */
             const Korl_Math_V2f32      cursorSize          = {2, textLineDeltaY};
-            const Korl_Math_V2f32      cursorOrigin        = {0, korl_math_f32_positive(sizeToSupportedSizeRatio * fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
+            const Korl_Math_V2f32      cursorOrigin        = {0, korl_math_f32_positive(fontMetrics.decent/*+ fontMetrics.lineGap // we don't need the lineGap, since we don't expect multiple text lines */ / textLineDeltaY)};
             const Korl_Gfx_Material    cursorMaterial      = korl_gfx_material_defaultUnlitFlagsColorbase(defaultMaterialModeFlags, korl_gfx_color_toLinear((Korl_Gfx_Color4u8){0, 255, 0, 100}));
             const u$                   cursorBegin         = KORL_MATH_MIN(widget->subType.inputText.stringCursorGraphemeIndex
                                                                           ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
             const u$                   cursorEnd           = KORL_MATH_MAX(widget->subType.inputText.stringCursorGraphemeIndex
                                                                           ,widget->subType.inputText.stringCursorGraphemeIndex + widget->subType.inputText.stringCursorGraphemeSelection);
-            const Korl_Math_V2f32      cursorPositionBegin = korl_math_v2f32_multiplyScalar(korl_resource_font_textGraphemePosition(context->style.resourceHandleFont
-                                                                                                                                   ,context->style.windowTextPixelSizeY
-                                                                                                                                   ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
-                                                                                                                                   ,cursorBegin)
-                                                                                           ,sizeToSupportedSizeRatio);
+            const Korl_Math_V2f32      cursorPositionBegin = korl_resource_font_textGraphemePosition(context->style.resourceHandleFont
+                                                                                                    ,context->style.windowTextPixelSizeY
+                                                                                                    ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
+                                                                                                    ,cursorBegin);
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin < cursorEnd)
             {
-                const Korl_Math_V2f32 cursorPositionEnd = korl_math_v2f32_multiplyScalar(korl_resource_font_textGraphemePosition(context->style.resourceHandleFont
-                                                                                                                                ,context->style.windowTextPixelSizeY
-                                                                                                                                ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
-                                                                                                                                ,cursorEnd)
-                                                                                        ,sizeToSupportedSizeRatio);
+                const Korl_Math_V2f32 cursorPositionEnd = korl_resource_font_textGraphemePosition(context->style.resourceHandleFont
+                                                                                                 ,context->style.windowTextPixelSizeY
+                                                                                                 ,korl_stringPool_getRawAcu8(&widget->subType.inputText.string)
+                                                                                                 ,cursorEnd);
                 /* in this case, we need to draw a highlight region for the entire selected grapheme range */
                 const Korl_Math_V2f32 lineSelectionSize = {cursorPositionEnd.x - cursorPositionBegin.x, textLineDeltaY};
-                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x + cursorPositionBegin.x, widget->position.y - sizeToSupportedSizeRatio * fontMetrics.ascent, z + 0.25f}, KORL_MATH_QUATERNION_IDENTITY
+                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.25f}, KORL_MATH_QUATERNION_IDENTITY
                                         ,cursorOrigin, lineSelectionSize, 0, &cursorMaterial, NULL, NULL, NULL);
             }
             /* draw the text buffer now, after any background elements */
@@ -1917,7 +1914,7 @@ korl_internal void korl_gui_frameEnd(void)
             if(widget->identifierHash == context->identifierHashLeafWidgetActive && cursorBegin >= cursorEnd)
             {
                 const Korl_Math_V2f32 inputCursorSize = widget->subType.inputText.inputMode ? cursorSize : (Korl_Math_V2f32){10, 2};
-                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x + cursorPositionBegin.x, widget->position.y - sizeToSupportedSizeRatio * fontMetrics.ascent, z + 0.75f}, KORL_MATH_QUATERNION_IDENTITY
+                korl_gfx_drawRectangle3d((Korl_Math_V3f32){widget->position.x + cursorPositionBegin.x, widget->position.y - fontMetrics.ascent, z + 0.75f}, KORL_MATH_QUATERNION_IDENTITY
                                         ,cursorOrigin, inputCursorSize, 0, &cursorMaterial, NULL, NULL, NULL);
             }
             break;}

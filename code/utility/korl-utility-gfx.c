@@ -101,9 +101,8 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
         korl_log(ERROR, "malformed Text; font resource not loaded");
         return;
     }
-    const Korl_Resource_Font_Metrics   fontMetrics              = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
-    const f32                          sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
-    const Korl_Math_V4f32              defaultLineColor         = korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE);// default all line colors to white
+    const Korl_Resource_Font_Metrics   fontMetrics         = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
+    const Korl_Math_V4f32              defaultLineColor    = korl_gfx_color_toLinear(KORL_COLOR4U8_WHITE);// default all line colors to white
     /* iterate over utf16Text until we hit a line break; upon reaching a line break, we can add another _Korl_Gfx_Text_Line to the context */
     _Korl_Gfx_Text_Line*               currentLine         = NULL;// the current working Line of text; we will accumulate substrings of codepoints which pass codepointTest (if it's provided) into this Line, until we reach a line-break ('\n') character
     Korl_Math_V4f32                    currentLineColor    = defaultLineColor;
@@ -129,7 +128,7 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
             {
                 /* update context metrics (glyph count, AABB)*/
                 context->totalVisibleGlyphs += currentLine->visibleCharacters;
-                KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, sizeToSupportedSizeRatio * currentLine->aabbSizeX);
+                KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, currentLine->aabbSizeX);
                 /* we're done with this Line now; nullify currentLine reference */
                 currentLine = NULL;
                 currentLineColor = defaultLineColor;
@@ -153,11 +152,11 @@ korl_internal void korl_gfx_text_fifoAdd(Korl_Gfx_Text* context, acu16 utf16Text
     {
         /* update context metrics (glyph count, AABB)*/
         context->totalVisibleGlyphs += currentLine->visibleCharacters;
-        KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, sizeToSupportedSizeRatio * currentLine->aabbSizeX);
+        KORL_MATH_ASSIGN_CLAMP_MIN(context->_modelAabbSize.x, currentLine->aabbSizeX);
     }
     /* we can easily calculate the height of the Text object's current AABB 
         using the font's cached metrics */
-    const f32 lineDeltaY = sizeToSupportedSizeRatio * ((fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap);
+    const f32 lineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
     context->_modelAabbSize.y = KORL_C_CAST(f32, arrlenu(context->stbDaLines)) * lineDeltaY;
 }
 korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount)
@@ -186,8 +185,6 @@ korl_internal void korl_gfx_text_fifoRemove(Korl_Gfx_Text* context, u$ lineCount
     const Korl_Resource_Font_Metrics fontMetrics = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
     const f32 lineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
     context->_modelAabbSize.y = KORL_C_CAST(f32, arrlenu(context->stbDaLines)) * lineDeltaY;
-    const f32 sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
-    korl_math_v2f32_assignMultiplyScalar(&context->_modelAabbSize, sizeToSupportedSizeRatio);
 }
 korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32 visibleRegion)
 {
@@ -195,7 +192,7 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
         return;
     const Korl_Resource_Font_Metrics fontMetrics = korl_resource_font_getMetrics(context->resourceHandleFont, context->textPixelHeight);
     const f32 sizeToSupportedSizeRatio = context->textPixelHeight / fontMetrics.nearestSupportedPixelHeight;// korl-resource-text will only bake glyphs at discrete pixel heights (for complexity/memory reasons); it is up to us to scale the final text mesh by the appropriate ratio to actually draw text at `textPixelHeight`
-    const f32 lineDeltaY = sizeToSupportedSizeRatio * ((fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap);
+    const f32 lineDeltaY = (fontMetrics.ascent - fontMetrics.decent) + fontMetrics.lineGap;
     /* we can now send the vertex index data to the buffer, which will be used 
         for all subsequent text line draw calls @korl-gfx-text-defer-index-buffer */
     const u$ glyphInstanceBufferSize = context->totalVisibleGlyphs * sizeof(_Korl_Gfx_Text_GlyphInstance);

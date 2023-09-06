@@ -403,7 +403,11 @@ korl_internal KORL_FUNCTION_korl_resource_font_getMetrics(korl_resource_font_get
     _Korl_Resource_Font*const font = korl_resource_getDescriptorStruct(handleResourceFont);
     if(!font->stbtt_info.data)
         return result;
-    return _korl_resource_font_getMetrics(font, textPixelHeight);
+    result = _korl_resource_font_getMetrics(font, textPixelHeight);
+    result.ascent  *= (textPixelHeight / result.nearestSupportedPixelHeight);
+    result.decent  *= (textPixelHeight / result.nearestSupportedPixelHeight);
+    result.lineGap *= (textPixelHeight / result.nearestSupportedPixelHeight);
+    return result;
 }
 korl_internal KORL_FUNCTION_korl_resource_font_getResources(korl_resource_font_getResources)
 {
@@ -497,9 +501,10 @@ korl_internal Korl_Resource_Font_TextMetrics _korl_resource_font_getUtfMetrics(_
         korl_log(ERROR, "unsupported UTF encoding: %hhu", utfEncoding);
         break;
     }
+    /* return all metrics, scaled by the ratio of the requested text pixel height by the font-supported pixel height */
     if(o_textBaselineCursorFinal)
-        *o_textBaselineCursorFinal = textBaselineCursor;
-    textMetrics.aabbSize = korl_math_aabb2f32_size(aabb);
+        *o_textBaselineCursorFinal = korl_math_v2f32_multiplyScalar(textBaselineCursor, textPixelHeight / fontMetrics.nearestSupportedPixelHeight);
+    textMetrics.aabbSize = korl_math_v2f32_multiplyScalar(korl_math_aabb2f32_size(aabb), textPixelHeight / fontMetrics.nearestSupportedPixelHeight);
     return textMetrics;
 }
 korl_internal void _korl_resource_font_generateUtf_common(_Korl_Resource_Font*const font, const f32 fontScale, const Korl_Resource_Font_Metrics fontMetrics, u32 codepoint, const f32 lineDeltaY, int* glyphIndexPrevious, Korl_Math_V2f32* textBaselineCursor, Korl_Resource_Font_TextMetrics* textMetrics, Korl_Math_V2f32 instancePositionOffset, Korl_Math_V2f32* o_glyphInstancePositions, u16 glyphInstancePositionsByteStride, u32* o_glyphInstanceIndices, u16 glyphInstanceIndicesByteStride)

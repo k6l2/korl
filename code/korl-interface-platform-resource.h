@@ -52,10 +52,10 @@ typedef struct Korl_Resource_DescriptorManifest
 /** to calculate the total spacing between two lines, use the formula: (ascent - decent) + lineGap */
 typedef struct Korl_Resource_Font_Metrics
 {
-    f32 ascent;
-    f32 decent;
-    f32 lineGap;
-    f32 nearestSupportedPixelHeight;// @TODO: this is causing the user-code grief; why can't we just pre-multiply all the other values with the correct scale?
+    f32 ascent; // pre-scaled by (textPixelHeight / nearestSupportedPixelHeight)
+    f32 decent; // pre-scaled by (textPixelHeight / nearestSupportedPixelHeight)
+    f32 lineGap;// pre-scaled by (textPixelHeight / nearestSupportedPixelHeight)
+    f32 nearestSupportedPixelHeight;// NOTE: since all text metrics are pre-scaled by (textPixelHeight / nearestSupportedPixelHeight), the only thing the user needs this for is applying that scale factor to the model=>world transform of any text meshes generated from the same parameters as these metrics
     u8  _nearestSupportedPixelHeightIndex;
 } Korl_Resource_Font_Metrics;
 typedef struct Korl_Resource_Font_Resources
@@ -65,7 +65,7 @@ typedef struct Korl_Resource_Font_Resources
 } Korl_Resource_Font_Resources;
 typedef struct Korl_Resource_Font_TextMetrics
 {
-    Korl_Math_V2f32 aabbSize;//@TODO: is this properly scaled by nearestSupportedPixelHeight?
+    Korl_Math_V2f32 aabbSize;// NOTE: this, like all other text metrics, is already pre-scaled by (textPixelHeight / nearestSupportedPixelHeight)
     u32             visibleGlyphCount;
 } Korl_Resource_Font_TextMetrics;
 typedef enum Korl_Resource_ForEach_Result
