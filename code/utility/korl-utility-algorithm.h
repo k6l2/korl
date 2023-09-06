@@ -1,7 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
-// @TODO: add code samples for KORL_ALGORITHM_BVH_VOLUME_UNION & KORL_ALGORITHM_BVH_VOLUME_INTERSECTS
+//KORL-ISSUE-000-000-194: algorithm: add code samples for KORL_ALGORITHM_BVH_VOLUME_UNION & KORL_ALGORITHM_BVH_VOLUME_INTERSECTS
 #define KORL_ALGORITHM_BVH_VOLUME_UNION(name) void name(void* a, const void* b)
 typedef KORL_ALGORITHM_BVH_VOLUME_UNION(fnSig_korl_algorithm_bvh_volumeUnion);
 #define KORL_ALGORITHM_BVH_VOLUME_INTERSECTS(name) bool name(const void* a, const void* b)

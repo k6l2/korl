@@ -473,7 +473,8 @@ korl_internal void korl_gui_initialize(void)
     context->style.colorTextOutline               = (Korl_Gfx_Color4u8){  0,   5,   0, 255};
     context->style.textOutlinePixelSize           = 0.f;
     context->style.resourceHandleFont             = 0;// by default, no font resource is loaded, so no text rendering should happen
-    context->style.windowTextPixelSizeY           = 20.f;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
+    //@TODO: why is korl-resource-font CLOBBERING cached glyph textures when windowTextPixelSizeY is >= 40?
+    context->style.windowTextPixelSizeY           = 30.f;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
     context->style.windowTitleBarPixelSizeY       = 20.f;
     context->style.widgetSpacingY                 =  0.f;
     context->style.widgetButtonLabelMargin        =  2.f;
@@ -1392,7 +1393,7 @@ korl_internal void korl_gui_frameEnd(void)
     korl_assert(widgetsRemaining <= arrlenu(context->stbDaWidgets));//sanity-check to make sure we aren't about to invalidate _Widget pointers we just accumulated
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandleHeap), context->stbDaWidgets, widgetsRemaining);
     korl_time_probeStop(nullify_unused_widgets);
-    //@TODO: simplify this logic with `korl_algorithm_graphDirected_sortTopological`
+    //KORL-ISSUE-000-000-187: gui: simplify `korl_gui_frameEnd` logic with `korl_algorithm_graphDirected_sortTopological`
     /* now that we have a list of widgets that are used this frame, we can 
         gather the meta data necessary to perform a topological sort of the 
         entire list, which will allow us to process the entire widget DAG from 
@@ -1907,6 +1908,7 @@ korl_internal void korl_gui_frameEnd(void)
             }
             /* draw the text buffer now, after any background elements */
             if(textMetrics.visibleGlyphCount)
+                //@TODO: for some reason this text is looking a little... small...
                 korl_gfx_drawUtf83d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.5f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT
                                    ,string_getRawAcu8(&widget->subType.inputText.string), context->style.resourceHandleFont, context->style.windowTextPixelSizeY
                                    ,0, NULL, NULL, NULL);

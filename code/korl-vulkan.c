@@ -2162,6 +2162,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
 }
 korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
+    //KORL-PERFORMANCE-000-000-052: vulkan: MAJOR; `_korl_vulkan_draw` is dragging 70% of our CPU time; this might involve multiple PERFORMANCE sub-issues; stop doing the following when not necessary: vkAllocateDescriptorSets, vkUpdateDescriptorSets, vkCmdBindDescriptorSets, vkCmdPushConstants, vkCmdSetScissor, vkCmdBindVertexBuffers
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
@@ -2316,7 +2317,7 @@ korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_Allocatio
                                   * deviceMemoryAllocation->subType.texture.pixelByteStride;
     VkBuffer bufferStaging;
     VkDeviceSize bufferStagingOffset;
-    const VkDeviceSize pixelDataStagingAlignment = 4;// @TODO: hack; we need to align to a multiple of the format's texel block size; The Vulkan spec states: If pname:dstImage does not have either a depth/stencil or a multi-planar format, then for each element of pRegions, bufferOffset must be a multiple of the format's texel block size (https://vulkan.lunarg.com/doc/view/1.3.224.1/windows/1.3-extensions/vkspec.html#VUID-vkCmdCopyBufferToImage-bufferOffset-01558)
+    const VkDeviceSize pixelDataStagingAlignment = 4;//KORL-ISSUE-000-000-193: vulkan-texture: hack; we need to align to a multiple of the format's texel block size; The Vulkan spec states: If pname:dstImage does not have either a depth/stencil or a multi-planar format, then for each element of pRegions, bufferOffset must be a multiple of the format's texel block size (https://vulkan.lunarg.com/doc/view/1.3.224.1/windows/1.3-extensions/vkspec.html#VUID-vkCmdCopyBufferToImage-bufferOffset-01558)
     void*const pixelDataStagingMemory = _korl_vulkan_getStagingPool(imageBytes, pixelDataStagingAlignment, &bufferStaging, &bufferStagingOffset);
     /* copy the pixel data to the staging buffer */
     korl_memory_copy(pixelDataStagingMemory, pixelData, imageBytes);

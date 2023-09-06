@@ -14,8 +14,8 @@ typedef struct _Korl_Resource_Scene3d_Animation_SampleSet
 typedef struct _Korl_Resource_Scene3d_Animation
 {
     //@TODO: move all this data into a single allocation
-    f32                                         keyFrameSecondsStart;//@TODO: do I even need these members for calculation of animations?
-    f32                                         keyFrameSecondsEnd;  //@TODO: do I even need these members for calculation of animations?
+    f32                                         keyFrameSecondsStart;
+    f32                                         keyFrameSecondsEnd;
     _Korl_Resource_Scene3d_Animation_SampleSet* sampleSets;// array size == gltfAnimation->samplers.size
     f32*                                        keyFramesSeconds;// array size == SUM(unique(gltfAnimation->samplers[i].input).count)
     /** NOTE: we likely want to store our own f32 Samples like this because gltf 
@@ -45,7 +45,7 @@ typedef struct _Korl_Resource_Scene3d
 {
     // _all_ of the dynamic allocations we will manage will be stored in transient memory; it all can & will be reconstructed in the event that we are loading from a korl-memoryState
     Korl_Codec_Gltf*                     gltf;
-    //@TODO: move all this transient data into a single allocation? this might introduce issues if we decide to actually clear transient data in `*_clearTransientData` though...
+    //@TODO: move all this transient data into a single allocation
     Korl_Resource_Handle*                textures;
     Korl_Resource_Handle                 vertexBuffer;      // single giant gfx-buffer resource containing all index/attribute data for all MeshPrimitives contained in this resource
     _Korl_Resource_Scene3d_Mesh*         meshes;            // meta data (acceleration, mappings, etc.) for each gltf->mesh
@@ -131,6 +131,9 @@ korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resourc
         result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
     if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
+    //@TODO: select a default texture that lets us visualize UVs if no base texture is specified && meshPrimitive UVs are present
+    // else
+    //     result.maps.resourceHandleTextureBase = ;
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
         result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
     else
@@ -167,7 +170,7 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
         createInfo.imageFileMemoryBuffer.size = bufferView->byteLength;
         if(scene3d->textures[t])
             /* destroy the old texture resource */
-            // @TODO: this works for _now_, but if we want the ability to pass this resource around & store it elsewhere, we might need the ability to as korl-resource "re-create" a resource; perhaps we can just modify korl_resource_create to take a Resource_Handle param, & perform alternate logic based on this value (if 0, just make a new resource, otherwise we get the previous resource from the pool & unload it)
+            // NOTE: this works for _now_, but if we want the ability to pass this resource around & store it elsewhere, we might need the ability to as korl-resource "re-create" a resource; perhaps we can just modify korl_resource_create to take a Resource_Handle param, & perform alternate logic based on this value (if 0, just make a new resource, otherwise we get the previous resource from the pool & unload it)
             korl_resource_destroy(scene3d->textures[t]);
         scene3d->textures[t] = korl_resource_create(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE), &createInfo, true);
     }

@@ -523,8 +523,8 @@ korl_internal void korl_resource_memoryStateRead(const u8* memoryState)
 korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(korl_resource_onAssetHotReload)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;
-    /* convert UTF-16 asset name to UTF-8 
-        @TODO: refactor korl-assetCache to not use UTF-16 anymore for convenience, then we can delete this */
+    //KORL-ISSUE-000-000-192: assetCache: refactor korl-assetCache to not use UTF-16 anymore for convenience
+    /* convert UTF-16 asset name to UTF-8 */
     acu8 utf8FileName = korl_string_utf16_to_utf8(context->allocatorHandleRuntime, rawUtf16AssetName);
     /* check to see if this asset file name is mapped to a Resource */
     ptrdiff_t hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);

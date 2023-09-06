@@ -26,6 +26,7 @@ typedef struct Korl_StringPool_String
         const char*    lastRawUtf8;
         const wchar_t* lastRawUtf16;
     } _DEBUGGER_ONLY_DO_NOT_USE;
+    //
     struct Korl_StringPool*      pool;
     Korl_StringPool_StringHandle handle;
     #if defined(__cplusplus)

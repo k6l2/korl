@@ -23,7 +23,7 @@ typedef KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeData        
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_createRuntimeMedia       (fnSig_korl_resource_descriptorCallback_createRuntimeMedia);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_runtimeBytes             (fnSig_korl_resource_descriptorCallback_runtimeBytes);
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_runtimeResize            (fnSig_korl_resource_descriptorCallback_runtimeResize);
-#if 0//@TODO ?
+#if 0//KORL-FEATURE-000-000-062: resource: add ability for resource descriptors to pre-process file assets & write a cached pre-processed file to disc, then just use the pre-processed file instead of the original
 /** if we want to be able to perform any desired pre-processing to a file-backed resource & cache the resulting file to dramatically speed up future application runs, we might need something like this */
 #define KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(name) void name(void)
 typedef KORL_FUNCTION_korl_resource_descriptorCallback_preProcess(fnSig_korl_resource_descriptorCallback_preProcess);

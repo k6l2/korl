@@ -1475,7 +1475,7 @@ korl_internal void korl_heap_linear_defragment(_Korl_Heap_Linear*const allocator
             /* if the parent's DefragmentPointer was not provided, then we 
                 _must_ assume that the parent of this DefragmentPointer is _immutable_ */
             /* sanity check: make sure the parent does _not_ exist within this heap */
-            //@TODO
+            //KORL-ISSUE-000-000-195: heap: sanity check: make sure the parent does _not_ exist within this heap
         }
         else
         {

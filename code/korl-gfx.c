@@ -484,7 +484,6 @@ korl_internal KORL_FUNCTION_korl_gfx_drawVertexBuffer(korl_gfx_drawVertexBuffer)
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)
 {
-    //@TODO: auto-detect lit & lit-skinned? ...
     if(   vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_U32
        && vertexStagingMeta->vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_EXTRA_0].vectorSize  == 1)
         return _korl_gfx_context->resourceShaderKorlVertexText;
@@ -511,7 +510,6 @@ korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInS
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(korl_gfx_getBuiltInShaderFragment)
 {
-    //@TODO: auto-detect lit material?...
     if(material->maps.resourceHandleTextureBase)
         return _korl_gfx_context->resourceShaderKorlFragmentColorTexture;
     return _korl_gfx_context->resourceShaderKorlFragmentColor;

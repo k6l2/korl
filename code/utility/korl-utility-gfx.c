@@ -320,7 +320,8 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(void)
     return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
                                                               ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
                                                               ,.blend         = KORL_GFX_BLEND_ALPHA
-                                                              ,.flags         = KORL_GFX_MATERIAL_MODE_FLAGS_NONE}
+                                                              ,.flags         =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                                               | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE}
                                                     ,.fragmentShaderUniform = {.factorColorBase     = KORL_MATH_V4F32_ONE
                                                                               ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
                                                                               ,.factorColorSpecular = KORL_MATH_V4F32_ONE
@@ -336,7 +337,8 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLitColorbase(Korl_Math_
     return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
                                                               ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
                                                               ,.blend         = KORL_GFX_BLEND_ALPHA
-                                                              ,.flags         = KORL_GFX_MATERIAL_MODE_FLAGS_NONE}
+                                                              ,.flags         =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                                               | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE}
                                                     ,.fragmentShaderUniform = {.factorColorBase     = colorLinear4Base
                                                                               ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
                                                                               ,.factorColorSpecular = KORL_MATH_V4F32_ONE
