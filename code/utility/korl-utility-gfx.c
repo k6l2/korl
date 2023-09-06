@@ -1178,7 +1178,7 @@ korl_internal void _korl_gfx_drawUtf(Korl_Math_V3f32 position, Korl_Math_Quatern
         materialOverride.modes.flags |=   KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
                                         | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE;
     Korl_Gfx_Drawable text = _korl_gfx_immediateUtf(KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME, anchorRatio, utfText, utfTextEncoding, utfTextSize, resourceHandleFont, textPixelHeight, o_textMetrics);
-    text.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    text.transform = korl_math_transform3d_rotateScaleTranslate(versor, text.transform._scale, position);
     korl_gfx_draw(&text, &materialOverride, 1);
 }
 korl_internal void korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Resource_Font_TextMetrics* o_textMetrics)
