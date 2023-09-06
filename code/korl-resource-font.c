@@ -88,10 +88,10 @@ korl_internal u8 _korl_resource_font_glyphPage_insert(_Korl_Resource_Font*const 
             u16 smallestPackRowSizeY = KORL_U16_MAX;
             for(_Korl_Resource_Font_GlyphPage_PackRow* packRow2 = glyphPage->stbDaPackRows; packRow2 < packRowsEnd; packRow2++)
             {
-                if(   packRow2->sizeY >= sizeY + 2 * PACK_ROW_PADDING 
-                   && (   !packRow 
-                       || (   packRow2->sizeY < smallestPackRowSizeY
-                           && textureSize.x - packRow2->offsetX >= korl_checkCast_i$_to_u32(sizeX + 2 * PACK_ROW_PADDING))))
+                if(   packRow2->sizeY >= sizeY + 2 * PACK_ROW_PADDING // packRow2 can satisfy sizeY
+                   && packRow2->offsetX                 <  textureSize.x // packRow2 has non-zero # of remaining X pixels
+                   && textureSize.x - packRow2->offsetX >= korl_checkCast_i$_to_u32(sizeX + 2 * PACK_ROW_PADDING)// packRow2 can satisfy sizeX
+                   && (!packRow || packRow2->sizeY < smallestPackRowSizeY))// either we don't have a packRow yet, or packRow2 has a smaller sizeY
                 {
                     smallestPackRowSizeY = packRow2->sizeY;
                     packRow              = packRow2;

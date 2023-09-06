@@ -473,8 +473,7 @@ korl_internal void korl_gui_initialize(void)
     context->style.colorTextOutline               = (Korl_Gfx_Color4u8){  0,   5,   0, 255};
     context->style.textOutlinePixelSize           = 0.f;
     context->style.resourceHandleFont             = 0;// by default, no font resource is loaded, so no text rendering should happen
-    //@TODO: why is korl-resource-font CLOBBERING cached glyph textures when windowTextPixelSizeY is >= 40?
-    context->style.windowTextPixelSizeY           = 30.f;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
+    context->style.windowTextPixelSizeY           = 20.f;// _probably_ a good idea to make this <= `windowTitleBarPixelSizeY`
     context->style.windowTitleBarPixelSizeY       = 20.f;
     context->style.widgetSpacingY                 =  0.f;
     context->style.widgetButtonLabelMargin        =  2.f;
@@ -1870,6 +1869,7 @@ korl_internal void korl_gui_frameEnd(void)
             }
             break;}
         case KORL_GUI_WIDGET_TYPE_INPUT_TEXT:{
+            //@TODO: this text is not getting properly scaled! it's easiest to see when `windowTextPixelSizeY` is close at the middle value between two _KORL_RESOURCE_FONT_PIXEL_HEIGHTS values
             if(!korl_resource_isLoaded(context->style.resourceHandleFont))
                 break;
             /* prepare the font/text metrics, but defer drawing until later, since we will be drawing some stuff behind the translucent text mesh */
@@ -1908,7 +1908,6 @@ korl_internal void korl_gui_frameEnd(void)
             }
             /* draw the text buffer now, after any background elements */
             if(textMetrics.visibleGlyphCount)
-                //@TODO: for some reason this text is looking a little... small...
                 korl_gfx_drawUtf83d((Korl_Math_V3f32){widget->position.x, widget->position.y, z + 0.5f}, KORL_MATH_QUATERNION_IDENTITY, ORIGIN_RATIO_UPPER_LEFT
                                    ,string_getRawAcu8(&widget->subType.inputText.string), context->style.resourceHandleFont, context->style.windowTextPixelSizeY
                                    ,0, NULL, NULL, NULL);
