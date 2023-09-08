@@ -5,6 +5,10 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-algorithm.h"
 #include "utility/korl-utility-stb-ds.h"
+typedef struct _Korl_Resource_Scene3d_Context
+{
+    Korl_Resource_Handle defaultResources[KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_ENUM_COUNT];
+} _Korl_Resource_Scene3d_Context;
 typedef struct _Korl_Resource_Scene3d_Animation_SampleSet
 {
     // NOTE: this SampleSet's `keyFramesSeconds` array & `sample` array should have the exact same size
@@ -109,35 +113,37 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_descriptorStructDestr
 korl_internal Korl_Gfx_Material _korl_resource_scene3d_getMaterial(_Korl_Resource_Scene3d*const scene3d, u32 materialIndex, const Korl_Codec_Gltf_Mesh_Primitive*const meshPrimitive)
 {
     korl_assert(materialIndex < scene3d->gltf->materials.size);
-    const Korl_Codec_Gltf_Material*const gltfMaterial = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
+    const Korl_Codec_Gltf_Material*const gltfMaterial      = korl_codec_gltf_getMaterials(scene3d->gltf) + materialIndex;
+    _Korl_Resource_Scene3d_Context*const descriptorContext = korl_resource_getDescriptorContextStruct(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SCENE3D));
     Korl_Gfx_Material result = korl_gfx_material_defaultUnlit();
     switch(gltfMaterial->alphaMode)
     {
-    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_OPAQUE:
-    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_MASK:  result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE; break;
-    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_BLEND: result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND; break;
+    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_OPAQUE: 
+    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_MASK  : result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE; break;
+    case KORL_CODEC_GLTF_MATERIAL_ALPHA_MODE_BLEND : result.modes.flags |= KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND; break;
     }
     result.modes.cullMode = gltfMaterial->doubleSided ? KORL_GFX_MATERIAL_CULL_MODE_NONE : KORL_GFX_MATERIAL_CULL_MODE_BACK;
     if(gltfMaterial->extras.rawUtf8KorlShaderVertex.size)
-        result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderVertex), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER)
+                                                                          ,korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderVertex), KORL_ASSETCACHE_GET_FLAG_LAZY);
     else if(!gltfMaterial->extras.korlIsUnlit)
         if(meshPrimitive && meshPrimitive->attributes[KORL_CODEC_GLTF_MESH_PRIMITIVE_ATTRIBUTE_JOINTS_0] >= 0)
-            result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit-skinned.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+            result.shaders.resourceHandleShaderVertex = descriptorContext->defaultResources[KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_VERTEX_LIT_SKINNED];
         else
-            result.shaders.resourceHandleShaderVertex = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+            result.shaders.resourceHandleShaderVertex = descriptorContext->defaultResources[KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_VERTEX_LIT];
     if(gltfMaterial->extras.rawUtf8KorlShaderFragment.size)
-        result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderFragment), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER)
+                                                                            ,korl_codec_gltf_getUtf8(scene3d->gltf, gltfMaterial->extras.rawUtf8KorlShaderFragment), KORL_ASSETCACHE_GET_FLAG_LAZY);
     else if(!gltfMaterial->extras.korlIsUnlit)
-        result.shaders.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY);
+        result.shaders.resourceHandleShaderFragment = descriptorContext->defaultResources[KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_FRAGMENT_LIT];
     if(gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex >= 0)
         result.maps.resourceHandleTextureBase = scene3d->textures[gltfMaterial->pbrMetallicRoughness.baseColorTextureIndex];
-    //@TODO: select a default texture that lets us visualize UVs if no base texture is specified && meshPrimitive UVs are present
-    // else
-    //     result.maps.resourceHandleTextureBase = ;
+    else
+        result.maps.resourceHandleTextureBase = descriptorContext->defaultResources[KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_MATERIAL_MAP_BASE];
     if(gltfMaterial->KHR_materials_specular.specularColorTextureIndex >= 0)
         result.maps.resourceHandleTextureSpecular = scene3d->textures[gltfMaterial->KHR_materials_specular.specularColorTextureIndex];
     else
-        result.maps.resourceHandleTextureSpecular = korl_gfx_getBlankTexture();
+        result.maps.resourceHandleTextureSpecular = descriptorContext->defaultResources[KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_MATERIAL_MAP_SPECULAR];
     result.fragmentShaderUniform.factorColorSpecular = gltfMaterial->KHR_materials_specular.factors;
     result.fragmentShaderUniform.shininess           = 32;// not sure if we can actually store this in gltf; see: https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_specular/README.md
     return result;
@@ -616,8 +622,11 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource
 }
 korl_internal void korl_resource_scene3d_register(void)
 {
+    KORL_ZERO_STACK(_Korl_Resource_Scene3d_Context, context);
     KORL_ZERO_STACK(Korl_Resource_DescriptorManifest, descriptorManifest);
     descriptorManifest.utf8DescriptorName                  = KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SCENE3D);
+    descriptorManifest.descriptorContext                   = &context;
+    descriptorManifest.descriptorContextBytes              = sizeof(context);
     descriptorManifest.callbacks.collectDefragmentPointers = korl_functionDynamo_register(_korl_resource_scene3d_collectDefragmentPointers);
     descriptorManifest.callbacks.descriptorStructCreate    = korl_functionDynamo_register(_korl_resource_scene3d_descriptorStructCreate);
     descriptorManifest.callbacks.descriptorStructDestroy   = korl_functionDynamo_register(_korl_resource_scene3d_descriptorStructDestroy);
@@ -625,6 +634,12 @@ korl_internal void korl_resource_scene3d_register(void)
     descriptorManifest.callbacks.transcode                 = korl_functionDynamo_register(_korl_resource_scene3d_transcode);
     descriptorManifest.callbacks.clearTransientData        = korl_functionDynamo_register(_korl_resource_scene3d_clearTransientData);
     korl_resource_descriptor_register(&descriptorManifest);
+}
+korl_internal KORL_FUNCTION_korl_resource_scene3d_setDefaultResource(korl_resource_scene3d_setDefaultResource)
+{
+    korl_assert(defaultResourceId < KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_ENUM_COUNT);
+    _Korl_Resource_Scene3d_Context*const descriptorContext = korl_resource_getDescriptorContextStruct(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SCENE3D));
+    descriptorContext->defaultResources[defaultResourceId] = resourceHandle;
 }
 korl_internal KORL_FUNCTION_korl_resource_scene3d_getMaterialCount(korl_resource_scene3d_getMaterialCount)
 {

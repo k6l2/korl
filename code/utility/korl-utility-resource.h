@@ -1,4 +1,36 @@
-/** utilities for KORL built-in resource descriptors */
+/** utilities for KORL built-in resource descriptors 
+ * 
+ * # Special Usage Notes
+ * 
+ * ## SCENE3D
+ * 
+ * - before using, you _likely_ want to provide the SCENE3D descriptor context 
+ *   default materials that it can use in common auto-detected situations; 
+ *   example code: 
+ *   ```
+ *    // placed in some early initialization code, such as the top of `KORL_GAME_INITIALIZE` //
+ *    korl_resource_scene3d_setDefaultResource(KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_MATERIAL_MAP_BASE
+ *                                            ,korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE)
+ *                                            ,KORL_RAW_CONST_UTF8("submodules/korl/test-assets/debug.png")
+ *                                            ,KORL_ASSETCACHE_GET_FLAG_LAZY));
+ *    korl_resource_scene3d_setDefaultResource(KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_MATERIAL_MAP_SPECULAR
+ *                                            ,korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_TEXTURE)
+ *                                            ,KORL_RAW_CONST_UTF8("submodules/korl/test-assets/debug-specular.png")
+ *                                            ,KORL_ASSETCACHE_GET_FLAG_LAZY));
+ *    korl_resource_scene3d_setDefaultResource(KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_VERTEX_LIT
+ *                                            ,korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER)
+ *                                            ,KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv")
+ *                                            ,KORL_ASSETCACHE_GET_FLAG_LAZY));
+ *    korl_resource_scene3d_setDefaultResource(KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_VERTEX_LIT_SKINNED
+ *                                            ,korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER)
+ *                                            ,KORL_RAW_CONST_UTF8("build/shaders/korl-lit-skinned.vert.spv")
+ *                                            ,KORL_ASSETCACHE_GET_FLAG_LAZY));
+ *    korl_resource_scene3d_setDefaultResource(KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_FRAGMENT_LIT
+ *                                            ,korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER)
+ *                                            ,KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv")
+ *                                            ,KORL_ASSETCACHE_GET_FLAG_LAZY));
+ *    ```
+ */
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-gfx.h"
@@ -64,6 +96,14 @@ typedef struct Korl_Resource_Texture_CreateInfo
     acu8                         imageFileMemoryBuffer;
 } Korl_Resource_Texture_CreateInfo;
 /** MISC **********************************************************************/
+typedef enum Korl_Resource_Scene3d_DefaultResource
+    {KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_MATERIAL_MAP_BASE
+    ,KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_MATERIAL_MAP_SPECULAR
+    ,KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_VERTEX_LIT
+    ,KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_VERTEX_LIT_SKINNED
+    ,KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_SHADER_FRAGMENT_LIT
+    ,KORL_RESOURCE_SCENE3D_DEFAULTRESOURCE_ENUM_COUNT
+} Korl_Resource_Scene3d_DefaultResource;
 /** The collection of all components required to draw any given mesh primitive, 
  * excluding model or pose transforms. */
 typedef struct Korl_Resource_Scene3d_MeshPrimitive
@@ -84,4 +124,3 @@ typedef struct Korl_Resource_Scene3d_Skin
     u32                         bonesSize;
     Korl_Math_Transform3d       bones[];  // the actual transforms which can be modified/animated at any time by the user; before being used to calculate vertex world-space positions, we must multiply these by their respective inverseBindMatrices which are baked in the scene3d resource
 } Korl_Resource_Scene3d_Skin;
-korl_internal void korl_resource_scene3d_skin_destroy(Korl_Resource_Scene3d_Skin* context);

@@ -663,7 +663,9 @@ korl_internal void korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context)
         break;}
     case KORL_GFX_DRAWABLE_TYPE_MESH:{
         if(context->subType.mesh.skin)
-            korl_resource_scene3d_skin_destroy(context->subType.mesh.skin);
+            /* the skin is just a single dynamic allocation now, so there's no 
+                real need for a special function to destroy it */
+            korl_free(context->subType.mesh.skin->allocator, context->subType.mesh.skin);
         break;}
     }
 }
