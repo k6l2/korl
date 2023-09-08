@@ -184,6 +184,10 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
     ptrdiff_t hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);
     if(hashMapIndex < 0)
     {
+        /* @TODO: descriptor structs are going to create a _ton_ of allocations; 
+            this is fine for testing purposes, but in a real game (with thousands 
+            of resources) this will almost certainly cause a lot of unnecessary 
+            overhead when it comes time to perform memory cleanup/analysis operations */
         fnSig_korl_resource_descriptorCallback_descriptorStructCreate*const descriptorStructCreate = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_descriptorStructCreate*, korl_functionDynamo_get(descriptor->callbacks.descriptorStructCreate));
         _Korl_Resource_Item* newResource;
         const Korl_Resource_Handle newResourceHandle = korl_pool_add(&context->resourcePool, resourceType, &newResource);
