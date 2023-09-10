@@ -1,5 +1,5 @@
 #include "korl-codec-glb.h"
-#include "korl-jsmn.h"
+#include "utility/korl-jsmn.h"
 #include "korl-memoryPool.h"
 #include "korl-string.h"
 #include "korl-interface-platform.h"

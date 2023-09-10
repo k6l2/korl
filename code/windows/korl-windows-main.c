@@ -128,7 +128,6 @@ shutdownSuccess:
 #include "korl-stb-vorbis.c"
 #include "korl-memoryState.c"
 #include "korl-algorithm.c"
-#include "korl-jsmn.c"
 #include "korl-codec-glb.c"
 #include "korl-math.c"
 #include "korl-network.c"
@@ -149,3 +148,4 @@ shutdownSuccess:
 #include "utility/korl-utility-algorithm.c"
 #include "utility/korl-utility-resource.c"
 #include "utility/korl-pool.c"
+#include "utility/korl-jsmn.c"
