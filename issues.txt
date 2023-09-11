@@ -177,7 +177,6 @@
 [ ] KORL-FEATURE-000-000-054: gui: check box widget
 [ ] KORL-FEATURE-000-000-055: vulkan: reasonably efficient particle systems; maybe using transform-feedback pipeline or something
 [ ] KORL-FEATURE-000-000-058: file/command: add a command to "open" the OS-specific directories obtained in korl_file_initialize; https://stackoverflow.com/a/354922/4526664
-[ ] KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)
 [ ] KORL-FEATURE-000-000-060: gfx: add "Material" asset/resource; we should be able to define materials in some kind of file (GLB, JSON, etc.)
 [ ] KORL-FEATURE-000-000-061: file: add ability for the user to enumerate over files in a directory; use case: a game where each "map" is a file, and we want to load all of them, or at least process their metadata (such as file name)
 [ ] KORL-FEATURE-000-000-062: resource: add ability for resource descriptors to pre-process file assets & write a cached pre-processed file to disc, then just use the pre-processed file instead of the original
@@ -312,3 +311,4 @@
 [x] KORL-FEATURE-000-000-047: gui: text input widget
 [x] KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
 [x] KORL-FEATURE-000-000-057: vulkan: lighting system
+[x] KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)

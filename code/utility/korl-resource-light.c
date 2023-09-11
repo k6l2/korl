@@ -36,6 +36,11 @@ typedef enum _Korl_Resource_Light_Json
     ,_KORL_RESOURCE_LIGHT_JSON_COLOR_OBJECT_AMBIENT
     ,_KORL_RESOURCE_LIGHT_JSON_COLOR_OBJECT_DIFFUSE
     ,_KORL_RESOURCE_LIGHT_JSON_COLOR_OBJECT_SPECULAR
+    ,_KORL_RESOURCE_LIGHT_JSON_ATTENUATION
+    ,_KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT
+    ,_KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_CONSTANT
+    ,_KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_LINEAR
+    ,_KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_QUADRATIC
 } _Korl_Resource_Light_Json;
 typedef struct _Korl_Resource_Light_Transcode_Json
 {
@@ -69,6 +74,8 @@ korl_internal u32 _korl_resource_light_transcode_jsonRecursive(_Korl_Resource_Li
                 json.type = _KORL_RESOURCE_LIGHT_JSON_DIRECTION;
             else if(korl_string_equalsAcu8(jsonTokenString, KORL_RAW_CONST_UTF8("color")))
                json.type = _KORL_RESOURCE_LIGHT_JSON_COLOR;
+            else if(korl_string_equalsAcu8(jsonTokenString, KORL_RAW_CONST_UTF8("attenuation")))
+               json.type = _KORL_RESOURCE_LIGHT_JSON_ATTENUATION;
             break;
         case _KORL_RESOURCE_LIGHT_JSON_TYPE:
             korl_assert(json.jsmnToken->type == JSMN_STRING);
@@ -96,6 +103,22 @@ korl_internal u32 _korl_resource_light_transcode_jsonRecursive(_Korl_Resource_Li
         case _KORL_RESOURCE_LIGHT_JSON_COLOR_OBJECT_AMBIENT : light->gfxLight.color.ambient  = korl_jsmn_getV3f32(rawJson, json.jsmnToken); break;
         case _KORL_RESOURCE_LIGHT_JSON_COLOR_OBJECT_DIFFUSE : light->gfxLight.color.diffuse  = korl_jsmn_getV3f32(rawJson, json.jsmnToken); break;
         case _KORL_RESOURCE_LIGHT_JSON_COLOR_OBJECT_SPECULAR: light->gfxLight.color.specular = korl_jsmn_getV3f32(rawJson, json.jsmnToken); break;
+        case _KORL_RESOURCE_LIGHT_JSON_ATTENUATION:
+            korl_assert(json.jsmnToken->type == JSMN_OBJECT);
+            json.type = _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT;
+            break;
+        case _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT:
+            korl_assert(json.jsmnToken->type == JSMN_STRING);
+            if(korl_string_equalsAcu8(jsonTokenString, KORL_RAW_CONST_UTF8("constant")))
+                json.type = _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_CONSTANT;
+            else if(korl_string_equalsAcu8(jsonTokenString, KORL_RAW_CONST_UTF8("linear")))
+                json.type = _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_LINEAR;
+            else if(korl_string_equalsAcu8(jsonTokenString, KORL_RAW_CONST_UTF8("quadratic")))
+                json.type = _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_QUADRATIC;
+            break;
+        case _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_CONSTANT : light->gfxLight.attenuation.constant  = korl_jsmn_getF32(rawJson, json.jsmnToken); break;
+        case _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_LINEAR   : light->gfxLight.attenuation.linear    = korl_jsmn_getF32(rawJson, json.jsmnToken); break;
+        case _KORL_RESOURCE_LIGHT_JSON_ATTENUATION_OBJECT_QUADRATIC: light->gfxLight.attenuation.quadratic = korl_jsmn_getF32(rawJson, json.jsmnToken); break;
         }
     }
     for(int i = 0; i < json.jsmnToken->size; i++)
@@ -136,10 +159,12 @@ korl_internal void korl_resource_light_register(void)
     descriptorManifest.callbacks.clearTransientData        = korl_functionDynamo_register(_korl_resource_light_clearTransientData);
     korl_resource_descriptor_register(&descriptorManifest);
 }
-korl_internal void korl_resource_light_use(Korl_Resource_Handle resourceHandleLight)
+korl_internal void korl_resource_light_use(Korl_Resource_Handle resourceHandleLight, Korl_Math_V3f32 position)
 {
     _Korl_Resource_Light*const light = KORL_C_CAST(_Korl_Resource_Light*, korl_resource_getDescriptorStruct(resourceHandleLight));
     if(!light->isTranscoded)
         return;
-    korl_gfx_light_use(&light->gfxLight, 1);
+    Korl_Gfx_Light gfxLight = light->gfxLight;
+    gfxLight.position = position;
+    korl_gfx_light_use(&gfxLight, 1);
 }
