@@ -150,4 +150,5 @@
     [x] move `korl-jsmn` module into `utility` so that the game module can utilize it
     [x] use `korl-jsmn` to decode the light's JSON properties
     [x] implement a simple API to "use" a light resource handle
+  [x] fix crash when loading a korl-memoryState with resources whose descriptor was registered by the game module
 [-] try making a "stage" resource that encodes level data into JSON

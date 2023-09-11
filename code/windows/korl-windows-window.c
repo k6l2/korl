@@ -931,9 +931,10 @@ korl_internal void korl_windows_window_loop(void)
             // korl_memory_reportLog(korl_memory_reportGenerate());// just for diagnostic...
             if(context->gameDll)
             {
-                korl_command_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
+                korl_command_registerModule       (context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
                 korl_functionDynamo_registerModule(context->gameDll, KORL_RAW_CONST_UTF8("korl-game"));
             }
+            korl_memoryState_loadPostCodeModuleRegistration(context->memoryStateLast);
             if(context->gameApi.korl_game_onReload)
                 context->gameApi.korl_game_onReload(context->gameContext, korlApi);
             korl_time_probeStop(save_state_load);
@@ -1024,6 +1025,7 @@ korl_internal void korl_windows_window_loop(void)
     korl_log(INFO, "Average Unused Frame %% : %f", timeCountAverageSleep * 100.f / timeCountsTargetGamePerFrame);
     /**/
 #endif
+    //KORL-ISSUE-000-000-198: CRASH; dangling VkBuffer is causing a vulkan validation error when korl_vulkan_destroySurface is called immediately after loading a korl-memoryState
     korl_vulkan_destroySurface();
     string_free(&stringGameDll);
     /* safely close out any pending config file operations */

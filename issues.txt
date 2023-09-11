@@ -107,6 +107,8 @@
 [ ] KORL-ISSUE-000-000-194: algorithm: add code samples for KORL_ALGORITHM_BVH_VOLUME_UNION & KORL_ALGORITHM_BVH_VOLUME_INTERSECTS
 [ ] KORL-ISSUE-000-000-195: heap: sanity check: make sure the parent does _not_ exist within this heap
 [ ] KORL-ISSUE-000-000-196: vulkan-memory: CRASH; this assert is firing randomly when we load a korl-memoryState; seemingly more often when we are in the process of closing the logConsole?
+[ ] KORL-ISSUE-000-000-197: CRASH; random crashes when attempting to load a korl-memoryState on the first frame
+[ ] KORL-ISSUE-000-000-198: CRASH; dangling VkBuffer is causing a vulkan validation error when korl_vulkan_destroySurface is called immediately after loading a korl-memoryState
 [ ] KORL-PERFORMANCE-000-000-002: memory: you will never have a texture & font asset at the same time, so we could potentially overload this to the same string pointer
 [ ] KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
 [ ] KORL-PERFORMANCE-000-000-004: speed: most likely there is a MUCH more efficient way to build a matrix using these parameters

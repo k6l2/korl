@@ -168,10 +168,18 @@ korl_internal Korl_Memory_ByteBuffer* korl_memoryState_load(Korl_Memory_Allocato
     korl_gfx_memoryStateRead           (result->data + manifest->byteOffsetKorlGfx);
     korl_sfx_memoryStateRead           (result->data + manifest->byteOffsetKorlSfx);
     korl_gui_memoryStateRead           (result->data + manifest->byteOffsetKorlGui);
-    korl_resource_memoryStateRead      (result->data + manifest->byteOffsetKorlResource);
-    korl_assetCache_memoryStateRead    (result->data + manifest->byteOffsetKorlAssetCache);
-    /**/
-    korl_resource_flushUpdates();
-    korl_log(INFO, "memory state \"%ws\" loaded", fileName);
+    /** NOTE: we can't call `korl_resource_memoryStateRead` yet, because it 
+     * _requires_ that the game module is re-registered via 
+     * `korl_functionDynamo_registerModule` so that descriptor callbacks 
+     * registered from the game module have valid address pointers */
+    korl_log(INFO, "memory state \"%ws\" _partially_ loaded...", fileName);
     return result;
+}
+korl_internal void korl_memoryState_loadPostCodeModuleRegistration(Korl_Memory_ByteBuffer* memoryStateByteBuffer)
+{
+    const _Korl_MemoryState_Manifest*const manifest = KORL_C_CAST(_Korl_MemoryState_Manifest*, memoryStateByteBuffer->data + memoryStateByteBuffer->capacity - sizeof(*manifest));
+    korl_resource_memoryStateRead  (memoryStateByteBuffer->data + manifest->byteOffsetKorlResource);
+    korl_assetCache_memoryStateRead(memoryStateByteBuffer->data + manifest->byteOffsetKorlAssetCache);
+    korl_resource_flushUpdates();
+    korl_log(INFO, "memory state load complete");
 }
