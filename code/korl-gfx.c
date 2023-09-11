@@ -42,6 +42,7 @@ typedef struct _Korl_Gfx_Context
     Korl_Resource_Handle        resourceShaderKorlFragmentColorTexture;
     Korl_Resource_Handle        resourceShaderKorlFragmentLit;
     KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, _KORL_GFX_MAX_LIGHTS);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
+    i32                                      flushedLights;// initialized to -1 at to top of each frame; if < 0 when setDrawState gets called, we will update the proper descriptor so that vulkan doesn't hit a validation error
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context* _korl_gfx_context;
 korl_internal void korl_gfx_initialize(void)
@@ -84,6 +85,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
     _korl_gfx_context->surfaceSize = surfaceSize;
     _korl_gfx_context->seconds    += deltaSeconds;
     KORL_MEMORY_POOL_EMPTY(_korl_gfx_context->pendingLights);
+    _korl_gfx_context->flushedLights = -1;
 }
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
@@ -435,7 +437,7 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
             vulkanDrawState.ssboVertex[0].descriptorBufferInfo = korl_vulkan_buffer_getDescriptorBufferInfo(deviceMemoryAllocation);
         }
     }
-    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights))
+    if(!KORL_MEMORY_POOL_ISEMPTY(_korl_gfx_context->pendingLights) || _korl_gfx_context->flushedLights < 0)
     {
         typedef struct _Korl_Vulkan_ShaderBuffer_Lights
         {
@@ -447,6 +449,7 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
         vulkanDrawState.ssboFragment[0] = korl_vulkan_stagingAllocateDescriptorData(bufferBytes);
         _Korl_Vulkan_ShaderBuffer_Lights*const stagingMemoryBufferLights = vulkanDrawState.ssboFragment[0].data;
         stagingMemoryBufferLights->lightsSize = KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights);
+        _korl_gfx_context->flushedLights = stagingMemoryBufferLights->lightsSize;
         korl_memory_copy(stagingMemoryBufferLights->lights, _korl_gfx_context->pendingLights, KORL_MEMORY_POOL_SIZE(_korl_gfx_context->pendingLights) * sizeof(Korl_Gfx_Light));
         /* transform all the light positions & directions into view-space, as that is what our lighting shaders require */
         if(   korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(&_korl_gfx_context->currentCameraState.normalForward), 1)
@@ -459,7 +462,7 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
                 light->position  = korl_math_m4f32_multiplyV4f32Copy(&m4f32View, (Korl_Math_V4f32){.xyz = light->position, 1}).xyz;
                 light->direction = korl_math_m4f32_multiplyV4f32Copy(&m4f32View, (Korl_Math_V4f32){.xyz = light->direction, 0}).xyz;
             }
-            _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!
+            _korl_gfx_context->pendingLights_korlMemoryPoolSize = 0;// does not destroy current lighting data, which is exactly what we need for the remainder of this stack!; future Kyle here: why do we need to not destroy the data?...🤔
         }
     }
     korl_vulkan_setDrawState(&vulkanDrawState);
