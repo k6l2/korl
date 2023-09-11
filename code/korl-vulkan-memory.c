@@ -243,6 +243,7 @@ korl_internal _Korl_Vulkan_DeviceMemory_Alloctation* _korl_vulkan_deviceMemory_a
         for(; unusedSlotIndexIndex < arrlenu(arena->stbDaUnusedAllocationSlotIndices); unusedSlotIndexIndex++)
             if(arena->stbDaUnusedAllocationSlotIndices[unusedSlotIndexIndex] == requiredHandleUnpacked.allocationId)
                 break;
+        //KORL-ISSUE-000-000-196: vulkan-memory: CRASH; this assert is firing randomly when we load a korl-memoryState; seemingly more often when we are in the process of closing the logConsole?
         korl_assert(unusedSlotIndexIndex < arrlenu(arena->stbDaUnusedAllocationSlotIndices));
         const u16 allocationIndex = arena->stbDaUnusedAllocationSlotIndices[unusedSlotIndexIndex];
         arrdel(arena->stbDaUnusedAllocationSlotIndices, unusedSlotIndexIndex);

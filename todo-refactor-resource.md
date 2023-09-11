@@ -142,12 +142,12 @@
     - we can't easily detect this condition unfortunately, since the way any given resource encodes an asset file string is going to greatly differ
   - I don't feel like I am gaining anything from this right now, so I will not do it
 [x] test scene3d mesh with multiple MeshPrimitives
-[ ] test hot-reloading of code module that contains a registered resource descriptor
+[x] test hot-reloading of code module that contains a registered resource descriptor
   - followed by hot-reload of one of the resources using said descriptor
   - to ensure that we are updating function pointers of resource descriptor callbacks
-  [ ] KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)
-    [ ] encode light properties in JSON
-    [ ] move `korl-jsmn` module into `utility` so that the game module can utilize it
-    [ ] use `korl-jsmn` to decode the light's JSON properties
-    [ ] implement a simple API to "use" a light resource handle
-  [ ] try making a "stage" resource that encodes level data into JSON
+  [x] KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)
+    [x] encode light properties in JSON
+    [x] move `korl-jsmn` module into `utility` so that the game module can utilize it
+    [x] use `korl-jsmn` to decode the light's JSON properties
+    [x] implement a simple API to "use" a light resource handle
+[-] try making a "stage" resource that encodes level data into JSON

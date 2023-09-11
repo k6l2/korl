@@ -106,6 +106,7 @@
 [ ] KORL-ISSUE-000-000-193: vulkan-texture: hack; we need to align to a multiple of the format's texel block size; The Vulkan spec states: If pname:dstImage does not have either a depth/stencil or a multi-planar format, then for each element of pRegions, bufferOffset must be a multiple of the format's texel block size (https://vulkan.lunarg.com/doc/view/1.3.224.1/windows/1.3-extensions/vkspec.html#VUID-vkCmdCopyBufferToImage-bufferOffset-01558)
 [ ] KORL-ISSUE-000-000-194: algorithm: add code samples for KORL_ALGORITHM_BVH_VOLUME_UNION & KORL_ALGORITHM_BVH_VOLUME_INTERSECTS
 [ ] KORL-ISSUE-000-000-195: heap: sanity check: make sure the parent does _not_ exist within this heap
+[ ] KORL-ISSUE-000-000-196: vulkan-memory: CRASH; this assert is firing randomly when we load a korl-memoryState; seemingly more often when we are in the process of closing the logConsole?
 [ ] KORL-PERFORMANCE-000-000-002: memory: you will never have a texture & font asset at the same time, so we could potentially overload this to the same string pointer
 [ ] KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
 [ ] KORL-PERFORMANCE-000-000-004: speed: most likely there is a MUCH more efficient way to build a matrix using these parameters
