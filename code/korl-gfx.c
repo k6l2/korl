@@ -482,7 +482,11 @@ korl_internal KORL_FUNCTION_korl_gfx_drawStagingAllocation(korl_gfx_drawStagingA
 }
 korl_internal KORL_FUNCTION_korl_gfx_drawVertexBuffer(korl_gfx_drawVertexBuffer)
 {
+    if(!resourceHandleBuffer)
+        return;
     const Korl_Vulkan_DeviceMemory_AllocationHandle bufferDeviceMemoryAllocationHandle = korl_resource_gfxBuffer_getVulkanDeviceMemoryAllocationHandle(resourceHandleBuffer);
+    if(!bufferDeviceMemoryAllocationHandle)
+        return;
     korl_vulkan_drawVertexBuffer(bufferDeviceMemoryAllocationHandle, bufferByteOffset, stagingMeta, primitiveType);
 }
 korl_internal KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(korl_gfx_getBuiltInShaderVertex)
