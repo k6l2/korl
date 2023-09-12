@@ -23,26 +23,28 @@
 typedef struct _Korl_Gfx_Context
 {
     /** used to store persistent data, such as Font asset glyph cache/database */
-    Korl_Memory_AllocatorHandle allocatorHandle;
-    u8                          nextResourceSalt;
-    Korl_StringPool*            stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
-    Korl_Math_V2u32             surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
-    Korl_Gfx_Camera             currentCameraState;
-    f32                         seconds;// passed to the renderer as UBO data to allow shader animations; passed when a Camera is used
-    Korl_Resource_Handle        blankTexture;// a 1x1 texture whose color channels are fully-saturated; can be used as a "default" material map texture
-    Korl_Resource_Handle        resourceShaderKorlVertex2d;
-    Korl_Resource_Handle        resourceShaderKorlVertex2dColor;
-    Korl_Resource_Handle        resourceShaderKorlVertex2dUv;
-    Korl_Resource_Handle        resourceShaderKorlVertex3d;
-    Korl_Resource_Handle        resourceShaderKorlVertex3dColor;
-    Korl_Resource_Handle        resourceShaderKorlVertex3dUv;
-    Korl_Resource_Handle        resourceShaderKorlVertexLit;
-    Korl_Resource_Handle        resourceShaderKorlVertexText;
-    Korl_Resource_Handle        resourceShaderKorlFragmentColor;
-    Korl_Resource_Handle        resourceShaderKorlFragmentColorTexture;
-    Korl_Resource_Handle        resourceShaderKorlFragmentLit;
+    Korl_Memory_AllocatorHandle              allocatorHandle;
+    u8                                       nextResourceSalt;
+    Korl_StringPool*                         stringPool;// used for Resource database strings; Korl_StringPool structs _must_ be unmanaged allocations (allocations with an unchanging memory address), because we're likely going to have a shit-ton of Strings which point to the pool address for convenience
+    Korl_Math_V2u32                          surfaceSize;// updated at the top of each frame, ideally before anything has a chance to use korl-gfx
+    Korl_Gfx_Camera                          currentCameraState;
+    f32                                      seconds;// passed to the renderer as UBO data to allow shader animations; passed when a Camera is used
+    Korl_Resource_Handle                     blankTexture;// a 1x1 texture whose color channels are fully-saturated; can be used as a "default" material map texture
+    Korl_Resource_Handle                     resourceShaderKorlVertex2d;
+    Korl_Resource_Handle                     resourceShaderKorlVertex2dColor;
+    Korl_Resource_Handle                     resourceShaderKorlVertex2dUv;
+    Korl_Resource_Handle                     resourceShaderKorlVertex3d;
+    Korl_Resource_Handle                     resourceShaderKorlVertex3dColor;
+    Korl_Resource_Handle                     resourceShaderKorlVertex3dUv;
+    Korl_Resource_Handle                     resourceShaderKorlVertexLit;
+    Korl_Resource_Handle                     resourceShaderKorlVertexText;
+    Korl_Resource_Handle                     resourceShaderKorlFragmentColor;
+    Korl_Resource_Handle                     resourceShaderKorlFragmentColorTexture;
+    Korl_Resource_Handle                     resourceShaderKorlFragmentLit;
     KORL_MEMORY_POOL_DECLARE(Korl_Gfx_Light, pendingLights, _KORL_GFX_MAX_LIGHTS);// after being added to this pool, lights are flushed to the renderer's draw state upon the next call to `korl_gfx_draw`
     i32                                      flushedLights;// initialized to -1 at to top of each frame; if < 0 when setDrawState gets called, we will update the proper descriptor so that vulkan doesn't hit a validation error
+    Korl_Gfx_Material_FragmentShaderUniform  lastFragmentShaderUniform;
+    bool                                     lastFragmentShaderUniformUsed;
 } _Korl_Gfx_Context;
 korl_global_variable _Korl_Gfx_Context* _korl_gfx_context;
 korl_internal void korl_gfx_initialize(void)
@@ -86,6 +88,7 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
     _korl_gfx_context->seconds    += deltaSeconds;
     KORL_MEMORY_POOL_EMPTY(_korl_gfx_context->pendingLights);
     _korl_gfx_context->flushedLights = -1;
+    _korl_gfx_context->lastFragmentShaderUniformUsed = false;
 }
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
@@ -413,8 +416,14 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
                 return false;// signal to the caller that we cannot draw with the current state
         }
         vulkanDrawState.materialModes = &drawState->material->modes;
-        vulkanDrawState.uboFragment[0] = korl_vulkan_stagingAllocateDescriptorData(sizeof(drawState->material->fragmentShaderUniform));
-        *KORL_C_CAST(Korl_Gfx_Material_FragmentShaderUniform*, vulkanDrawState.uboFragment[0].data) = drawState->material->fragmentShaderUniform;
+        if(   !_korl_gfx_context->lastFragmentShaderUniformUsed
+           || 0 != korl_memory_compare(&_korl_gfx_context->lastFragmentShaderUniform, &drawState->material->fragmentShaderUniform, sizeof(drawState->material->fragmentShaderUniform)))
+        {
+            _korl_gfx_context->lastFragmentShaderUniform     = drawState->material->fragmentShaderUniform;
+            _korl_gfx_context->lastFragmentShaderUniformUsed = true;
+            vulkanDrawState.uboFragment[0] = korl_vulkan_stagingAllocateDescriptorData(sizeof(drawState->material->fragmentShaderUniform));
+            *KORL_C_CAST(Korl_Gfx_Material_FragmentShaderUniform*, vulkanDrawState.uboFragment[0].data) = drawState->material->fragmentShaderUniform;
+        }
         if(drawState->material->maps.resourceHandleTextureBase)
             vulkanDrawState.texture2dFragment[0] = korl_resource_texture_getVulkanDeviceMemoryAllocationHandle(drawState->material->maps.resourceHandleTextureBase);
         if(drawState->material->maps.resourceHandleTextureSpecular)

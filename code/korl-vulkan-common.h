@@ -222,6 +222,12 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     Korl_Vulkan_DescriptorStagingAllocation   ssboVertex[KORL_VULKAN_MAX_SSBOS_VERTEX];
     Korl_Vulkan_DescriptorStagingAllocation   ssboFragment[KORL_VULKAN_MAX_SSBOS_FRAGMENT];
     Korl_Vulkan_DeviceMemory_AllocationHandle texture2dFragment[KORL_VULKAN_MAX_TEXTURE2D_FRAGMENT];
+    /** ----- vertex data state (vertex buffers, index buffer) ----- */
+    VkBuffer     vertexBuffers          [KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+    VkDeviceSize vertexBufferByteOffsets[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
+    VkBuffer     indexBuffer;
+    VkDeviceSize indexBufferByteOffset;
+    VkIndexType  indexType;
 } _Korl_Vulkan_SurfaceContextDrawState;
 /**
  * Each buffer acts as a linear allocator

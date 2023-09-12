@@ -2184,28 +2184,57 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     _korl_vulkan_flushPipelineState(stagingMeta);// calls vkCmdBindPipeline
     _korl_vulkan_flushDescriptors();// calls vkUpdateDescriptorSets & vkCmdBindDescriptorSets
     /* compose the draw commands */
-    vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
-                      ,VK_SHADER_STAGE_VERTEX_BIT
-                      ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_VERTEX].offset
-                      ,sizeof(surfaceContext->drawState.pushConstantData.vertex)
-                      ,&surfaceContext->drawState.pushConstantData.vertex);
-    vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
-                      ,VK_SHADER_STAGE_FRAGMENT_BIT
-                      ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT].offset
-                      ,sizeof(surfaceContext->drawState.pushConstantData.fragment)
-                      ,&surfaceContext->drawState.pushConstantData.fragment);
-    vkCmdSetScissor(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
-                   ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
-    VkBuffer     vertexBuffers          [KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
-    VkDeviceSize vertexBufferByteOffsets[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
-    for(u8 i = 0; i < KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; i++)
-    {
-        vertexBuffers[i]           = buffer;
-        vertexBufferByteOffsets[i] = bufferByteOffset + stagingMeta->vertexAttributeDescriptors[i].byteOffsetBuffer;
+    if(0 != korl_memory_compare(surfaceContext->drawState.pushConstantData.vertex, surfaceContext->drawStateLast.pushConstantData.vertex, sizeof(surfaceContext->drawState.pushConstantData.vertex)))
+        vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
+                          ,VK_SHADER_STAGE_VERTEX_BIT
+                          ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_VERTEX].offset
+                          ,sizeof(surfaceContext->drawState.pushConstantData.vertex)
+                          ,&surfaceContext->drawState.pushConstantData.vertex);
+    if(0 != korl_memory_compare(surfaceContext->drawState.pushConstantData.fragment, surfaceContext->drawStateLast.pushConstantData.fragment, sizeof(surfaceContext->drawState.pushConstantData.fragment)))
+        vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
+                          ,VK_SHADER_STAGE_FRAGMENT_BIT
+                          ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT].offset
+                          ,sizeof(surfaceContext->drawState.pushConstantData.fragment)
+                          ,&surfaceContext->drawState.pushConstantData.fragment);
+    if(0 != korl_memory_compare(&surfaceContext->drawState.scissor, &surfaceContext->drawStateLast.scissor, sizeof(surfaceContext->drawState.scissor)))
+        vkCmdSetScissor(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
+                       ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
+    {/* conservatively bind vertex buffers; we only need to bind vertex buffers on binding points that have actually changed since last draw call */
+        i32 firstChangedBinding = -1;// -1 => we have not yet encountered a binding that has changed state
+        for(u32 i = 0; i < KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT; i++)
+        {
+            if(stagingMeta->vertexAttributeDescriptors[i].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
+            {
+                /* this vertex attribute is used; set the drawState accordingly */
+                surfaceContext->drawState.vertexBuffers[i]           = buffer;
+                surfaceContext->drawState.vertexBufferByteOffsets[i] = bufferByteOffset + stagingMeta->vertexAttributeDescriptors[i].byteOffsetBuffer;
+            }
+            if(   surfaceContext->drawStateLast.vertexBuffers[i]           != surfaceContext->drawState.vertexBuffers[i]
+               || surfaceContext->drawStateLast.vertexBufferByteOffsets[i] != surfaceContext->drawState.vertexBufferByteOffsets[i])
+                // if the current binding has changed since last draw call
+            {
+                /* this vertex attribute has changed since last frame; we will need to call vkCmdBindVertexBuffers at least once */
+                if(firstChangedBinding < 0)
+                    firstChangedBinding = i;// begin keeping track of a range of changed bindings
+            }
+            else // if the current binding has not changed since last draw call
+            {
+                if(firstChangedBinding >= 0)
+                    /* flush the range of changed bindings */
+                    vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
+                                          ,firstChangedBinding, i - firstChangedBinding
+                                          ,surfaceContext->drawState.vertexBuffers           + firstChangedBinding
+                                          ,surfaceContext->drawState.vertexBufferByteOffsets + firstChangedBinding);
+                firstChangedBinding = -1;// reset the range of changed bindings so we can find a new range if necessary
+            }
+        }
+        /* if we were still building a range of changed bindings, flush the last range */
+        if(firstChangedBinding >= 0)
+            vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
+                                  ,firstChangedBinding, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT - firstChangedBinding
+                                  ,surfaceContext->drawState.vertexBuffers           + firstChangedBinding
+                                  ,surfaceContext->drawState.vertexBufferByteOffsets + firstChangedBinding);
     }
-    vkCmdBindVertexBuffers(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
-                          ,0/*first binding; we're just going to re-bind all our bindings*/, korl_arraySize(vertexBuffers)
-                          ,vertexBuffers, vertexBufferByteOffsets);
     const uint32_t instanceCount = stagingMeta->instanceCount ? stagingMeta->instanceCount : 1;// allow user to pass 0 for instanceCount, to implicitly draw one instance
     if(stagingMeta->indexCount)
     {
@@ -2216,10 +2245,16 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
         case KORL_GFX_VERTEX_INDEX_TYPE_U32    : indexType = VK_INDEX_TYPE_UINT32;   break;
         case KORL_GFX_VERTEX_INDEX_TYPE_INVALID: indexType = VK_INDEX_TYPE_NONE_KHR; break;
         }
-        vkCmdBindIndexBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
-                            ,buffer
-                            ,bufferByteOffset + stagingMeta->indexByteOffsetBuffer
-                            ,indexType);
+        surfaceContext->drawState.indexBuffer           = buffer;
+        surfaceContext->drawState.indexType             = indexType;
+        surfaceContext->drawState.indexBufferByteOffset = bufferByteOffset + stagingMeta->indexByteOffsetBuffer;
+        if(   surfaceContext->drawStateLast.indexBuffer           != surfaceContext->drawState.indexBuffer
+           || surfaceContext->drawStateLast.indexType             != surfaceContext->drawState.indexType
+           || surfaceContext->drawStateLast.indexBufferByteOffset != surfaceContext->drawState.indexBufferByteOffset)
+            vkCmdBindIndexBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
+                                ,buffer
+                                ,bufferByteOffset + stagingMeta->indexByteOffsetBuffer
+                                ,indexType);
         vkCmdDrawIndexed(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                         ,stagingMeta->indexCount, instanceCount, /*firstIndex*/0, /*vertexOffset*/0, /*firstInstance*/0);
     }

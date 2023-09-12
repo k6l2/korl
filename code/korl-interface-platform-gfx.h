@@ -265,7 +265,7 @@ typedef struct Korl_Gfx_VertexAttributeDescriptor
     u32                                 byteOffsetBuffer;// the byte offset within the buffer containing this attribute which contains the first attribute value
     u32                                 byteStride;// aka byteOffsetPerVertex
     Korl_Gfx_VertexAttributeInputRate   inputRate;
-    Korl_Gfx_VertexAttributeElementType elementType;
+    Korl_Gfx_VertexAttributeElementType elementType;// if == INVALID, this vertex attribute is not used
     u8                                  vectorSize;
 } Korl_Gfx_VertexAttributeDescriptor;
 typedef struct Korl_Gfx_VertexStagingMeta
