@@ -697,6 +697,65 @@ korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(korl_resource
     korl_assert(sceneMeshPrimitiveIndex < scene3d->meshPrimitivesSize);
     return scene3d->meshPrimitives[sceneMeshPrimitiveIndex];
 }
+korl_internal KORL_FUNCTION_korl_resource_scene3d_getMeshTriangles(korl_resource_scene3d_getMeshTriangles)
+{
+    KORL_ZERO_STACK(Korl_Math_TriangleMesh, result);
+    _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);
+    if(!scene3d || !scene3d->gltf)
+        return result;
+    korl_assert(meshIndex < scene3d->gltf->meshes.size);
+    const Korl_Codec_Gltf_Mesh*const           gltfMesh           = korl_codec_gltf_getMeshes(scene3d->gltf) + meshIndex;
+    const _Korl_Resource_Scene3d_Mesh*const    mesh               = scene3d->meshes + meshIndex;
+    const Korl_Codec_Gltf_Mesh_Primitive*const gltfMeshPrimitives = korl_codec_gltf_mesh_getPrimitives(scene3d->gltf, gltfMesh);
+    result = korl_math_triangleMesh_create(allocator);
+    for(u32 mp = 0; mp < gltfMesh->primitives.size; mp++)
+    {
+        const Korl_Codec_Gltf_Mesh_Primitive*const      gltfMeshPrimitive = gltfMeshPrimitives + mp;
+        const Korl_Resource_Scene3d_MeshPrimitive*const meshPrimitive     = scene3d->meshPrimitives + mesh->meshPrimitivesOffset + mp;
+        korl_assert(meshPrimitive->primitiveType == KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES);// for now, we only support TRIANGLES
+        /* obtain a pointer to the raw data contained within scene3d->vertexBuffer 
+            so that we can transcode raw mesh vertex data */
+        u$                vertexBufferBytes = 0;
+        const void* const vertexBuffer      = korl_resource_getRawRuntimeData(scene3d->vertexBuffer, &vertexBufferBytes);
+        /* determine what vertex data we have to transcode into the TriangleMesh */
+        const void* rawIndices = NULL;
+        u32*        indices    = NULL;
+        if(meshPrimitive->vertexStagingMeta.indexType != KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
+        {
+            /* if this MeshPrimitive has vertex indices, we should use them; 
+                we have to transcode indices into a u32 array, since that is the 
+                only type of vertex index that TriangleMesh API currently supports */
+            rawIndices = KORL_C_CAST(const u8*, vertexBuffer) 
+                       + meshPrimitive->vertexBufferByteOffset 
+                       + meshPrimitive->vertexStagingMeta.indexByteOffsetBuffer;
+            switch(meshPrimitive->vertexStagingMeta.indexType)
+            {
+            case KORL_GFX_VERTEX_INDEX_TYPE_INVALID: korl_log(ERROR, ""); break;// this error should never happen, since this condition was already checked above
+            case KORL_GFX_VERTEX_INDEX_TYPE_U32    : indices = KORL_C_CAST(u32*, rawIndices); break;// if the indices are already u32, we can just use them :)
+            case KORL_GFX_VERTEX_INDEX_TYPE_U16    : // transcode u16 indices into u32, using a temporary buffer
+                indices = korl_allocateDirty(allocator, meshPrimitive->vertexStagingMeta.indexCount * sizeof(u32));
+                for(u32 i = 0; i < meshPrimitive->vertexStagingMeta.indexCount; i++)
+                    indices[i] = KORL_C_CAST(const u16*, rawIndices)[i];
+                break;
+            }
+        }
+        korl_assert(meshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType != KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID);// all MeshPrimitives _must_ have a position attribute
+        korl_assert(meshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_F32);// for now, we only support f32 position components
+        korl_assert(meshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].vectorSize == 3);// for now, we only support 3D position data
+        const Korl_Math_V3f32*const positions = KORL_C_CAST(Korl_Math_V3f32*, KORL_C_CAST(const u8*, vertexBuffer) 
+                                                                              + meshPrimitive->vertexBufferByteOffset 
+                                                                              + meshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION].byteOffsetBuffer);
+        /* transcode the TriangleMesh data for this MeshPrimitive */
+        if(indices)
+            korl_math_triangleMesh_addIndexed(&result, positions, meshPrimitive->vertexStagingMeta.vertexCount, indices, meshPrimitive->vertexStagingMeta.indexCount);
+        else
+            korl_math_triangleMesh_add(&result, positions, meshPrimitive->vertexStagingMeta.vertexCount);
+        /* cleanup */
+        if(indices && indices != rawIndices)
+            korl_free(allocator, indices);
+    }
+    return result;
+}
 korl_internal KORL_FUNCTION_korl_resource_scene3d_newSkin(korl_resource_scene3d_newSkin)
 {
     _Korl_Resource_Scene3d*const scene3d = korl_resource_getDescriptorStruct(handleResourceScene3d);

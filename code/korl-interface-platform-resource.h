@@ -84,7 +84,9 @@ typedef KORL_RESOURCE_FOR_EACH_CALLBACK(korl_resource_callback_forEach);
 #define KORL_FUNCTION_korl_resource_destroy(name)                                 void                                name(Korl_Resource_Handle resourceHandle)
 #define KORL_FUNCTION_korl_resource_update(name)                                  void                                name(Korl_Resource_Handle handle, const void* sourceData, u$ sourceDataBytes, u$ destinationByteOffset)
 #define KORL_FUNCTION_korl_resource_getUpdateBuffer(name)                         void*                               name(Korl_Resource_Handle handle, u$ byteOffset, u$* io_bytesRequested_bytesAvailable)
+//@TODO: consider deprecating this API, in favor of just using KORL_FUNCTION_korl_resource_getRawRuntimeData, since that API is a super-set of getByteSize
 #define KORL_FUNCTION_korl_resource_getByteSize(name)                             u$                                  name(Korl_Resource_Handle handle)
+#define KORL_FUNCTION_korl_resource_getRawRuntimeData(name)                       const void*                         name(Korl_Resource_Handle handle, u$* o_bytes)
 #define KORL_FUNCTION_korl_resource_isLoaded(name)                                bool                                name(Korl_Resource_Handle handle)
 #define KORL_FUNCTION_korl_resource_forEach(name)                                 void                                name(acu8 utf8DescriptorName, korl_resource_callback_forEach* callback, void* callbackUserData)
 #define KORL_FUNCTION_korl_resource_texture_getSize(name)                         Korl_Math_V2u32                     name(Korl_Resource_Handle handleResourceTexture)
@@ -103,6 +105,7 @@ typedef KORL_RESOURCE_FOR_EACH_CALLBACK(korl_resource_callback_forEach);
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshName(name)                     acu8                                name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitiveCount(name)           u32                                 name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_getMeshPrimitive(name)                Korl_Resource_Scene3d_MeshPrimitive name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, u32 primitiveIndex)
+#define KORL_FUNCTION_korl_resource_scene3d_getMeshTriangles(name)                Korl_Math_TriangleMesh              name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_scene3d_newSkin(name)                         Korl_Resource_Scene3d_Skin*         name(Korl_Resource_Handle handleResourceScene3d, u32 meshIndex, Korl_Memory_AllocatorHandle allocator)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneParentIndices(name)       const i32*                          name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)
 #define KORL_FUNCTION_korl_resource_scene3d_skin_getBoneTopologicalOrder(name)    const u32*                          name(Korl_Resource_Handle handleResourceScene3d, u32 skinIndex)

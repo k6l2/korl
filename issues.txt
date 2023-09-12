@@ -182,7 +182,7 @@
 [ ] KORL-FEATURE-000-000-060: gfx: add "Material" asset/resource; we should be able to define materials in some kind of file (GLB, JSON, etc.)
 [ ] KORL-FEATURE-000-000-061: file: add ability for the user to enumerate over files in a directory; use case: a game where each "map" is a file, and we want to load all of them, or at least process their metadata (such as file name)
 [ ] KORL-FEATURE-000-000-062: resource: add ability for resource descriptors to pre-process file assets & write a cached pre-processed file to disc, then just use the pre-processed file instead of the original
-[ ] KORL-FEATURE-000-000-063: Korl_Math_TriangleMesh; we want a data struct that gives us the ability to query arbitrary tri mesh data for collisions
+[@TODO] KORL-FEATURE-000-000-063: Korl_Math_TriangleMesh; we want a data struct that gives us the ability to query arbitrary tri mesh data for collisions
 [ ] KORL-FEATURE-000-000-064: gltf: import rigged collision geometry, preferably so that we're able to attach colliders with specific bones on a skinned mesh; https://docs.unrealengine.com/5.3/en-US/fbx-static-mesh-pipeline-in-unreal-engine/#collision
 [ ] KORL-FEATURE-000-000-065: scene3d: skinned mesh animation blending; we want to be able to target sub-trees of the skinned mesh armature; we want to provide weights to each desired blended animation
 [ ] KORL-FEATURE-000-000-066: scene3d: skinned mesh animation re-targeting; https://wickedengine.net/2022/09/23/animation-retargeting/

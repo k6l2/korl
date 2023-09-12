@@ -277,6 +277,19 @@ korl_internal KORL_FUNCTION_korl_resource_getByteSize(korl_resource_getByteSize)
     fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
     return runtimeBytes(resourceItem->descriptorStruct);
 }
+korl_internal KORL_FUNCTION_korl_resource_getRawRuntimeData(korl_resource_getRawRuntimeData)
+{
+    _Korl_Resource_Context*const context = _korl_resource_context;
+    _Korl_Resource_Item*const resourceItem = korl_pool_get(&context->resourcePool, &handle);
+    korl_assert(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA);
+    if(o_bytes)
+    {
+        _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+        fnSig_korl_resource_descriptorCallback_runtimeBytes*const runtimeBytes = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_runtimeBytes*, korl_functionDynamo_get(descriptor->callbacks.runtimeBytes));
+        *o_bytes = runtimeBytes(resourceItem->descriptorStruct);
+    }
+    return resourceItem->backingSubType.runtime.data;
+}
 korl_internal KORL_FUNCTION_korl_resource_isLoaded(korl_resource_isLoaded)
 {
     _Korl_Resource_Context*const context = _korl_resource_context;

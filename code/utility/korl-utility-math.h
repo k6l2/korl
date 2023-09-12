@@ -2,7 +2,7 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-memory.h"
 #define KORL_PI32  3.14159f
-#define KORL_TAU32 6.28318f // 2*PI
+#define KORL_TAU32 6.28318f // 2 * PI
 #define KORL_MATH_CLAMP(x, min, max)        ((x) <= (min) ? (min) : ((x) >= (max) ? (max) : (x)))
 #define KORL_MATH_ASSIGN_CLAMP(x, min, max) ((x) = KORL_MATH_CLAMP((x), (min), (max)))
 #define KORL_MATH_ASSIGN_CLAMP_MIN(x, min)  ((x) = (x) <= (min) ? (min) : (x))
@@ -68,16 +68,16 @@ typedef struct Korl_Math_Rng_WichmannHill
 } Korl_Math_Rng_WichmannHill;
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new(u16 seed0, u16 seed1, u16 seed2);
 korl_internal inline Korl_Math_Rng_WichmannHill korl_math_rng_wichmannHill_new_u64(u64 seed);
-korl_internal inline f32 korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_WichmannHill*const context);
-korl_internal inline f32 korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_WichmannHill*const context, f32 range0, f32 range1);
+korl_internal inline f32                        korl_math_rng_wichmannHill_f32_0_1(Korl_Math_Rng_WichmannHill*const context);
+korl_internal inline f32                        korl_math_rng_wichmannHill_f32_range(Korl_Math_Rng_WichmannHill*const context, f32 range0, f32 range1);
 /* V2u32 **********************************************************************/
 typedef union Korl_Math_V2u32
 {
     struct { u32 x, y; };
     u32 elements[2];
 } Korl_Math_V2u32;
-const Korl_Math_V2u32 KORL_MATH_V2U32_ZERO = {0, 0};
-const Korl_Math_V2u32 KORL_MATH_V2U32_ONE  = {1, 1};
+korl_global_const Korl_Math_V2u32 KORL_MATH_V2U32_ZERO = {0, 0};
+korl_global_const Korl_Math_V2u32 KORL_MATH_V2U32_ONE  = {1, 1};
 korl_internal Korl_Math_V2u32 korl_math_v2u32_addScalar(Korl_Math_V2u32 v, u32 scalar);
 korl_internal Korl_Math_V2u32 korl_math_v2u32_divide(Korl_Math_V2u32 vA, Korl_Math_V2u32 vB);
 /* V2f32 **********************************************************************/
@@ -86,10 +86,10 @@ typedef union Korl_Math_V2f32
     struct { f32 x, y; };
     f32 elements[2];
 } Korl_Math_V2f32;
-const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {0, 0};
-const Korl_Math_V2f32 KORL_MATH_V2F32_X    = {1, 0};
-const Korl_Math_V2f32 KORL_MATH_V2F32_Y    = {0, 1};
-const Korl_Math_V2f32 KORL_MATH_V2F32_ONE  = {1, 1};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {0, 0};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_X    = {1, 0};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_Y    = {0, 1};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_ONE  = {1, 1};
 /** \return a rotated V2f32 from a starting position of {radius, 0}, rotated 
  * around the +Z axis by \c radians */
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v);
@@ -130,14 +130,14 @@ typedef union Korl_Math_V3f32
     struct {Korl_Math_V2f32 xy; f32 _z;};
     f32 elements[3];
 } Korl_Math_V3f32;
-const Korl_Math_V3f32 KORL_MATH_V3F32_ONE     = { 1,  1,  1};
-const Korl_Math_V3f32 KORL_MATH_V3F32_ZERO    = { 0,  0,  0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_X       = { 1,  0,  0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_Y       = { 0,  1,  0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_Z       = { 0,  0,  1};
-const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_X = {-1,  0,  0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Y = { 0, -1,  0};
-const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Z = { 0,  0, -1};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_ONE     = { 1,  1,  1};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_ZERO    = { 0,  0,  0};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_X       = { 1,  0,  0};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_Y       = { 0,  1,  0};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_Z       = { 0,  0,  1};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_X = {-1,  0,  0};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Y = { 0, -1,  0};
+korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Z = { 0,  0, -1};
 korl_internal f32             korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32             korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);
@@ -174,8 +174,8 @@ typedef union Korl_Math_V4f32
     struct { Korl_Math_V3f32 xyz; f32 _w; };
     f32 elements[4];
 } Korl_Math_V4f32;
-const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};
-const Korl_Math_V4f32 KORL_MATH_V4F32_ZERO = {0, 0, 0, 0};
+korl_global_const Korl_Math_V4f32 KORL_MATH_V4F32_ONE  = {1, 1, 1, 1};
+korl_global_const Korl_Math_V4f32 KORL_MATH_V4F32_ZERO = {0, 0, 0, 0};
 korl_internal f32              korl_math_v4f32_magnitude(const Korl_Math_V4f32*const v);
 korl_internal f32              korl_math_v4f32_magnitudeSquared(const Korl_Math_V4f32*const v);
 korl_internal Korl_Math_V4f32  korl_math_v4f32_normal(Korl_Math_V4f32 v);
@@ -208,7 +208,7 @@ typedef union Korl_Math_Quaternion
     Korl_Math_V4f32 v4;// we do this instead of just `typedef V4f32 Quaternion` because in C++ we _must_ differentiate `quaternion operator*` with `v4f32 operator*`
     f32 elements[4];
 } Korl_Math_Quaternion;
-const Korl_Math_Quaternion KORL_MATH_QUATERNION_IDENTITY = {0, 0, 0, 1};
+korl_global_const Korl_Math_Quaternion KORL_MATH_QUATERNION_IDENTITY = {0, 0, 0, 1};
 korl_internal Korl_Math_Quaternion korl_math_quaternion_normal(Korl_Math_Quaternion q);
 korl_internal f32                  korl_math_quaternion_normalize(Korl_Math_Quaternion* q);/** \return the magnitude of \c q */
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Math_V3f32 axis, f32 radians, bool axisIsNormalized);
@@ -231,7 +231,7 @@ typedef union Korl_Math_M4f32
         f32 r3c0, r3c1, r3c2, r3c3;
     };
 } Korl_Math_M4f32;
-const Korl_Math_M4f32 KORL_MATH_M4F32_IDENTITY = {
+korl_global_const Korl_Math_M4f32 KORL_MATH_M4F32_IDENTITY = {
     { {1,0,0,0}
     , {0,1,0,0}
     , {0,0,1,0}
@@ -258,8 +258,8 @@ typedef struct Korl_Math_Aabb2f32
     Korl_Math_V2f32 min;
     Korl_Math_V2f32 max;
 } Korl_Math_Aabb2f32;
-const Korl_Math_Aabb2f32 KORL_MATH_AABB2F32_EMPTY = {{ KORL_F32_MAX, KORL_F32_MAX}
-                                                    ,{-KORL_F32_MAX,-KORL_F32_MAX}};
+korl_global_const Korl_Math_Aabb2f32 KORL_MATH_AABB2F32_EMPTY = {{ KORL_F32_MAX, KORL_F32_MAX}
+                                                                ,{-KORL_F32_MAX,-KORL_F32_MAX}};
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPoints(f32 p0x, f32 p0y, f32 p1x, f32 p1y);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPointsV2(const Korl_Math_V2f32* points, u$ pointsSize);
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY);
@@ -279,8 +279,8 @@ typedef struct Korl_Math_Aabb3f32
     Korl_Math_V3f32 min;
     Korl_Math_V3f32 max;
 } Korl_Math_Aabb3f32;
-const Korl_Math_Aabb3f32 KORL_MATH_AABB3F32_EMPTY = {{ KORL_F32_MAX, KORL_F32_MAX, KORL_F32_MAX}
-                                                    ,{-KORL_F32_MAX,-KORL_F32_MAX,-KORL_F32_MAX}};
+korl_global_const Korl_Math_Aabb3f32 KORL_MATH_AABB3F32_EMPTY = {{ KORL_F32_MAX, KORL_F32_MAX, KORL_F32_MAX}
+                                                                ,{-KORL_F32_MAX,-KORL_F32_MAX,-KORL_F32_MAX}};
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_Aabb3f32 aabb, f32 expandX, f32 expandY, f32 expandZ);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_V3f32 v, f32 expandX, f32 expandY, f32 expandZ);
@@ -313,15 +313,20 @@ korl_internal void                  korl_math_transform3d_setVersor(Korl_Math_Tr
 korl_internal void                  korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale);
 korl_internal void                  korl_math_transform3d_updateM4f32(Korl_Math_Transform3d* context);
 korl_internal Korl_Math_M4f32       korl_math_transform3d_m4f32(Korl_Math_Transform3d* context);
-#if 0//KORL-FEATURE-000-000-063: Korl_Math_TriangleMesh; we want a data struct that gives us the ability to query arbitrary tri mesh data for collisions
 /* Korl_Math_TriangleMesh *****************************************************/
 typedef struct Korl_Math_TriangleMesh
 {
     Korl_Memory_AllocatorHandle allocator;
+    Korl_Math_V3f32*            stbDaVertices;
+    u32*                        stbDaIndices;
+    Korl_Math_Aabb3f32          aabb;
 } Korl_Math_TriangleMesh;
 korl_internal Korl_Math_TriangleMesh korl_math_triangleMesh_create(Korl_Memory_AllocatorHandle allocator);
 korl_internal void                   korl_math_triangleMesh_destroy(Korl_Math_TriangleMesh* context);
-#endif
+korl_internal void                   korl_math_triangleMesh_collectDefragmentPointers(Korl_Math_TriangleMesh* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent);
+korl_internal void                   korl_math_triangleMesh_add(Korl_Math_TriangleMesh* context, const Korl_Math_V3f32* vertices, u32 verticesSize);
+korl_internal void                   korl_math_triangleMesh_addIndexed(Korl_Math_TriangleMesh* context, const Korl_Math_V3f32* vertices, u32 verticesSize, const u32* indices, u32 indicesSize);
+//@TODO: query Korl_Math_TriangleMesh for collisions
 /* C++ API ********************************************************************/
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);

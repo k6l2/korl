@@ -1,5 +1,6 @@
 #include "utility/korl-utility-math.h"
 #include "utility/korl-checkCast.h"
+#include "utility/korl-utility-stb-ds.h"
 #include "korl-interface-platform.h"
 #ifndef KORL_MATH_ASSERT
     #define KORL_MATH_ASSERT(condition) korl_assert(condition)
@@ -1234,6 +1235,52 @@ korl_internal Korl_Math_M4f32 korl_math_transform3d_m4f32(Korl_Math_Transform3d*
         context->_m4f32IsUpdated = true;
     }
     return context->_m4f32;
+}
+korl_internal Korl_Math_TriangleMesh korl_math_triangleMesh_create(Korl_Memory_AllocatorHandle allocator)
+{
+    KORL_ZERO_STACK(Korl_Math_TriangleMesh, result);
+    result.allocator = allocator;
+    result.aabb      = KORL_MATH_AABB3F32_EMPTY;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(allocator), result.stbDaVertices, 128);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(allocator), result.stbDaIndices , 128);
+    return result;
+}
+korl_internal void korl_math_triangleMesh_destroy(Korl_Math_TriangleMesh* context)
+{
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaVertices);
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaIndices);
+    korl_memory_zero(context, sizeof(*context));
+}
+korl_internal void korl_math_triangleMesh_collectDefragmentPointers(Korl_Math_TriangleMesh* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent)
+{
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaVertices, parent);
+    KORL_MEMORY_STB_DA_DEFRAGMENT_STB_ARRAY_CHILD(stbDaMemoryContext, *pStbDaDefragmentPointers, context->stbDaIndices , parent);
+}
+korl_internal void korl_math_triangleMesh_add(Korl_Math_TriangleMesh* context, const Korl_Math_V3f32* vertices, u32 verticesSize)
+{
+    korl_assert(verticesSize % 3 == 0);// triangles must obviously have 3 vertices
+    const u$ startIndexVertices = arrlenu(context->stbDaVertices);
+    const u$ startIndexIndices  = arrlenu(context->stbDaIndices);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaVertices, startIndexVertices + verticesSize);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaIndices , startIndexIndices  + verticesSize / 3);
+    korl_memory_copy(context->stbDaVertices + startIndexVertices, vertices, verticesSize * sizeof(*vertices));
+    for(u32 v = 0; v < verticesSize; v++)
+    {
+        korl_math_aabb3f32_addPointV3(&context->aabb, vertices[v]);
+        context->stbDaIndices[startIndexIndices + v] = korl_checkCast_u$_to_u32(startIndexVertices + v);
+    }
+}
+korl_internal void korl_math_triangleMesh_addIndexed(Korl_Math_TriangleMesh* context, const Korl_Math_V3f32* vertices, u32 verticesSize, const u32* indices, u32 indicesSize)
+{
+    const u$ startIndexVertices = arrlenu(context->stbDaVertices);
+    const u$ startIndexIndices  = arrlenu(context->stbDaIndices);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaVertices, startIndexVertices + verticesSize);
+    mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaIndices , startIndexIndices  + indicesSize);
+    korl_memory_copy(context->stbDaVertices + startIndexVertices, vertices, verticesSize * sizeof(*vertices));
+    for(u32 v = 0; v < verticesSize; v++)
+        korl_math_aabb3f32_addPointV3(&context->aabb, vertices[v]);
+    for(u32 i = 0; i < indicesSize; i++)
+        context->stbDaIndices[startIndexIndices + i] = korl_checkCast_u$_to_u32(startIndexVertices + indices[i]);
 }
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar)
