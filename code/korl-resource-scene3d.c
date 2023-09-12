@@ -447,7 +447,9 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
             {
                 const Korl_Codec_Gltf_Node*const jointNodeChild  = korl_codec_gltf_node_getChild(scene3d->gltf, jointNode, jc);
                 const u32                        childNodeIndex  = korl_checkCast_i$_to_u32(jointNodeChild - gltfNodes);
-                const u32                        childJointIndex = korl_checkCast_i$_to_u32(skin->nodeIndex_to_boneIndex[childNodeIndex]);
+                if(skin->nodeIndex_to_boneIndex[childNodeIndex] < 0)
+                    continue;// if the child of this Node is not in the skin, we can't possibly add it to the graph
+                const u32 childJointIndex = korl_checkCast_i$_to_u32(skin->nodeIndex_to_boneIndex[childNodeIndex]);
                 korl_algorithm_graphDirected_addEdge(&graphDirected, j, childJointIndex);
                 skin->boneParentIndices[childJointIndex] = j;
             }
