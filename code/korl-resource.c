@@ -195,6 +195,9 @@ korl_internal KORL_FUNCTION_korl_resource_fromFile(korl_resource_fromFile)
         newResource->backingSubType.assetCache.assetCacheGetFlags = assetCacheGetFlags;
         mcshput(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data, newResourceHandle);
         hashMapIndex = mcshgeti(KORL_STB_DS_MC_CAST(context->allocatorHandleRuntime), context->stbShFileResources, utf8FileName.data);
+        if(!(newResource->backingSubType.assetCache.assetCacheGetFlags & KORL_ASSETCACHE_GET_FLAG_LAZY))
+            /* if we're no lazy-loading the asset, let's just transcode it right now */
+            _korl_resource_transcodeFileAssets_forEach(NULL, newResource);
     }
     _Korl_Resource_Map*const resourceMapItem = context->stbShFileResources + hashMapIndex;
     return resourceMapItem->value;

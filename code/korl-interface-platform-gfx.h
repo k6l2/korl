@@ -190,7 +190,7 @@ enum
     {KORL_GFX_MATERIAL_MODE_FLAGS_NONE              = 0
     ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_BLEND       = 1 << 0
     ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST  = 1 << 1
-    ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE = 1 << 2
+    ,KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE = 1 << 2/// NOTE: if KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST is not set, this flag is ignored, since disabling depth test in the pipeline prevents the ability to interact with the depth buffer in any way; see Vulkan spec. 28.7
     ,KORL_GFX_MATERIAL_MODE_FLAGS_ALL               = KORL_U32_MAX
 };
 typedef u32 Korl_Gfx_Material_Mode_Flags;

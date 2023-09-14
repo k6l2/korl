@@ -682,6 +682,10 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles(const Korl_Gfx_Create
 {
     return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 0, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, 3 * triangleCount);
 }
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableTrianglesIndexed(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 triangleCount, u32 vertexCount)
+{
+    return _korl_gfx_runtimeDrawable(createInfo, KORL_GFX_MATERIAL_PRIMITIVE_TYPE_TRIANGLES, 3 * triangleCount, KORL_GFX_VERTEX_ATTRIBUTE_INPUT_RATE_VERTEX, vertexCount);
+}
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleFan(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount)
 {
     korl_assert(vertexCount >= 3);
@@ -908,6 +912,13 @@ korl_internal u16* korl_gfx_drawable_indexU16(const Korl_Gfx_Drawable*const cont
     korl_assert(context->subType.runtime.vertexStagingMeta.indexType == KORL_GFX_VERTEX_INDEX_TYPE_U16);
     return KORL_C_CAST(u16*, _korl_gfx_drawable_index(context, indicesIndex));
 }
+korl_internal u32* korl_gfx_drawable_indexU32(const Korl_Gfx_Drawable*const context, u32 indicesIndex)
+{
+    if(context->subType.runtime.vertexStagingMeta.indexType == KORL_GFX_VERTEX_INDEX_TYPE_INVALID)
+        return NULL;
+    korl_assert(context->subType.runtime.vertexStagingMeta.indexType == KORL_GFX_VERTEX_INDEX_TYPE_U32);
+    return KORL_C_CAST(u32*, _korl_gfx_drawable_index(context, indicesIndex));
+}
 korl_internal u32* korl_gfx_drawable_attributeU32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex)
 {
     if(context->subType.runtime.vertexStagingMeta.vertexAttributeDescriptors[binding].elementType == KORL_GFX_VERTEX_ATTRIBUTE_ELEMENT_TYPE_INVALID)
@@ -1119,6 +1130,20 @@ korl_internal void korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
     korl_gfx_draw(&immediate, material, 1);
 }
+korl_internal void korl_gfx_drawLineStrip3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors)
+{
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableLineStrip(&createInfoDrawable, vertexCount);
+    *o_positions = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    korl_gfx_draw(&immediate, material, 1);
+}
 korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
@@ -1126,6 +1151,8 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
     createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
     if(o_colors)
         createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    if(o_uvs)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
     Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles(&createInfoDrawable, triangleCount);
     *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
     if(o_colors)
@@ -1133,6 +1160,48 @@ korl_internal void korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_
     if(o_uvs)
         *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
     immediate.transform = korl_math_transform3d_rotateTranslate(versor, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position});
+    korl_gfx_draw(&immediate, material, 1);
+}
+korl_internal void korl_gfx_drawTriangles3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+{
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    if(o_uvs)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTriangles(&createInfoDrawable, triangleCount);
+    *o_positions = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
+    if(o_uvs)
+        *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
+    korl_gfx_draw(&immediate, material, 1);
+}
+korl_internal void korl_gfx_drawTrianglesIndexed3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 triangleCount, u32 vertexCount, const Korl_Gfx_Material* material, u32** o_indices, Korl_Math_V3f32** o_positions, Korl_Math_V3f32** o_normals, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+{
+    KORL_ZERO_STACK(Korl_Gfx_CreateInfoRuntimeDrawable, createInfoDrawable);
+    createInfoDrawable.type                                                           = KORL_GFX_DRAWABLE_RUNTIME_TYPE_SINGLE_FRAME;
+    createInfoDrawable.vertexIndexType                                                = KORL_GFX_VERTEX_INDEX_TYPE_U32;
+    createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(o_colors)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
+    if(o_normals)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_NORMAL] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V3F32;
+    if(o_uvs)
+        createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V2F32;
+    Korl_Gfx_Drawable immediate = korl_gfx_drawableTrianglesIndexed(&createInfoDrawable, triangleCount, vertexCount);
+    *o_indices   = korl_gfx_drawable_indexU32(&immediate, 0);
+    *o_positions = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
+    if(o_normals)
+        *o_normals = korl_gfx_drawable_attributeV3f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_NORMAL, 0);
+    if(o_colors)
+        *o_colors = korl_gfx_drawable_attributeV4u8(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR, 0);
+    if(o_uvs)
+        *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
+    immediate.transform = korl_math_transform3d_rotateTranslate(versor, position);
     korl_gfx_draw(&immediate, material, 1);
 }
 korl_internal void korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors)
@@ -1216,6 +1285,28 @@ korl_internal void korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_M
     drawable.transform = korl_math_transform3d_rotateScaleTranslate(versor, scale, position);
     Korl_Gfx_Material material = korl_gfx_material_defaultUnlit();
     korl_gfx_draw(&drawable, &material, 1);
+}
+korl_internal void korl_gfx_drawTriangleMesh(Korl_Math_TriangleMesh* context, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, const Korl_Gfx_Material *material)
+{
+    if(arrlenu(context->stbDaIndices))
+        korl_assert(arrlenu(context->stbDaIndices) % 3 == 0);
+    u32*             indices   = NULL;
+    Korl_Math_V3f32* positions = NULL;
+    Korl_Math_V3f32* normals   = NULL;
+    Korl_Math_V2f32* uvs       = NULL;
+    korl_gfx_drawTrianglesIndexed3d(position, versor, korl_checkCast_u$_to_u32(arrlenu(context->stbDaIndices) / 3), korl_checkCast_u$_to_u32(arrlenu(context->stbDaVertices)), material, &indices, &positions, &normals, NULL, &uvs);
+    korl_memory_copy(indices  , context->stbDaIndices , arrlenu(context->stbDaIndices)  * sizeof(*indices));
+    korl_memory_copy(positions, context->stbDaVertices, arrlenu(context->stbDaVertices) * sizeof(*positions));
+    korl_memory_zero(uvs, arrlenu(context->stbDaVertices) * sizeof(*uvs));
+    const u32*const indicesEnd = context->stbDaIndices + arrlen(context->stbDaIndices);
+    for(const u32* index = context->stbDaIndices; index < indicesEnd; index += 3)
+    {
+        const Korl_Math_V3f32 normal = korl_math_v3f32_normal(korl_math_v3f32_cross(korl_math_v3f32_subtract(context->stbDaVertices[index[1]], context->stbDaVertices[index[0]])
+                                                                                   ,korl_math_v3f32_subtract(context->stbDaVertices[index[2]], context->stbDaVertices[index[1]])));
+        normals[index[0]] = normal;
+        normals[index[1]] = normal;
+        normals[index[2]] = normal;
+    }
 }
 korl_internal void korl_gfx_setRectangleUvAabb(Korl_Math_V2f32* uvs, const Korl_Math_Aabb2f32 aabb)
 {

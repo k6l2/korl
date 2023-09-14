@@ -75,6 +75,7 @@ typedef struct Korl_Gfx_CreateInfoRuntimeDrawable
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableLines(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 lineCount);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableLineStrip(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangles(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 triangleCount);
+korl_internal Korl_Gfx_Drawable korl_gfx_drawableTrianglesIndexed(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 triangleCount, u32 vertexCount);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleFan(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableTriangleStrip(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, u32 vertexCount);
 korl_internal Korl_Gfx_Drawable korl_gfx_drawableRectangle(const Korl_Gfx_CreateInfoRuntimeDrawable* createInfo, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size);
@@ -86,6 +87,7 @@ korl_internal Korl_Gfx_Drawable korl_gfx_mesh(Korl_Resource_Handle resourceHandl
 korl_internal Korl_Gfx_Drawable korl_gfx_meshIndexed(Korl_Resource_Handle resourceHandleScene3d, u32 meshIndex);
 korl_internal void              korl_gfx_drawable_addInterleavedVertices(Korl_Gfx_Drawable*const context, u32 vertexCount);
 korl_internal u16*              korl_gfx_drawable_indexU16(const Korl_Gfx_Drawable*const context, u32 indicesIndex);
+korl_internal u32*              korl_gfx_drawable_indexU32(const Korl_Gfx_Drawable*const context, u32 indicesIndex);
 korl_internal u32*              korl_gfx_drawable_attributeU32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex);
 korl_internal Korl_Math_V2f32*  korl_gfx_drawable_attributeV2f32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex);
 korl_internal Korl_Math_V3f32*  korl_gfx_drawable_attributeV3f32(const Korl_Gfx_Drawable*const context, Korl_Gfx_VertexAttributeBinding binding, u32 attributeIndex);
@@ -97,7 +99,10 @@ korl_internal void              korl_gfx_drawCircle2d(Korl_Math_V2f32 position, 
 korl_internal void              korl_gfx_drawLines2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void              korl_gfx_drawLines3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 lineCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void              korl_gfx_drawLineStrip2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
+korl_internal void              korl_gfx_drawLineStrip3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void              korl_gfx_drawTriangles2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
+korl_internal void              korl_gfx_drawTriangles3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 triangleCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
+korl_internal void              korl_gfx_drawTrianglesIndexed3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 triangleCount, u32 vertexCount, const Korl_Gfx_Material* material, u32** o_indices, Korl_Math_V3f32** o_positions, Korl_Math_V3f32** o_normals, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs);
 korl_internal void              korl_gfx_drawTriangleFan2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void              korl_gfx_drawTriangleFan3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, u32 vertexCount, const Korl_Gfx_Material* material, Korl_Math_V3f32** o_positions, Korl_Gfx_Color4u8** o_colors);
 korl_internal void              korl_gfx_drawUtf82d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, acu8 utf8Text, Korl_Resource_Handle resourceHandleFont, f32 textPixelHeight, f32 outlineSize, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Resource_Font_TextMetrics* o_textMetrics);
@@ -108,4 +113,5 @@ korl_internal void              korl_gfx_drawAabb3(Korl_Math_Aabb3f32 aabb, cons
 korl_internal void              korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin);
 korl_internal void              korl_gfx_drawMeshIndexed(Korl_Resource_Handle resourceHandleScene3d, u32 meshIndex, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin);
 korl_internal void              korl_gfx_drawAxisNormalLines(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale);
+korl_internal void              korl_gfx_drawTriangleMesh(Korl_Math_TriangleMesh* context, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, const Korl_Gfx_Material *material);
 korl_internal void              korl_gfx_setRectangleUvAabb(Korl_Math_V2f32* uvs, const Korl_Math_Aabb2f32 aabb);
