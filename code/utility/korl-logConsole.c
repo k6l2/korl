@@ -12,7 +12,7 @@ korl_internal void korl_logConsole_toggle(Korl_LogConsole* context)
 }
 korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSeconds, fnSig_korl_log_getBuffer *_korl_log_getBuffer, Korl_Math_V2u32 windowSize, Korl_Memory_AllocatorHandle allocatorStack)
 {
-    context->fadeInRatio = korl_math_exDecay(context->fadeInRatio, context->enable ? 1.f : 0.f, 40.f, deltaSeconds);
+    context->fadeInRatio = korl_math_f32_exponentialDecay(context->fadeInRatio, context->enable ? 1.f : 0.f, 40.f, deltaSeconds);
     if(!context->enable && context->stringInputLastEnabled.handle)
     {
         /* retroactively undo any input events that may have been applied to the 

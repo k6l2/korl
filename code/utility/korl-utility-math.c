@@ -69,6 +69,12 @@ korl_internal inline f32 korl_math_f32_lerp(f32 from, f32 to, f32 factor)
 {
     return from + factor*(to - from);
 }
+korl_internal inline f32 korl_math_f32_exponentialDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime)
+{
+    // good resource on this:  
+    //  https://www.rorydriscoll.com/2016/03/07/frame-rate-independent-damping-using-lerp/
+    return korl_math_f32_lerp(to, from, korl_math_f32_exponential(-lambdaFactor * deltaTime));
+}
 korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments)
 {
     return ((latitudeSegments - 2)*6 + 6) * longitudeSegments;
