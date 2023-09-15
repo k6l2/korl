@@ -439,10 +439,10 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_defragment_forEach)
     if(forEachContext->contextAllocator == _korl_resource_context->allocatorHandleRuntime)
     {
         /* if we're defragmenting RUNTIME memory, we need to defragment the Resource_Item's descriptorStruct */
-        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(forEachContext->contextAllocator, *forEachContext->pStbDaDefragmentPointers, resourceItem->descriptorStruct, _korl_resource_context->resourcePool.items.datas);
+        KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(forEachContext->stbDaMemoryContext, *forEachContext->pStbDaDefragmentPointers, resourceItem->descriptorStruct, _korl_resource_context->resourcePool.items.datas);
         if(resourceItem->backingType == _KORL_RESOURCE_ITEM_BACKING_TYPE_RUNTIME_DATA)
             /* for RUNTIME-backed resources, we also need to defragment the runtime Resource_Item's data block */
-            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(forEachContext->contextAllocator, *forEachContext->pStbDaDefragmentPointers, resourceItem->backingSubType.runtime.data, _korl_resource_context->resourcePool.items.datas);
+            KORL_MEMORY_STB_DA_DEFRAGMENT_CHILD(forEachContext->stbDaMemoryContext, *forEachContext->pStbDaDefragmentPointers, resourceItem->backingSubType.runtime.data, _korl_resource_context->resourcePool.items.datas);
         collectDefragmentPointers(resourceItem->descriptorStruct, forEachContext->stbDaMemoryContext, forEachContext->pStbDaDefragmentPointers, resourceItem->descriptorStruct, forEachContext->contextAllocator, false);
     }
     else
