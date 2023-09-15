@@ -1083,6 +1083,7 @@ korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_P
     subPathMemoryState = string_newUtf16(DUMP_SUBDIRECTORY);
     string_append(&subPathMemoryState, &subDirectoryMemoryDump);
     string_appendUtf16(&subPathMemoryState, L"\\last.kms");
+    //@TODO: this is apparently causing strings to become corrupt? wtf is going on here?
     korl_windows_window_saveLastMemoryState(type, string_getRawUtf16(&subPathMemoryState));
     /* Attempt to copy the win32 application's symbol files to the dump 
         location.  This will allow us to at LEAST view the call stack properly 

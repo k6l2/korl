@@ -622,16 +622,10 @@ korl_internal i32 _korl_heap_linear_heapIndex(const void*const allocation, const
 }
 korl_internal _Korl_Heap_Linear_AllocationMeta* _korl_heap_linear_getAllocationMeta(const void*const allocation)
 {
-    /* NOTE: _very_ simple error checking; we're assuming that allocation is, 
-             in fact, a valid heap-linear allocation! */
     const u8*const allocationLeadingByte = KORL_C_CAST(u8*, allocation) - 1;
     if(*allocationLeadingByte == _KORL_HEAP_BYTE_PATTERN_SENTINEL)
+        /* _all_ valid Linear heap allocations _must_ be preceded by SENTINEL bytes */
         return KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - _KORL_HEAP_SENTINEL_PADDING_BYTES) - 1;
-    else if(*allocationLeadingByte == 0)
-    {
-        const u32*const metaOffsetBytes = KORL_C_CAST(u32*, allocationLeadingByte) - 1;
-        return KORL_C_CAST(_Korl_Heap_Linear_AllocationMeta*, KORL_C_CAST(u8*, allocation) - *metaOffsetBytes);
-    }
     /* the leading byte _must_ not be any other value! */
     korl_log(ERROR, "invalid korl-heap-linear allocation leading byte: %hhu", *allocationLeadingByte);
     return NULL;

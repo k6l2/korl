@@ -312,6 +312,40 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlitFlagsColorbase(Kor
                                                     ,.shaders = {.resourceHandleShaderVertex   = 0
                                                                 ,.resourceHandleShaderFragment = 0}};
 }
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultSolid(void)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+                                                              ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
+                                                              ,.blend         = KORL_GFX_BLEND_ALPHA
+                                                              ,.flags         =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                                               | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = KORL_MATH_V4F32_ONE
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 32}
+                                                    ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-litSolid.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+}
+korl_internal Korl_Gfx_Material  korl_gfx_material_defaultSolidColorbase(Korl_Math_V4f32 colorLinear4Base)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+                                                              ,.cullMode      = KORL_GFX_MATERIAL_CULL_MODE_BACK
+                                                              ,.blend         = KORL_GFX_BLEND_ALPHA
+                                                              ,.flags         =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                                               | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = colorLinear4Base
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = KORL_MATH_V4F32_ONE
+                                                                              ,.shininess           = 32}
+                                                    ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-litSolid.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+}
 korl_internal Korl_Gfx_Material korl_gfx_material_defaultLit(void)
 {
     return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL

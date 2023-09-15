@@ -598,27 +598,9 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_clearTransientData(_k
 KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_unload(_korl_resource_scene3d_unload)
 {
     _Korl_Resource_Scene3d*const scene3d = resourceDescriptorStruct;
-    for(u32 a = 0; a < scene3d->gltf->animations.size; a++)
-    {
-        korl_free(allocatorTransient, scene3d->animations[a].sampleSets);
-        korl_free(allocatorTransient, scene3d->animations[a].keyFramesSeconds);
-        korl_free(allocatorTransient, scene3d->animations[a].samples);
-    }
-    korl_free(allocatorTransient, scene3d->animations);
-    for(u32 s = 0; s < scene3d->gltf->skins.size; s++)
-    {
-        korl_free(allocatorTransient, scene3d->skins[s].boneInverseBindMatrices);
-        korl_free(allocatorTransient, scene3d->skins[s].boneTopologicalOrder);
-        korl_free(allocatorTransient, scene3d->skins[s].boneParentIndices);
-        korl_free(allocatorTransient, scene3d->skins[s].nodeIndex_to_boneIndex);
-    }
-    korl_free(allocatorTransient, scene3d->skins);
-    korl_free(allocatorTransient, scene3d->meshes);
-    korl_free(allocatorTransient, scene3d->meshPrimitives);
     korl_resource_destroy(scene3d->vertexBuffer);
     for(u32 t = 0; t < scene3d->gltf->textures.size; t++)
         korl_resource_destroy(scene3d->textures[t]);
-    korl_free(allocatorTransient, scene3d->textures);
     korl_free(allocatorTransient, scene3d->gltf);
     korl_memory_zero(scene3d, sizeof(*scene3d));
 }
