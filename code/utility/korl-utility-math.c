@@ -343,6 +343,11 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_positive(Korl_Math_V2f32 v)
     return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_f32_positive(v.x)
                                                   ,korl_math_f32_positive(v.y)};
 }
+korl_internal bool korl_math_v2f32_isNearlyZero(Korl_Math_V2f32 v)
+{
+    return korl_math_isNearlyZero(v.elements[0]) 
+        && korl_math_isNearlyZero(v.elements[1]);
+}
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {
     return korl_math_f32_squareRoot(korl_math_v3f32_magnitudeSquared(v));

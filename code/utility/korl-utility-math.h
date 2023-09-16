@@ -87,10 +87,12 @@ typedef union Korl_Math_V2f32
     struct { f32 x, y; };
     f32 elements[2];
 } Korl_Math_V2f32;
-korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO = {0, 0};
-korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_X    = {1, 0};
-korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_Y    = {0, 1};
-korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_ONE  = {1, 1};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_ZERO    = { 0,  0};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_X       = { 1,  0};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_Y       = { 0,  1};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_MINUS_X = {-1,  0};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_MINUS_Y = { 0, -1};
+korl_global_const Korl_Math_V2f32 KORL_MATH_V2F32_ONE     = { 1,  1};
 /** \return a rotated V2f32 from a starting position of {radius, 0}, rotated 
  * around the +Z axis by \c radians */
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v);
@@ -124,6 +126,7 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_
 korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void);
 korl_internal bool            korl_math_v2f32_hasNan(Korl_Math_V2f32 v);
 korl_internal Korl_Math_V2f32 korl_math_v2f32_positive(Korl_Math_V2f32 v);
+korl_internal bool            korl_math_v2f32_isNearlyZero(Korl_Math_V2f32 v);
 /* V3f32 **********************************************************************/
 typedef union Korl_Math_V3f32
 {
