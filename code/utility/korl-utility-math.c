@@ -1390,6 +1390,11 @@ korl_internal Korl_Math_V3f32 operator/(Korl_Math_V3f32 v, f32 scalar)
 {
     return korl_math_v3f32_divideScalar(v, scalar);
 }
+korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& v, f32 scalar)
+{
+    korl_math_v3f32_assignMultiplyScalar(&v, scalar);
+    return v;
+}
 korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
 {
     vA = korl_math_v3f32_multiply(vA, vB);
