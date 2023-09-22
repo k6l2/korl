@@ -57,8 +57,8 @@
  *     return nodeToLeafA * nodeToLeafB < 0 
  *            // the leaves are on opposite sides of the node's averageMid
  *            ? nodeToLeafA < 0 
- *              ? -1 // x comes before y
- *              :  1 // y comes before x
+ *              ? -1 // a comes before b
+ *              :  1 // b comes before a
  *            // both nodes are on the same side
  *            : 0;
  * }
