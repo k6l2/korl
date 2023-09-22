@@ -10,7 +10,7 @@ typedef struct _Korl_Algorithm_Bvh_Node
 } _Korl_Algorithm_Bvh_Node;
 korl_internal Korl_Algorithm_Bvh* korl_algorithm_bvh_create(const Korl_Algorithm_Bvh_CreateInfo*const createInfo)
 {
-    korl_assert(createInfo->minimumLeafVolumesPerNode > 0);
+    korl_assert(createInfo->maxLeafVolumesPerNode > 0);
     Korl_Algorithm_Bvh*const result = KORL_C_CAST(Korl_Algorithm_Bvh*, korl_allocate(createInfo->allocator, sizeof(Korl_Algorithm_Bvh) + (createInfo->leafBoundingVolumes * createInfo->boundingVolumeStride)));
     result->createInfo    = *createInfo;
     result->nodesCapacity = 8;
@@ -43,8 +43,8 @@ korl_internal void _korl_algorithm_bvh_buildRecursive(Korl_Algorithm_Bvh*const c
         const void*const leafVolume = KORL_C_CAST(u8*, nodeLeafVolumes) + (i * context->createInfo.boundingVolumeStride);
         context->createInfo.volumeUnion(nodeVolume, leafVolume);
     }
-    /* if this node contains <= the minimum leaf node threshold, we're done */
-    if(nodeLeafVolumesSize <= context->createInfo.minimumLeafVolumesPerNode)
+    /* if this node contains <= the maximum leaf volume threshold, we're done */
+    if(nodeLeafVolumesSize <= context->createInfo.maxLeafVolumesPerNode)
         return;
     /* this node must be split; we need to: 
         - sort this node's range of leafVolumes using a user-defined comparator, and the nodeVolume as the context
