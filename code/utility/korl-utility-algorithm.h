@@ -1,10 +1,11 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "korl-interface-platform.h"
-/** Korl_Algorithm_Bvh example usage code:
+/** # Korl_Algorithm_Bvh Example Usage Code
  * 
- * # Data & Callbacks
+ * ## Data & Callbacks
  * 
+ * ```
  * typedef struct EntityManager_BoundingVolume
  * {
  *     Entity*            entity;
@@ -61,9 +62,11 @@
  *            // both nodes are on the same side
  *            : 0;
  * }
+ * ```
  * 
- * # BVH Construction
+ * ## BVH Construction
  * 
+ * ```
  * korl_shared_const EntityManager_BoundingVolume DEFAULT_BOUNDING_VOLUME = {NULL, KORL_MATH_AABB2F32_EMPTY};
  * const Korl_Algorithm_Bvh_CreateInfo createInfoBvh{.allocator             = allocatorStack
  *                                                  ,.leafBoundingVolumes   = activeEntities
@@ -88,10 +91,11 @@
  *     korl_assert(activeEntityIndex == activeEntities);// ensure that all active entities have been added to the BVH
  * }
  * korl_algorithm_bvh_build(bvh);
+ * ```
  * 
- * # BVH Query & Enumeration
+ * ## BVH Query & Enumeration
  * 
- * 
+ * ```
  * u$ bvhManifoldSize = 0;
  * EntityManager_BoundingVolume*const bvhManifold = KORL_C_CAST(EntityManager_BoundingVolume*
  *                                                             ,korl_algorithm_bvh_query(bvh, &boundingVolume, &bvhManifoldSize, _entityManager_bvh_volumeIntersects));
@@ -112,6 +116,7 @@
  * }
  * for(EntityManager_BoundingVolume* bv = bvhManifold; bv < bvhManifold + bvhManifoldSize; bv++)
  *     ...
+ * ```
  */
 #define KORL_ALGORITHM_BVH_VOLUME_UNION(name) void name(void* a, const void* b)
 typedef KORL_ALGORITHM_BVH_VOLUME_UNION(fnSig_korl_algorithm_bvh_volumeUnion);
