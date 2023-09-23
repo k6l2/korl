@@ -142,6 +142,7 @@ korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_Z       = { 0,  0,  1};
 korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_X = {-1,  0,  0};
 korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Y = { 0, -1,  0};
 korl_global_const Korl_Math_V3f32 KORL_MATH_V3F32_MINUS_Z = { 0,  0, -1};
+korl_internal Korl_Math_V3f32 korl_math_v3f32_fromV2f32Z(Korl_Math_V2f32 v2, f32 z);
 korl_internal f32             korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v);
 korl_internal f32             korl_math_v3f32_magnitudeSquared(const Korl_Math_V3f32*const v);
 korl_internal Korl_Math_V3f32 korl_math_v3f32_normal(Korl_Math_V3f32 v);
@@ -287,7 +288,7 @@ korl_global_const Korl_Math_Aabb3f32 KORL_MATH_AABB3F32_EMPTY = {{ KORL_F32_MAX,
                                                                 ,{-KORL_F32_MAX,-KORL_F32_MAX,-KORL_F32_MAX}};
 korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromPoints(f32 p0x, f32 p0y, f32 p0z, f32 p1x, f32 p1y, f32 p1z);
 // korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_Aabb3f32 aabb, f32 expandX, f32 expandY, f32 expandZ);
-// korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_V3f32 v, f32 expandX, f32 expandY, f32 expandZ);
+korl_internal Korl_Math_Aabb3f32 korl_math_aabb3f32_fromExpandedV3(Korl_Math_V3f32 v, Korl_Math_V3f32 vExpansion);
 korl_internal void               korl_math_aabb3f32_expand(Korl_Math_Aabb3f32*const aabb, f32 expandXYZ);
 korl_internal Korl_Math_V3f32    korl_math_aabb3f32_size(Korl_Math_Aabb3f32 aabb);
 korl_internal bool               korl_math_aabb3f32_contains(Korl_Math_Aabb3f32 aabb, f32 x, f32 y, f32 z);
