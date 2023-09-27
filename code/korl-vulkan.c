@@ -35,7 +35,7 @@ korl_global_const char* G_KORL_VULKAN_DEVICE_EXTENSIONS[] =
 #define _KORL_VULKAN_GET_INSTANCE_PROC_ADDR(context, proc)                     \
     {                                                                          \
         context->vk##proc =                                                    \
-            (PFN_vk##proc)vkGetInstanceProcAddr(context->instance, "vk"#proc); \
+            (PFN_vk##proc)(void*)vkGetInstanceProcAddr(context->instance, "vk"#proc); \
         korl_assert(context->vk##proc);                                        \
     }
 #define _KORL_VULKAN_CHECK(operation) \

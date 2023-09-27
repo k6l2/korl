@@ -484,13 +484,13 @@ korl_internal KORL_ASSETCACHE_ON_ASSET_HOT_RELOADED_CALLBACK(_korl_windows_windo
 korl_internal void _korl_windows_window_findGameApiAddresses(HMODULE hModule)
 {
     _Korl_Windows_Window_Context*const context = &_korl_windows_window_context;
-    context->gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      GetProcAddress(hModule, "korl_game_initialize"));
-    context->gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        GetProcAddress(hModule, "korl_game_onReload"));
-    context->gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, GetProcAddress(hModule, "korl_game_onKeyboardEvent"));
-    context->gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    GetProcAddress(hModule, "korl_game_onMouseEvent"));
-    context->gameApi.korl_game_onGamepadEvent  = KORL_C_CAST(fnSig_korl_game_onGamepadEvent*,  GetProcAddress(hModule, "korl_game_onGamepadEvent"));
-    context->gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          GetProcAddress(hModule, "korl_game_update"));
-    context->gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, GetProcAddress(hModule, "korl_game_onAssetReloaded"));
+    context->gameApi.korl_game_initialize      = KORL_C_CAST(fnSig_korl_game_initialize*,      KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_initialize")));
+    context->gameApi.korl_game_onReload        = KORL_C_CAST(fnSig_korl_game_onReload*,        KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_onReload")));
+    context->gameApi.korl_game_onKeyboardEvent = KORL_C_CAST(fnSig_korl_game_onKeyboardEvent*, KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_onKeyboardEvent")));
+    context->gameApi.korl_game_onMouseEvent    = KORL_C_CAST(fnSig_korl_game_onMouseEvent*,    KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_onMouseEvent")));
+    context->gameApi.korl_game_onGamepadEvent  = KORL_C_CAST(fnSig_korl_game_onGamepadEvent*,  KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_onGamepadEvent")));
+    context->gameApi.korl_game_update          = KORL_C_CAST(fnSig_korl_game_update*,          KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_update")));
+    context->gameApi.korl_game_onAssetReloaded = KORL_C_CAST(fnSig_korl_game_onAssetReloaded*, KORL_C_CAST(void*, GetProcAddress(hModule, "korl_game_onAssetReloaded")));
 }
 KORL_EXPORT KORL_FUNCTION_korl_command_callback(_korl_windows_window_commandSave)
 {
