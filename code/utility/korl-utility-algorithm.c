@@ -96,7 +96,7 @@ korl_internal void korl_algorithm_bvh_build(Korl_Algorithm_Bvh* context)
 }
 korl_internal void _korl_algorithm_bvh_queryRecursive(Korl_Algorithm_Bvh* context, u32 nodeIndex, const void* boundingVolume, void** pResult, u$* pResultCapacity, u$* o_resultArraySize, fnSig_korl_algorithm_bvh_volumeIntersects* volumeIntersects)
 {
-    const u$ nodeStride = sizeof(_Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride;
+    const u32 nodeStride = sizeof(_Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride;
     _Korl_Algorithm_Bvh_Node* node = KORL_C_CAST(_Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + nodeIndex * nodeStride);
     void*const nodeVolume = node + 1;
     if(!volumeIntersects(nodeVolume, boundingVolume))
@@ -144,6 +144,29 @@ korl_internal void* korl_algorithm_bvh_query(Korl_Algorithm_Bvh* context, const 
         result = NULL;
     }
     return result;
+}
+korl_internal void _korl_algorithm_bvh_forEachLeafNodeRecursive(Korl_Algorithm_Bvh* context, u32 nodeIndex, korl_algorithm_bvh_forEachLeafNodeCallback* callback, void* callbackUserData)
+{
+    const u32 nodeStride = sizeof(_Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride;
+    _Korl_Algorithm_Bvh_Node* node = KORL_C_CAST(_Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + nodeIndex * nodeStride);
+    void*const nodeVolume = node + 1;
+    if(node->bvhNodeChildIndexOffsetLeft || node->bvhNodeChildIndexOffsetRight)
+    {
+        /* this node is divided; we need to recursively query each child */
+        korl_assert(node->bvhNodeChildIndexOffsetLeft && node->bvhNodeChildIndexOffsetRight);
+        _korl_algorithm_bvh_forEachLeafNodeRecursive(context, node->bvhNodeChildIndexOffsetLeft , callback, callbackUserData);
+        _korl_algorithm_bvh_forEachLeafNodeRecursive(context, node->bvhNodeChildIndexOffsetRight, callback, callbackUserData);
+    }
+    else
+    {
+        /* this node has no children; we must callback with this Node's Volumes array, arraySize, & stride */
+        const void*const leafVolumes = KORL_C_CAST(u8*, context + 1) + (node->leafBoundingVolumeIndexStart * context->createInfo.boundingVolumeStride);
+        callback(callbackUserData, context->createInfo.boundingVolumeStride, leafVolumes, node->leafBoundingVolumeIndexEnd - node->leafBoundingVolumeIndexStart);
+    }
+}
+korl_internal void korl_algorithm_bvh_forEachLeafNode(Korl_Algorithm_Bvh* context, korl_algorithm_bvh_forEachLeafNodeCallback* callback, void* callbackUserData)
+{
+    _korl_algorithm_bvh_forEachLeafNodeRecursive(context, 0/*index 0 => the root node*/, callback, callbackUserData);
 }
 typedef struct _Korl_Algorithm_GraphDirected_Edge
 {

@@ -143,7 +143,7 @@ typedef struct Korl_Algorithm_Bvh_CreateInfo
 typedef struct Korl_Algorithm_Bvh
 {
     Korl_Algorithm_Bvh_CreateInfo createInfo;
-    void*                         nodes;// dynamic array of _Bvh_Node; we can't really utilize stb_ds for this unfortunately, because stb_ds needs to know the datatype's size, and we don't actually know what the user defines as a "volume"
+    void*                         nodes;// dynamic array of _Korl_Algorithm_Bvh_Node interleaved with a user-defined "volume" struct for each Node; we can't really utilize stb_ds for this unfortunately, because stb_ds needs to know the datatype's size, and we don't actually know what the user defines as a "volume"
     u32                           nodesCapacity;
     u32                           nodesSize;
     // this struct is followed in memory by the following data:
@@ -159,6 +159,9 @@ korl_internal void                korl_algorithm_bvh_build(Korl_Algorithm_Bvh* c
  * the same allocator as \c context->createInfo.allocator , and whose elements 
  * should all be intersecting \c *boundingVolume */
 korl_internal void*               korl_algorithm_bvh_query(Korl_Algorithm_Bvh* context, const void* boundingVolume, u$* o_resultArraySize, fnSig_korl_algorithm_bvh_volumeIntersects* volumeIntersects);
+#define KORL_ALGORITHM_BVH_FOR_EACH_LEAF_NODE_CALLBACK(name) void name(void* userData, u32 leafNodeVolumesStride, const void* leafNodeVolumes, u32 leafNodeVolumesSize)
+typedef KORL_ALGORITHM_BVH_FOR_EACH_LEAF_NODE_CALLBACK(korl_algorithm_bvh_forEachLeafNodeCallback);
+korl_internal void                korl_algorithm_bvh_forEachLeafNode(Korl_Algorithm_Bvh* context, korl_algorithm_bvh_forEachLeafNodeCallback* callback, void* callbackUserData);
 typedef struct Korl_Algorithm_GraphDirected_CreateInfo
 {
     Korl_Memory_AllocatorHandle allocator;
