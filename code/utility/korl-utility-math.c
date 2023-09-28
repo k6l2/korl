@@ -86,7 +86,7 @@ korl_internal void korl_math_generateMeshSphere(f32 radius, u32 latitudeSegments
     const u$ requiredVertexCount = korl_math_generateMeshSphereVertexCount(latitudeSegments, longitudeSegments);
     const f32             radiansPerSemiLongitude = 2*KORL_PI32 / KORL_C_CAST(f32, longitudeSegments);
     const f32             radiansPerLatitude      =   KORL_PI32 / KORL_C_CAST(f32, latitudeSegments);
-    const Korl_Math_V3f32 verticalRadius          = {0, 0, radius};
+    const Korl_Math_V3f32 verticalRadius          = korl_math_v3f32_make(0, 0, radius);
     u$ currentVertex = 0;
     for(u32 longitude = 1; longitude <= longitudeSegments; longitude++)
     {
@@ -188,16 +188,16 @@ korl_internal Korl_Math_V2u32 korl_math_v2u32_divide(Korl_Math_V2u32 vA, Korl_Ma
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromV2u32(Korl_Math_V2u32 v)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_checkCast_u$_to_f32(v.x), korl_checkCast_u$_to_f32(v.y)};
+    return korl_math_v2f32_make(korl_checkCast_u$_to_f32(v.x), korl_checkCast_u$_to_f32(v.y));
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_fromRotationZ(f32 radius, f32 radians)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius * korl_math_cosine(radians)
-                                                  ,radius * korl_math_sine(radians)};
+    return korl_math_v2f32_make(radius * korl_math_cosine(radians)
+                               ,radius * korl_math_sine(radians));
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_rotateHalfPiZ(Korl_Math_V2f32 v)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-v.y, v.x};
+    return korl_math_v2f32_make(-v.y, v.x);
 }
 korl_internal f32 korl_math_v2f32_magnitude(const Korl_Math_V2f32*const v)
 {
@@ -329,7 +329,7 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};
+    return korl_math_v2f32_make(korl_math_f32_nan(), korl_math_f32_nan());
 }
 korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
 {
@@ -340,8 +340,8 @@ korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_positive(Korl_Math_V2f32 v)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){korl_math_f32_positive(v.x)
-                                                  ,korl_math_f32_positive(v.y)};
+    return korl_math_v2f32_make(korl_math_f32_positive(v.x)
+                               ,korl_math_f32_positive(v.y));
 }
 korl_internal bool korl_math_v2f32_isNearlyZero(Korl_Math_V2f32 v)
 {
@@ -350,7 +350,7 @@ korl_internal bool korl_math_v2f32_isNearlyZero(Korl_Math_V2f32 v)
 }
 korl_internal Korl_Math_V3f32 korl_math_v3f32_fromV2f32Z(Korl_Math_V2f32 v2, f32 z)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){v2.x, v2.y, z};
+    return korl_math_v3f32_make(v2.x, v2.y, z);
 }
 korl_internal f32 korl_math_v3f32_magnitude(const Korl_Math_V3f32*const v)
 {
@@ -380,6 +380,12 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_normalKnownMagnitude(Korl_Math_V3f
     v.elements[1] /= magnitude;
     v.elements[2] /= magnitude;
     return v;
+}
+korl_internal f32 korl_math_v3f32_normalize(Korl_Math_V3f32* v)
+{
+    const f32 magnitude = korl_math_v3f32_magnitude(v);
+    *v = korl_math_v3f32_normalKnownMagnitude(*v, magnitude);
+    return magnitude;
 }
 korl_internal Korl_Math_V3f32 korl_math_v3f32_cross(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB)
 {
@@ -668,11 +674,11 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_fromAxisRadians(Korl_Mat
     if(!axisIsNormalized)
         axis = korl_math_v3f32_normal(axis);
     const f32 sine = korl_math_sine(radians/2);
-    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion)
-        {sine * axis.x
+    return korl_math_quaternion_make
+        (sine * axis.x
         ,sine * axis.y
         ,sine * axis.z
-        ,korl_math_cosine(radians/2) };
+        ,korl_math_cosine(radians/2));
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_fromVector(Korl_Math_V3f32 forward, Korl_Math_V3f32 worldForward, Korl_Math_V3f32 worldUp)
 {
@@ -702,21 +708,21 @@ korl_internal Korl_Math_Quaternion korl_math_quaternion_multiply(Korl_Math_Quate
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_hamilton(Korl_Math_Quaternion qA, Korl_Math_Quaternion qB)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion)
-        {qA.w*qB.x + qA.x*qB.w + qA.y*qB.z - qA.z*qB.y
+    return korl_math_quaternion_make
+        (qA.w*qB.x + qA.x*qB.w + qA.y*qB.z - qA.z*qB.y
         ,qA.w*qB.y - qA.x*qB.z + qA.y*qB.w + qA.z*qB.x
         ,qA.w*qB.z + qA.x*qB.y - qA.y*qB.x + qA.z*qB.w
-        ,qA.w*qB.w - qA.x*qB.x - qA.y*qB.y - qA.z*qB.z};
+        ,qA.w*qB.w - qA.x*qB.x - qA.y*qB.y - qA.z*qB.z);
 }
 korl_internal Korl_Math_Quaternion korl_math_quaternion_conjugate(Korl_Math_Quaternion q)
 {
-	return KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){-q.x, -q.y, -q.z, q.w};
+	return korl_math_quaternion_make(-q.x, -q.y, -q.z, q.w);
 }
 korl_internal Korl_Math_V2f32 korl_math_quaternion_transformV2f32(Korl_Math_Quaternion q, Korl_Math_V2f32 v, bool qIsNormalized)
 {
     if(!qIsNormalized)
         q.v4 = korl_math_v4f32_normal(q.v4);
-    q = korl_math_quaternion_hamilton(korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){v.x, v.y, 0.f, 0.f})
+    q = korl_math_quaternion_hamilton(korl_math_quaternion_hamilton(q, korl_math_quaternion_make(v.x, v.y, 0.f, 0.f))
                                      ,korl_math_quaternion_conjugate(q));
     return q.v4.xy;
 }
@@ -724,7 +730,7 @@ korl_internal Korl_Math_V3f32 korl_math_quaternion_transformV3f32(Korl_Math_Quat
 {
     if(!qIsNormalized)
         q.v4 = korl_math_v4f32_normal(q.v4);
-    q = korl_math_quaternion_hamilton(korl_math_quaternion_hamilton(q, KORL_STRUCT_INITIALIZE(Korl_Math_Quaternion){v.x, v.y, v.z, 0.f})
+    q = korl_math_quaternion_hamilton(korl_math_quaternion_hamilton(q, korl_math_quaternion_make(v.x, v.y, v.z, 0.f))
                                      ,korl_math_quaternion_conjugate(q));
     return q.v4.xyz;
 }
@@ -920,7 +926,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_multiply(const Korl_Math_M4f32*con
 }
 korl_internal Korl_Math_V3f32 korl_math_m4f32_multiplyV3f32(const Korl_Math_M4f32*const m, Korl_Math_V3f32 v)
 {
-    const Korl_Math_V4f32 vHomogeneous = {v.x, v.y, v.z, 1.f};
+    const Korl_Math_V4f32 vHomogeneous = korl_math_v4f32_make(v.x, v.y, v.z, 1.f);
     Korl_Math_V4f32 result;
     for(u$ r = 0; r < korl_arraySize(m->rows); r++)
         result.elements[r] = korl_math_v4f32_dot(&m->rows[r], &vHomogeneous);
@@ -1044,13 +1050,13 @@ korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromPointsV2(const Korl_Math
 }
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpanded(Korl_Math_Aabb2f32 aabb, f32 expandX, f32 expandY)
 {
-    const Korl_Math_V2f32 expandV2 = {expandX, expandY};
+    const Korl_Math_V2f32 expandV2 = korl_math_v2f32_make(expandX, expandY);
     return KORL_STRUCT_INITIALIZE(Korl_Math_Aabb2f32){.min = korl_math_v2f32_subtract(aabb.min, expandV2), 
                                                       .max = korl_math_v2f32_add     (aabb.max, expandV2)};
 }
 korl_internal Korl_Math_Aabb2f32 korl_math_aabb2f32_fromExpandedV2(Korl_Math_V2f32 v, f32 expandX, f32 expandY)
 {
-    const Korl_Math_V2f32 expandV2 = {expandX, expandY};
+    const Korl_Math_V2f32 expandV2 = korl_math_v2f32_make(expandX, expandY);
     return KORL_STRUCT_INITIALIZE(Korl_Math_Aabb2f32){.min = korl_math_v2f32_subtract(v, expandV2), 
                                                       .max = korl_math_v2f32_add     (v, expandV2)};
 }
@@ -1411,7 +1417,7 @@ korl_internal Korl_Math_V3f32& operator*=(Korl_Math_V3f32& vA, Korl_Math_V3f32 v
 }
 korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V2f32 vB)
 {
-    vA = korl_math_v3f32_add(vA, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = vB});
+    vA = korl_math_v3f32_add(vA, korl_math_v3f32_fromV2f32Z(vB, 0));
     return vA;
 }
 korl_internal Korl_Math_V3f32& operator+=(Korl_Math_V3f32& vA, Korl_Math_V3f32 vB)
@@ -1545,7 +1551,7 @@ korl_internal Korl_Math_M4f32 operator*(const Korl_Math_M4f32& mA, const Korl_Ma
 }
 korl_internal Korl_Math_V2f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V2f32& v)
 {
-    Korl_Math_V4f32 v4 = {v.x, v.y, 0, 1};
+    Korl_Math_V4f32 v4 = korl_math_v4f32_make(v.x, v.y, 0, 1);
     return korl_math_m4f32_multiplyV4f32(&m, &v4).xy;
 }
 korl_internal Korl_Math_V3f32 operator*(const Korl_Math_M4f32& m, const Korl_Math_V3f32& v)

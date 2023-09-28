@@ -36,7 +36,7 @@ korl_internal void _korl_command_destroy(_Korl_Command* context)
 }
 korl_internal void _korl_command_findCallbackAddress(_Korl_Command* command, HMODULE moduleHandle)
 {
-    command->callback = KORL_C_CAST(fnSig_korl_command_callback*, GetProcAddress(moduleHandle, string_getRawUtf8(&command->stringCallback)));
+    command->callback = KORL_C_CAST(fnSig_korl_command_callback*, KORL_C_CAST(void*, GetProcAddress(moduleHandle, string_getRawUtf8(&command->stringCallback))));
     if(!command->callback)
         korl_log(WARNING, "command \"%hs\" callback \"%hs\" not found!", string_getRawUtf8(&command->stringCommand), string_getRawUtf8(&command->stringCallback));
 }

@@ -1,9 +1,9 @@
 #include "korl-camera-freeFly.h"
 #include "utility/korl-utility-gfx.h"
 #include "korl-interface-platform.h"
-korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD = { 0, -1, 0};// blender model space
-korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_RIGHT   = {-1,  0, 0};// blender model space
-korl_global_const Korl_Math_V3f32 _KORL_CAMERA_FREEFLY_DEFAULT_UP      = { 0,  0, 1};// blender model space
+#define _KORL_CAMERA_FREEFLY_DEFAULT_FORWARD korl_math_v3f32_make( 0, -1, 0)// blender model space
+#define _KORL_CAMERA_FREEFLY_DEFAULT_RIGHT   korl_math_v3f32_make(-1,  0, 0)// blender model space
+#define _KORL_CAMERA_FREEFLY_DEFAULT_UP      korl_math_v3f32_make( 0,  0, 1)// blender model space
 korl_internal Korl_Camera_FreeFly korl_camera_freeFly_create(f32 acceleration, f32 speedMax)
 {
     KORL_ZERO_STACK(Korl_Camera_FreeFly, result);

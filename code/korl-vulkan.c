@@ -1240,7 +1240,7 @@ korl_internal void korl_vulkan_construct(void)
     //  going to call it again //
     PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = 
         KORL_C_CAST(PFN_vkCreateDebugUtilsMessengerEXT, 
-                    vkGetInstanceProcAddr(context->instance, "vkCreateDebugUtilsMessengerEXT"));
+                    KORL_C_CAST(void*, vkGetInstanceProcAddr(context->instance, "vkCreateDebugUtilsMessengerEXT")));
     korl_assert(vkCreateDebugUtilsMessengerEXT);
     _KORL_VULKAN_GET_INSTANCE_PROC_ADDR(context, DestroyDebugUtilsMessengerEXT);
     /* attach a VkDebugUtilsMessengerEXT to our instance */

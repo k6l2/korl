@@ -4,15 +4,15 @@
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform-resource.h"
 typedef Korl_Math_V4u8 Korl_Gfx_Color4u8;
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_TRANSPARENT = {  0,   0,   0,   0};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_RED         = {255,   0,   0, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_GREEN       = {  0, 255,   0, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_BLUE        = {  0,   0, 255, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_YELLOW      = {255, 255,   0, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_CYAN        = {  0, 255, 255, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_MAGENTA     = {255,   0, 255, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_WHITE       = {255, 255, 255, 255};
-korl_global_const Korl_Gfx_Color4u8 KORL_COLOR4U8_BLACK       = {  0,   0,   0, 255};
+#define KORL_COLOR4U8_TRANSPARENT korl_math_v4u8_make(  0,   0,   0,   0)
+#define KORL_COLOR4U8_RED         korl_math_v4u8_make(255,   0,   0, 255)
+#define KORL_COLOR4U8_GREEN       korl_math_v4u8_make(  0, 255,   0, 255)
+#define KORL_COLOR4U8_BLUE        korl_math_v4u8_make(  0,   0, 255, 255)
+#define KORL_COLOR4U8_YELLOW      korl_math_v4u8_make(255, 255,   0, 255)
+#define KORL_COLOR4U8_CYAN        korl_math_v4u8_make(  0, 255, 255, 255)
+#define KORL_COLOR4U8_MAGENTA     korl_math_v4u8_make(255,   0, 255, 255)
+#define KORL_COLOR4U8_WHITE       korl_math_v4u8_make(255, 255, 255, 255)
+#define KORL_COLOR4U8_BLACK       korl_math_v4u8_make(  0,   0,   0, 255)
 typedef struct Korl_Gfx_DrawState_SceneProperties
 {
     Korl_Math_M4f32 projection, view;

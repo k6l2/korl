@@ -4,7 +4,7 @@
 #include "utility/korl-utility-resource.h"
 #include "utility/korl-utility-stb-ds.h"
 #include "korl-interface-platform.h"
-korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{0,1}, {0,0}, {1,1}, {1,0}};
+korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{{0,1}}, {{0,0}}, {{1,1}}, {{1,0}}};
 /* Since we expect that all KORL renderer code requires right-handed 
     triangle normals (counter-clockwise vertex winding), all tri quads have 
     the following formation:
@@ -84,7 +84,7 @@ korl_internal void _korl_gfx_text_fifoAdd_flush(Korl_Gfx_Text* context, acu16 ut
             /* obtain & append the new Line into our GlyphInstance buffer */
             u$ bytesRequested_bytesAvailable = substringMetrics.visibleGlyphCount * sizeof(_Korl_Gfx_Text_GlyphInstance);
             _Korl_Gfx_Text_GlyphInstance*const glyphInstanceUpdateBuffer = KORL_C_CAST(_Korl_Gfx_Text_GlyphInstance*, korl_resource_getUpdateBuffer(context->resourceHandleBufferText, context->totalVisibleGlyphs * sizeof(_Korl_Gfx_Text_GlyphInstance), &bytesRequested_bytesAvailable));
-            korl_resource_font_generateUtf16(context->resourceHandleFont, context->textPixelHeight, utf16Substring, KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){currentLine->aabbSizeX, 0}
+            korl_resource_font_generateUtf16(context->resourceHandleFont, context->textPixelHeight, utf16Substring, korl_math_v2f32_make(currentLine->aabbSizeX, 0)
                                             ,&glyphInstanceUpdateBuffer[0].position , sizeof(_Korl_Gfx_Text_GlyphInstance)
                                             ,&glyphInstanceUpdateBuffer[0].meshIndex, sizeof(_Korl_Gfx_Text_GlyphInstance));
             /* update Line metrics (glyph count, AABB) */
@@ -259,10 +259,10 @@ korl_internal u8 korl_gfx_indexBytes(Korl_Gfx_VertexIndexType vertexIndexType)
 }
 korl_internal Korl_Math_V4f32 korl_gfx_color_toLinear(Korl_Gfx_Color4u8 color)
 {
-    return KORL_STRUCT_INITIALIZE(Korl_Math_V4f32){KORL_C_CAST(f32, color.r) / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                  ,KORL_C_CAST(f32, color.g) / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                  ,KORL_C_CAST(f32, color.b) / KORL_C_CAST(f32, KORL_U8_MAX)
-                                                  ,KORL_C_CAST(f32, color.a) / KORL_C_CAST(f32, KORL_U8_MAX)};
+    return korl_math_v4f32_make(KORL_C_CAST(f32, color.r) / KORL_C_CAST(f32, KORL_U8_MAX)
+                               ,KORL_C_CAST(f32, color.g) / KORL_C_CAST(f32, KORL_U8_MAX)
+                               ,KORL_C_CAST(f32, color.b) / KORL_C_CAST(f32, KORL_U8_MAX)
+                               ,KORL_C_CAST(f32, color.a) / KORL_C_CAST(f32, KORL_U8_MAX));
 }
 korl_internal Korl_Gfx_Material korl_gfx_material_defaultUnlit(void)
 {
@@ -386,8 +386,8 @@ korl_internal Korl_Gfx_Camera korl_gfx_camera_createFov(f32 fovVerticalDegrees, 
     result.position                                 = position;
     result.normalForward                            = normalForward;
     result.normalUp                                 = normalUp;
-    result._viewportScissorPosition                 = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                     = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){1, 1};
+    result._viewportScissorPosition                 = korl_math_v2f32_make(0, 0);
+    result._viewportScissorSize                     = korl_math_v2f32_make(1, 1);
     result.subCamera.perspective.clipNear           = clipNear;
     result.subCamera.perspective.clipFar            = clipFar;
     result.subCamera.perspective.fovVerticalDegrees = fovVerticalDegrees;
@@ -400,10 +400,10 @@ korl_internal Korl_Gfx_Camera korl_gfx_camera_createOrtho(f32 clipDepth)
     result.position                            = KORL_MATH_V3F32_ZERO;
     result.normalForward                       = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
     result.normalUp                            = KORL_MATH_V3F32_Y;
-    result._viewportScissorPosition            = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){1, 1};
+    result._viewportScissorPosition            = korl_math_v2f32_make(0, 0);
+    result._viewportScissorSize                = korl_math_v2f32_make(1, 1);
     result.subCamera.orthographic.clipDepth    = clipDepth;
-    result.subCamera.orthographic.originAnchor = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
+    result.subCamera.orthographic.originAnchor = korl_math_v2f32_make(0.5f, 0.5f);
     return result;
 }
 korl_internal Korl_Gfx_Camera korl_gfx_camera_createOrthoFixedHeight(f32 fixedHeight, f32 clipDepth)
@@ -413,11 +413,11 @@ korl_internal Korl_Gfx_Camera korl_gfx_camera_createOrthoFixedHeight(f32 fixedHe
     result.position                            = KORL_MATH_V3F32_ZERO;
     result.normalForward                       = korl_math_v3f32_multiplyScalar(KORL_MATH_V3F32_Z, -1);
     result.normalUp                            = KORL_MATH_V3F32_Y;
-    result._viewportScissorPosition            = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0, 0};
-    result._viewportScissorSize                = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){1, 1};
+    result._viewportScissorPosition            = korl_math_v2f32_make(0, 0);
+    result._viewportScissorSize                = korl_math_v2f32_make(1, 1);
     result.subCamera.orthographic.fixedHeight  = fixedHeight;
     result.subCamera.orthographic.clipDepth    = clipDepth;
-    result.subCamera.orthographic.originAnchor = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
+    result.subCamera.orthographic.originAnchor = korl_math_v2f32_make(0.5f, 0.5f);
     return result;
 }
 korl_internal void korl_gfx_camera_fovRotateAroundTarget(Korl_Gfx_Camera*const context, Korl_Math_V3f32 axisOfRotation, f32 radians, Korl_Math_V3f32 target)
@@ -529,11 +529,11 @@ korl_internal void korl_gfx_camera_drawFrustum(const Korl_Gfx_Camera*const conte
     Korl_Gfx_ResultRay3d cameraWorldCorners[4];
     /* camera coordinates in window-space are CCW, starting from the lower-left:
         {lower-left, lower-right, upper-right, upper-left} */
-    cameraWorldCorners[0] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){0, 0});
-    cameraWorldCorners[1] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){korl_checkCast_u$_to_i32(surfaceSize.x), 0});
-    cameraWorldCorners[2] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){korl_checkCast_u$_to_i32(surfaceSize.x)
-                                                                                                           ,korl_checkCast_u$_to_i32(surfaceSize.y)});
-    cameraWorldCorners[3] = korl_gfx_camera_windowToWorld(context, KORL_STRUCT_INITIALIZE(Korl_Math_V2i32 ){0, korl_checkCast_u$_to_i32(surfaceSize.y)});
+    cameraWorldCorners[0] = korl_gfx_camera_windowToWorld(context, korl_math_v2i32_make(0, 0));
+    cameraWorldCorners[1] = korl_gfx_camera_windowToWorld(context, korl_math_v2i32_make(korl_checkCast_u$_to_i32(surfaceSize.x), 0));
+    cameraWorldCorners[2] = korl_gfx_camera_windowToWorld(context, korl_math_v2i32_make(korl_checkCast_u$_to_i32(surfaceSize.x)
+                                                                                       ,korl_checkCast_u$_to_i32(surfaceSize.y)));
+    cameraWorldCorners[3] = korl_gfx_camera_windowToWorld(context, korl_math_v2i32_make(0, korl_checkCast_u$_to_i32(surfaceSize.y)));
     Korl_Math_V3f32 cameraWorldCornersFar[4];
     for(u8 i = 0; i < 4; i++)
     {
@@ -739,11 +739,11 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableRectangle(const Korl_Gfx_Create
     Korl_Math_V2f32*const uvs       = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      , 0);
     for(u32 v = 0; v < korl_arraySize(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP); v++)
     {
-        positions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
-                                                              ,_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y};
+        positions[v] = korl_math_v2f32_make(_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x * size.x - anchorRatio.x * size.x
+                                           ,_KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y * size.y - anchorRatio.y * size.y);
         if(uvs)
-            uvs[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){      _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x
-                                                            ,1.f - _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y};
+            uvs[v] = korl_math_v2f32_make(      _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].x
+                                         ,1.f - _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[v].y);
     }
     return result;
 }
@@ -757,19 +757,19 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawableCircle(const Korl_Gfx_CreateInf
     Korl_Math_V2f32*const   positions = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
     Korl_Math_V2f32*const   uvs       = korl_gfx_drawable_attributeV2f32(&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV      , 0);
     Korl_Gfx_Color4u8*const colors    = korl_gfx_drawable_attributeV4u8 (&result, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR   , 0);
-    positions[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius - anchorRatio.x * 2 * radius
-                                                          ,radius - anchorRatio.y * 2 * radius};
+    positions[0] = korl_math_v2f32_make(radius - anchorRatio.x * 2 * radius
+                                       ,radius - anchorRatio.y * 2 * radius);
     if(uvs)
-        uvs[0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){0.5f, 0.5f};
+        uvs[0] = korl_math_v2f32_make(0.5f, 0.5f);
     const f32 radiansPerVertex = KORL_TAU32 / KORL_C_CAST(f32, circumferenceVertices);
     for(u32 v = 0; v < circumferenceVertices + 1; v++)
     {
         const Korl_Math_V2f32 spoke = korl_math_v2f32_fromRotationZ(1, KORL_C_CAST(f32, v % circumferenceVertices) * radiansPerVertex);
-        positions[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
-                                                                  ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
+        positions[1 + v] = korl_math_v2f32_make(radius + radius * spoke.x - anchorRatio.x * 2 * radius
+                                               ,radius + radius * spoke.y - anchorRatio.y * 2 * radius);
         if(uvs)
-            uvs[1 + v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){       0.5f + 0.5f * spoke.x
-                                                                ,1.f - (0.5f + 0.5f * spoke.y)};
+            uvs[1 + v] = korl_math_v2f32_make(       0.5f + 0.5f * spoke.x
+                                             ,1.f - (0.5f + 0.5f * spoke.y));
     }
     return result;
 }
@@ -809,14 +809,14 @@ korl_internal Korl_Gfx_Drawable _korl_gfx_immediateUtf(Korl_Gfx_Drawable_Runtime
     {
     case  8:
         korl_resource_font_generateUtf8(resourceHandleFont, textPixelHeight, KORL_STRUCT_INITIALIZE(acu8){.size = utfTextSize, .data = KORL_C_CAST(const u8*, utfText)}
-                                       ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
-                                                                               ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
+                                       ,korl_math_v2f32_make(-anchorRatio.x * textMetrics.aabbSize.x
+                                                            ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y)
                                        ,glyphInstancePositions, sizeof(*glyphInstancePositions), glyphIndices, sizeof(*glyphIndices));
         break;
     case 16:
         korl_resource_font_generateUtf16(resourceHandleFont, textPixelHeight, KORL_STRUCT_INITIALIZE(acu16){.size = utfTextSize, .data = KORL_C_CAST(const u16*, utfText)}
-                                        ,KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){-anchorRatio.x * textMetrics.aabbSize.x
-                                                                                ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y}
+                                        ,korl_math_v2f32_make(-anchorRatio.x * textMetrics.aabbSize.x
+                                                             ,-anchorRatio.y * textMetrics.aabbSize.y + textMetrics.aabbSize.y)
                                         ,glyphInstancePositions, sizeof(*glyphInstancePositions), glyphIndices, sizeof(*glyphIndices));
         break;
     }
@@ -1005,7 +1005,7 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawSphere(Korl_Math_V3f32 position, Ko
 }
 korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags materialModeFlagOverrides, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
-    korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_LOOP[4] = {{0,0}, {1,0}, {1,1}, {0,1}};
+    korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_LOOP[4] = {{{0,0}}, {{1,0}}, {{1,1}}, {{0,1}}};
     if(material)
     {
         const bool generateUvs = o_uvs || 0 != material->maps.resourceHandleTextureBase;
@@ -1041,15 +1041,15 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags material
         {
             const u32 cornerIndex = v % korl_arraySize(QUAD_POSITION_NORMALS_LOOP);
             if(outlineThickness == 0)
-                outlinePositions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_LOOP[cornerIndex].x * size.x - anchorRatio.x * size.x
-                                                                             ,QUAD_POSITION_NORMALS_LOOP[cornerIndex].y * size.y - anchorRatio.y * size.y};
+                outlinePositions[v] = korl_math_v2f32_make(QUAD_POSITION_NORMALS_LOOP[cornerIndex].x * size.x - anchorRatio.x * size.x
+                                                          ,QUAD_POSITION_NORMALS_LOOP[cornerIndex].y * size.y - anchorRatio.y * size.y);
             else
             {
-                outlinePositions[2 * v + 0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){QUAD_POSITION_NORMALS_LOOP[cornerIndex].x * size.x - anchorRatio.x * size.x
-                                                                                     ,QUAD_POSITION_NORMALS_LOOP[cornerIndex].y * size.y - anchorRatio.y * size.y};
+                outlinePositions[2 * v + 0] = korl_math_v2f32_make(QUAD_POSITION_NORMALS_LOOP[cornerIndex].x * size.x - anchorRatio.x * size.x
+                                                                  ,QUAD_POSITION_NORMALS_LOOP[cornerIndex].y * size.y - anchorRatio.y * size.y);
                 const Korl_Math_V2f32 fromCenter      = korl_math_v2f32_subtract(outlinePositions[2 * v + 0], centerOfMass);
-                const Korl_Math_V2f32 fromCenterNorms = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){fromCenter.x / korl_math_f32_positive(fromCenter.x)
-                                                                                               ,fromCenter.y / korl_math_f32_positive(fromCenter.y)};
+                const Korl_Math_V2f32 fromCenterNorms = korl_math_v2f32_make(fromCenter.x / korl_math_f32_positive(fromCenter.x)
+                                                                            ,fromCenter.y / korl_math_f32_positive(fromCenter.y));
                 outlinePositions[2 * v + 1] = korl_math_v2f32_add(outlinePositions[2 * v + 0], korl_math_v2f32_multiplyScalar(fromCenterNorms, outlineThickness));
             }
         }
@@ -1103,14 +1103,14 @@ korl_internal void _korl_gfx_drawCircle(Korl_Gfx_Material_Mode_Flags materialMod
             const f32             radians = KORL_C_CAST(f32, vMod) * radiansPerVertex;
             const Korl_Math_V2f32 spoke   = korl_math_v2f32_fromRotationZ(1, radians);
             if(outlineThickness == 0)
-                outlinePositions[v] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + radius * spoke.x - anchorRatio.x * 2 * radius
-                                                                             ,radius + radius * spoke.y - anchorRatio.y * 2 * radius};
+                outlinePositions[v] = korl_math_v2f32_make(radius + radius * spoke.x - anchorRatio.x * 2 * radius
+                                                          ,radius + radius * spoke.y - anchorRatio.y * 2 * radius);
             else
             {
-                outlinePositions[2 * v + 0] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius +   radius                     * spoke.x  - anchorRatio.x * 2 * radius
-                                                                                     ,radius +   radius                     * spoke.y  - anchorRatio.y * 2 * radius};
-                outlinePositions[2 * v + 1] = KORL_STRUCT_INITIALIZE(Korl_Math_V2f32){radius + ((radius + outlineThickness) * spoke.x) - anchorRatio.x * 2 * radius
-                                                                                     ,radius + ((radius + outlineThickness) * spoke.y) - anchorRatio.y * 2 * radius};
+                outlinePositions[2 * v + 0] = korl_math_v2f32_make(radius +   radius                     * spoke.x  - anchorRatio.x * 2 * radius
+                                                                  ,radius +   radius                     * spoke.y  - anchorRatio.y * 2 * radius);
+                outlinePositions[2 * v + 1] = korl_math_v2f32_make(radius + ((radius + outlineThickness) * spoke.x) - anchorRatio.x * 2 * radius
+                                                                  ,radius + ((radius + outlineThickness) * spoke.y) - anchorRatio.y * 2 * radius);
             }
         }
         korl_gfx_draw(&immediateOutline, materialOutline, 1);
