@@ -498,14 +498,14 @@ korl_internal KORL_FUNCTION_korl_memory_allocator_defragment(korl_memory_allocat
     switch(allocator->type)
     {
     case KORL_MEMORY_ALLOCATOR_TYPE_LINEAR:{
-        _Korl_Memory_Allocator*const allocatorStack = _korl_memory_allocator_matchHandle(handleStack);
-        korl_assert(allocatorStack);
-        if(!(allocatorStack->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
+        _Korl_Memory_Allocator*const allocatorFrame = _korl_memory_allocator_matchHandle(handleStack);
+        korl_assert(allocatorFrame);
+        if(!(allocatorFrame->flags & KORL_MEMORY_ALLOCATOR_FLAG_DISABLE_THREAD_SAFETY_CHECKS) && GetCurrentThreadId() != context->mainThreadId)
         {
             korl_log(ERROR, "threadId(%u) != mainThreadId(%u)", GetCurrentThreadId(), context->mainThreadId);
             return;
         }
-        korl_heap_linear_defragment(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, defragmentPointers, defragmentPointersSize, KORL_C_CAST(_Korl_Heap_Linear*, allocatorStack->userData), allocatorStack->name, handleStack);
+        korl_heap_linear_defragment(KORL_C_CAST(_Korl_Heap_Linear*, allocator->userData), allocator->name, defragmentPointers, defragmentPointersSize, KORL_C_CAST(_Korl_Heap_Linear*, allocatorFrame->userData), allocatorFrame->name, handleStack);
         return;}
     default:{ break; }
     }

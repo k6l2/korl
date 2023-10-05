@@ -10,7 +10,7 @@ korl_internal void korl_logConsole_toggle(Korl_LogConsole* context)
 {
     context->enable = !context->enable;
 }
-korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSeconds, fnSig_korl_log_getBuffer *_korl_log_getBuffer, Korl_Math_V2u32 windowSize, Korl_Memory_AllocatorHandle allocatorStack)
+korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSeconds, fnSig_korl_log_getBuffer *_korl_log_getBuffer, Korl_Math_V2u32 windowSize, Korl_Memory_AllocatorHandle allocatorFrame)
 {
     context->fadeInRatio = korl_math_f32_exponentialDecay(context->fadeInRatio, context->enable ? 1.f : 0.f, 40.f, deltaSeconds);
     if(!context->enable && context->stringInputLastEnabled.handle)
@@ -56,7 +56,7 @@ korl_internal void korl_logConsole_update(Korl_LogConsole* context, f32 deltaSec
             if(korl_gui_widgetInputText(context->stringInput, context->enable))
             {
                 /* the user pressed [Enter]; submit stringInput to the platform layer */
-                korl_command_invoke(string_getRawAcu8(&context->stringInput), allocatorStack);
+                korl_command_invoke(string_getRawAcu8(&context->stringInput), allocatorFrame);
                 context->commandInvoked = true;
             }
         korl_gui_windowEnd();

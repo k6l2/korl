@@ -9,7 +9,7 @@
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
-    Korl_Memory_AllocatorHandle allocatorStack;
+    Korl_Memory_AllocatorHandle allocatorFrame;
     bool                        quit;
     Korl_StringPool             stringPool;// used by logConsole
     Korl_LogConsole             logConsole;
@@ -54,7 +54,7 @@ KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
     const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     memory = KORL_C_CAST(Memory*, korl_allocate(allocatorHeap, sizeof(Memory)));
     memory->allocatorHeap  = allocatorHeap;
-    memory->allocatorStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    memory->allocatorFrame = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
     memory->stringPool     = korl_stringPool_create(allocatorHeap);
     memory->logConsole     = korl_logConsole_create(&memory->stringPool);
     memory->netAddressSend = korl_network_resolveAddress(KORL_RAW_CONST_UTF8("localhost"));
@@ -95,7 +95,7 @@ KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
         if(bytesReceived)
             korl_log(INFO, "SERVER: received %i bytes: %.*hs", bytesReceived, bytesReceived, udpBuffer);
     }
-    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
+    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorFrame);
     return !memory->quit;
 }
 #include "utility/korl-utility-stb-ds.c"

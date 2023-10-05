@@ -95,7 +95,7 @@ korl_internal KORL_FUNCTION_korl_command_invoke(korl_command_invoke)
     /* we create a temporary string so that we can modify it such that each 
         token is null-terminated */
     const u$ tempUtf8BufferBytes = rawUtf8.size + 1/*include space for a null-terminator code unit*/;
-    au8 tempUtf8 = {.data = korl_allocate(allocatorStack, tempUtf8BufferBytes), .size = rawUtf8.size};
+    au8 tempUtf8 = {.data = korl_allocate(allocatorFrame, tempUtf8BufferBytes), .size = rawUtf8.size};
     korl_memory_copy(tempUtf8.data, rawUtf8.data, tempUtf8BufferBytes);
     /**/
     acu8* stbDaTokens = NULL;

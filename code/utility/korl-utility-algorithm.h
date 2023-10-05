@@ -68,7 +68,7 @@
  * 
  * ```
  * korl_shared_const EntityManager_BoundingVolume DEFAULT_BOUNDING_VOLUME = {NULL, KORL_MATH_AABB2F32_EMPTY};
- * const Korl_Algorithm_Bvh_CreateInfo createInfoBvh{.allocator             = allocatorStack
+ * const Korl_Algorithm_Bvh_CreateInfo createInfoBvh{.allocator             = allocatorFrame
  *                                                  ,.leafBoundingVolumes   = activeEntities
  *                                                  ,.boundingVolumeStride  = sizeof(EntityManager_BoundingVolume)
  *                                                  ,.maxLeafVolumesPerNode = 3

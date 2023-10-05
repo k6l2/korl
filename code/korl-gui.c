@@ -1444,7 +1444,7 @@ korl_internal void korl_gui_frameEnd(void)
         invalidate all dangling pointers to the previous contents */
     mchmfree(KORL_STB_DS_MC_CAST(context->allocatorHandleStack), stbHmWidgetMap);// the map from hash=>index is now invalid! (and we shouldn't need it anymore anyways, since we are now topologically sorted)
     for(_Korl_Gui_UsedWidget* usedWidget = context->stbDaUsedWidgets; usedWidget < usedWidgetsEnd; usedWidget++)
-        usedWidget->dagMetaData.stbDaChildren = NULL;// all these are allocated from context->allocatorStack, so they should be freed automatically
+        usedWidget->dagMetaData.stbDaChildren = NULL;// all these are allocated from context->allocatorFrame, so they should be freed automatically
     /* sanity-check the sorted list of used widgets to make sure that for each 
         widget sub tree, all child orderIndex values are unique */
     {

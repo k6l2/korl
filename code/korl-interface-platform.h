@@ -36,7 +36,7 @@ typedef KORL_FUNCTION_korl_command_callback(fnSig_korl_command_callback);
 #define korl_command_register(utf8CommandName, callback) _korl_command_register(utf8CommandName, callback, KORL_RAW_CONST_UTF8(#callback))
 /** use the \c korl_command_register convenience macro instead of this API directly! */
 #define KORL_FUNCTION__korl_command_register(name) void name(acu8 utf8CommandName, fnSig_korl_command_callback* callback, acu8 utf8Callback)
-#define KORL_FUNCTION_korl_command_invoke(name)    void name(acu8 rawUtf8, Korl_Memory_AllocatorHandle allocatorStack)
+#define KORL_FUNCTION_korl_command_invoke(name)    void name(acu8 rawUtf8, Korl_Memory_AllocatorHandle allocatorFrame)
 /* korl-functionDynamo interface **********************************************/
 typedef Korl_Pool_Handle Korl_FunctionDynamo_FunctionHandle;
 #define korl_functionDynamo_register(function) _korl_functionDynamo_register(KORL_C_CAST(void*, function), KORL_RAW_CONST_UTF8(#function))

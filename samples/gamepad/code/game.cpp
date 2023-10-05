@@ -7,7 +7,7 @@
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
-    Korl_Memory_AllocatorHandle allocatorStack;
+    Korl_Memory_AllocatorHandle allocatorFrame;
     bool                        continueRunning;
     Korl_StringPool             stringPool;
     Korl_LogConsole             logConsole;
@@ -26,7 +26,7 @@ KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
     const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     memory = KORL_C_CAST(Memory*, korl_allocate(allocatorHeap, sizeof(Memory)));
     memory->allocatorHeap   = allocatorHeap;
-    memory->allocatorStack  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    memory->allocatorFrame  = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
     memory->continueRunning = true;
     memory->stringPool      = korl_stringPool_create(allocatorHeap);
     memory->logConsole      = korl_logConsole_create(&memory->stringPool);
@@ -62,7 +62,7 @@ KORL_EXPORT KORL_GAME_ON_GAMEPAD_EVENT(korl_game_onGamepadEvent)
 }
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
-    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
+    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorFrame);
     /* draw the gamepad state */
     korl_gfx_useCamera(korl_gfx_camera_createOrthoFixedHeight(450, 1));
     korl_shared_const f32 CIRCLE_RADIUS = 32;

@@ -8,7 +8,7 @@
 typedef struct Memory
 {
     Korl_Memory_AllocatorHandle allocatorHeap;
-    Korl_Memory_AllocatorHandle allocatorStack;
+    Korl_Memory_AllocatorHandle allocatorFrame;
     bool                        quit;
     Korl_StringPool             stringPool;// used by logConsole
     Korl_LogConsole             logConsole;
@@ -24,7 +24,7 @@ KORL_EXPORT KORL_GAME_INITIALIZE(korl_game_initialize)
     const Korl_Memory_AllocatorHandle allocatorHeap = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game", KORL_MEMORY_ALLOCATOR_FLAG_SERIALIZE_SAVE_STATE, &heapCreateInfo);
     memory = KORL_C_CAST(Memory*, korl_allocate(allocatorHeap, sizeof(Memory)));
     memory->allocatorHeap  = allocatorHeap;
-    memory->allocatorStack = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
+    memory->allocatorFrame = korl_memory_allocator_create(KORL_MEMORY_ALLOCATOR_TYPE_LINEAR, L"game-stack", KORL_MEMORY_ALLOCATOR_FLAG_EMPTY_EVERY_FRAME, &heapCreateInfo);
     memory->stringPool     = korl_stringPool_create(allocatorHeap);
     memory->logConsole     = korl_logConsole_create(&memory->stringPool);
     memory->camera         = {.position = KORL_MATH_V3F32_ONE * 200, .yawPitch = {-KORL_PI32/4, -KORL_PI32/4}};
@@ -63,7 +63,7 @@ KORL_EXPORT KORL_GAME_ON_KEYBOARD_EVENT(korl_game_onKeyboardEvent)
 KORL_EXPORT KORL_GAME_UPDATE(korl_game_update)
 {
     memory->seconds += deltaSeconds;
-    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorStack);
+    korl_logConsole_update(&memory->logConsole, deltaSeconds, korl_log_getBuffer, {windowSizeX, windowSizeY}, memory->allocatorFrame);
     korl_camera_freeFly_step(&memory->camera, deltaSeconds);
     /* lights... */
     korl_gfx_setClearColor(1,1,1);
