@@ -543,7 +543,7 @@ korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle han
     korl_log(ERROR, "Korl_Memory_AllocatorType '%i' not implemented", allocator->type);
     return false;
 }
-korl_internal void korl_memory_allocator_emptyStackAllocators(void)
+korl_internal void korl_memory_allocator_emptyFrameAllocators(void)
 {
     _Korl_Memory_Context*const context = &_korl_memory_context;
     korl_assert(context->mainThreadId == GetCurrentThreadId());

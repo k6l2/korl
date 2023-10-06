@@ -17,7 +17,7 @@ korl_internal void korl_memory_allocator_recreate(Korl_Memory_AllocatorHandle ha
                                                  ,u32 heapDescriptorOffset_virtualBytes
                                                  ,u32 heapDescriptorOffset_committedBytes);
 korl_internal bool korl_memory_allocator_isEmpty(Korl_Memory_AllocatorHandle handle);
-korl_internal void korl_memory_allocator_emptyStackAllocators(void);
+korl_internal void korl_memory_allocator_emptyFrameAllocators(void);
 /** \return the address of the allocated memory report */
 korl_internal void* korl_memory_reportGenerate(void);
 /** \param reportAddress the address of the return value of a previous call to \c korl_memory_reportGenerate */

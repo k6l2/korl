@@ -856,18 +856,18 @@ korl_internal void korl_windows_window_loop(void)
                 deferProbeReport = false;
             }
         #endif
+        /* at the start of each frame, we know that there _must_ be no active 
+            time probes, so we can perform a log report of the previous frame's 
+            time probe state; this _must_ be performed at the start of the next 
+            frame since (1) we can't do this when any time probes are active, & 
+            (2) each frame ends with a time probe to measure how much time we 
+            sleep to regulate frame rate */
         if(context->deferCpuReport)
         {
             korl_time_probeLogReport(context->deferCpuReportMaxDepth);
             context->deferCpuReport = false;
         }
-        if(context->deferMemoryReport)
-        {
-            korl_memory_reportLog(korl_memory_reportGenerate());
-            context->deferMemoryReport = false;
-        }
         korl_time_probeReset();
-        korl_memory_allocator_emptyStackAllocators();
         korl_time_probeStart(Main_Loop);
         _korl_windows_window_configurationStep();
         KORL_ZERO_STACK(MSG, windowMessage);
@@ -969,6 +969,15 @@ korl_internal void korl_windows_window_loop(void)
         korl_time_probeStart(gui_frame_end);            korl_gui_frameEnd();                 korl_time_probeStop(gui_frame_end);
         korl_time_probeStart(resource_flush_updates);   korl_resource_flushUpdates();        korl_time_probeStop(resource_flush_updates);
         korl_time_probeStart(vulkan_frame_end);         korl_vulkan_frameEnd();              korl_time_probeStop(vulkan_frame_end);
+        /* at this point in the frame, we should be completely done with 
+            korl-memory operations; the last thing we should do just before loop 
+            frame rate regulation is perform _memory_ log reports & empty frame allocators */
+        if(context->deferMemoryReport)
+        {
+            korl_memory_reportLog(korl_memory_reportGenerate());
+            context->deferMemoryReport = false;
+        }
+        korl_memory_allocator_emptyFrameAllocators();
         /* regulate frame rate to our game module's target frame rate */
         //KORL-ISSUE-000-000-059: window: find a frame timing solution that works if vulkan API blocks for some reason
         const PlatformTimeStamp timeStampRenderLoopBottom = korl_timeStamp();
