@@ -291,7 +291,8 @@ typedef struct Korl_Gfx_StagingAllocation
  * either at end-of-frame, _or_ the next call to obtain an update buffer (such 
  * as a resize call). */
 typedef enum Korl_Gfx_Drawable_Type
-    {KORL_GFX_DRAWABLE_TYPE_RUNTIME = 1
+    {KORL_GFX_DRAWABLE_TYPE_INVALID
+    ,KORL_GFX_DRAWABLE_TYPE_RUNTIME
     ,KORL_GFX_DRAWABLE_TYPE_MESH
 } Korl_Gfx_Drawable_Type;
 /** For \c KORL_GFX_DRAWABLE_RUNTIME_TYPE_MULTI_FRAME , the user _must_ call 

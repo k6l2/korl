@@ -278,6 +278,9 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     korl_assert(korl_gfx_setDrawState(&drawState));
     switch(context->type)
     {
+    case KORL_GFX_DRAWABLE_TYPE_INVALID:
+        korl_log(ERROR, "invalid drawable");
+        break;
     case KORL_GFX_DRAWABLE_TYPE_RUNTIME:{
         if(   context->subType.runtime.vertexStagingMeta.vertexCount == 0 
            && context->subType.runtime.vertexStagingMeta.instanceCount == 0)

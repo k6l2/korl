@@ -683,6 +683,9 @@ korl_internal void korl_gfx_drawable_destroy(Korl_Gfx_Drawable* context)
 {
     switch(context->type)
     {
+    case KORL_GFX_DRAWABLE_TYPE_INVALID:
+        // silently do nothing
+        break;
     case KORL_GFX_DRAWABLE_TYPE_RUNTIME:{
         switch(context->subType.runtime.type)
         {

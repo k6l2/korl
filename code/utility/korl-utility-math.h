@@ -253,6 +253,7 @@ typedef union Korl_Math_M4f32
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotate(Korl_Math_Quaternion qRotation);
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vTranslation);
 korl_internal Korl_Math_M4f32 korl_math_makeM4f32_rotateScaleTranslate(Korl_Math_Quaternion qRotation, Korl_Math_V3f32 vScale, Korl_Math_V3f32 vTranslation);
+korl_internal void            korl_math_m4f32_decompose(Korl_Math_M4f32 m, Korl_Math_V3f32* o_translation, Korl_Math_Quaternion* o_rotation, Korl_Math_V3f32* o_scale);
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m);
 /** If matrix \c m cannot be inverted, then the [0][0] element of the resulting 
  * matrix will be set to \c NaN , and all other elements of the result are \c undefined .
@@ -327,6 +328,7 @@ korl_internal void                  korl_math_transform3d_setPosition(Korl_Math_
 korl_internal void                  korl_math_transform3d_move(Korl_Math_Transform3d* context, Korl_Math_V3f32 positionDelta);
 korl_internal void                  korl_math_transform3d_setVersor(Korl_Math_Transform3d* context, Korl_Math_Quaternion versor);
 korl_internal void                  korl_math_transform3d_setScale(Korl_Math_Transform3d* context, Korl_Math_V3f32 scale);
+korl_internal void                  korl_math_transform3d_setM4f32(Korl_Math_Transform3d* context, Korl_Math_M4f32 m4f32);
 korl_internal void                  korl_math_transform3d_updateM4f32(Korl_Math_Transform3d* context);
 korl_internal Korl_Math_M4f32       korl_math_transform3d_m4f32(Korl_Math_Transform3d* context);
 /* Korl_Math_TriangleMesh *****************************************************/
