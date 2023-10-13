@@ -799,7 +799,9 @@ korl_internal void korl_math_m4f32_decompose(Korl_Math_M4f32 m, Korl_Math_V3f32*
     Korl_Math_V3f32 column0 = korl_math_v3f32_make(m.r0c0, m.r1c0, m.r2c0);
     Korl_Math_V3f32 column1 = korl_math_v3f32_make(m.r0c1, m.r1c1, m.r2c1);
     Korl_Math_V3f32 column2 = korl_math_v3f32_make(m.r0c2, m.r1c2, m.r2c2);
-    *o_scale = korl_math_v3f32_make(korl_math_v3f32_magnitude(&column0), korl_math_v3f32_magnitude(&column1), korl_math_v3f32_magnitude(&column2));
+    *o_scale = korl_math_v3f32_make(korl_math_v3f32_magnitude(&column0)
+                                   ,korl_math_v3f32_magnitude(&column1)
+                                   ,korl_math_v3f32_magnitude(&column2));
     korl_assert(!korl_math_isNearlyZero(o_scale->x));
     korl_assert(!korl_math_isNearlyZero(o_scale->y));
     korl_assert(!korl_math_isNearlyZero(o_scale->z));
@@ -809,37 +811,37 @@ korl_internal void korl_math_m4f32_decompose(Korl_Math_M4f32 m, Korl_Math_V3f32*
     m.r0c2 /= o_scale->z; m.r1c2 /= o_scale->z; m.r2c2 /= o_scale->z;
     // `m` is now a rotation matrix; we need only convert to a Quaternion now:
     // derived from https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html
-    const Korl_Math_V4f32 unsignedQuaternionComponents = korl_math_v4f32_make(korl_math_f32_squareRoot((1 + m.r0c0 + m.r1c1 + m.r2c2) / 4.f)
+    const Korl_Math_V4f32 unsignedQuaternionComponents = korl_math_v4f32_make(korl_math_f32_squareRoot((1 + m.r0c0 + m.r1c1 + m.r2c2) / 4.f)// NOTE: elements[0] of this vector is the _real_ component of the final quaternion
                                                                              ,korl_math_f32_squareRoot((1 + m.r0c0 - m.r1c1 - m.r2c2) / 4.f)
                                                                              ,korl_math_f32_squareRoot((1 - m.r0c0 + m.r1c1 - m.r2c2) / 4.f)
                                                                              ,korl_math_f32_squareRoot((1 - m.r0c0 - m.r1c1 + m.r2c2) / 4.f));
     if(   unsignedQuaternionComponents.x > unsignedQuaternionComponents.y 
        && unsignedQuaternionComponents.x > unsignedQuaternionComponents.z 
        && unsignedQuaternionComponents.x > unsignedQuaternionComponents.w)// x component is the largest
-        *o_rotation = korl_math_quaternion_make(unsignedQuaternionComponents.x
-                                               ,(m.r2c1 - m.r1c2) / (4 * unsignedQuaternionComponents.x)
+        *o_rotation = korl_math_quaternion_make((m.r2c1 - m.r1c2) / (4 * unsignedQuaternionComponents.x)
                                                ,(m.r0c2 - m.r2c0) / (4 * unsignedQuaternionComponents.x)
-                                               ,(m.r1c0 - m.r0c1) / (4 * unsignedQuaternionComponents.x));
+                                               ,(m.r1c0 - m.r0c1) / (4 * unsignedQuaternionComponents.x)
+                                               ,unsignedQuaternionComponents.x);
     else if(   unsignedQuaternionComponents.y > unsignedQuaternionComponents.x 
             && unsignedQuaternionComponents.y > unsignedQuaternionComponents.z 
             && unsignedQuaternionComponents.y > unsignedQuaternionComponents.w)// y component is the largest
-        *o_rotation = korl_math_quaternion_make((m.r2c1 - m.r1c2) / (4 * unsignedQuaternionComponents.y)
-                                               ,unsignedQuaternionComponents.y
+        *o_rotation = korl_math_quaternion_make(unsignedQuaternionComponents.y
                                                ,(m.r0c1 + m.r1c0) / (4 * unsignedQuaternionComponents.y)
-                                               ,(m.r0c2 + m.r2c0) / (4 * unsignedQuaternionComponents.y));
+                                               ,(m.r0c2 + m.r2c0) / (4 * unsignedQuaternionComponents.y)
+                                               ,(m.r2c1 - m.r1c2) / (4 * unsignedQuaternionComponents.y));
     else if(   unsignedQuaternionComponents.z > unsignedQuaternionComponents.x 
             && unsignedQuaternionComponents.z > unsignedQuaternionComponents.y 
             && unsignedQuaternionComponents.z > unsignedQuaternionComponents.w)// z component is the largest
-        *o_rotation = korl_math_quaternion_make((m.r0c2 - m.r2c0) / (4 * unsignedQuaternionComponents.z)
-                                               ,(m.r0c1 + m.r1c0) / (4 * unsignedQuaternionComponents.z)
+        *o_rotation = korl_math_quaternion_make((m.r0c1 + m.r1c0) / (4 * unsignedQuaternionComponents.z)
                                                ,unsignedQuaternionComponents.z
-                                               ,(m.r1c2 + m.r2c1) / (4 * unsignedQuaternionComponents.z));
+                                               ,(m.r1c2 + m.r2c1) / (4 * unsignedQuaternionComponents.z)
+                                               ,(m.r0c2 - m.r2c0) / (4 * unsignedQuaternionComponents.z));
     else// w component is the largest
     {
-        *o_rotation = korl_math_quaternion_make((m.r1c0 - m.r0c1) / (4 * unsignedQuaternionComponents.w)
-                                               ,(m.r0c2 + m.r2c0) / (4 * unsignedQuaternionComponents.w)
+        *o_rotation = korl_math_quaternion_make((m.r0c2 + m.r2c0) / (4 * unsignedQuaternionComponents.w)
                                                ,(m.r1c2 + m.r2c1) / (4 * unsignedQuaternionComponents.w)
-                                               ,unsignedQuaternionComponents.w);
+                                               ,unsignedQuaternionComponents.w
+                                               ,(m.r1c0 - m.r0c1) / (4 * unsignedQuaternionComponents.w));
     }
 }
 korl_internal Korl_Math_M4f32 korl_math_m4f32_transpose(const Korl_Math_M4f32*const m)
