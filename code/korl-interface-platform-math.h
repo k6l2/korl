@@ -20,3 +20,5 @@
 #define KORL_FUNCTION_korl_math_f64_power(name)        f64  name(f64 x, f64 exponent)
 #define KORL_FUNCTION_korl_math_loadExponent(name)     f32  name(f32 x, i32 exponent)/** computes x*(2^exponent) */
 #define KORL_FUNCTION_korl_math_f32_isNan(name)        bool name(f32 x)
+#define KORL_FUNCTION_korl_math_f32_quietNan(name)     f32  name(void)
+#define KORL_FUNCTION_korl_math_f32_infinity(name)     f32  name(void)

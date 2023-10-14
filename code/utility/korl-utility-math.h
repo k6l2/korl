@@ -42,9 +42,24 @@ korl_internal inline bool korl_math_isNearlyZero(f32 x);
 korl_internal inline bool korl_math_isNearlyEqualEpsilon(f32 fA, f32 fB, f32 epsilon);
 korl_internal inline bool korl_math_isNearlyEqual(f32 fA, f32 fB);/** calls korl_math_isNearlyEqualEpsilon(fA, fB, 1e-5f) */
 korl_internal inline f32  korl_math_f32_positive(f32 x);
-korl_internal inline f32  korl_math_f32_nan(void);
 korl_internal inline f32  korl_math_f32_lerp(f32 from, f32 to, f32 factor);
 korl_internal inline f32  korl_math_f32_exponentialDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime);
+/**
+ * Find the roots of a given quadratic formula which satisfies the form 
+ * `f(x) = ax^2 + bx + c`.  The roots are values of `x` which will yield 
+ * `f(x) = 0`.  Complex# solutions are ignored.
+ * \param o_roots 
+ * The locations in memory where the roots will be stored, if they exist.  
+ * The roots will be stored in ascending order.  Only the first N values 
+ * will be written to, where N is the return value of this function.  In the 
+ * RARE case that the equation is a line along the x-axis, o_roots[0] is set 
+ * to INFINITY32 & a value of 0 is returned.
+ * \return 
+ * The number of UNIQUE real# roots found for the given equation.  This 
+ * value will always be in the range [0,2].
+ */
+korl_internal u8          korl_math_solveQuadraticReal(f32 a, f32 b, f32 c, f32 o_roots[2]);
+/* Mesh Primitive Generation **************************************************/
 //KORL-PERFORMANCE-000-000-051: math: this sphere mesh generating API is crappy and does not generate vertex indices, so we will end up duplicating a ton of vertices
 korl_internal u$          korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments);
 /**
@@ -344,7 +359,28 @@ korl_internal void                   korl_math_triangleMesh_destroy(Korl_Math_Tr
 korl_internal void                   korl_math_triangleMesh_collectDefragmentPointers(Korl_Math_TriangleMesh* context, void* stbDaMemoryContext, Korl_Heap_DefragmentPointer** pStbDaDefragmentPointers, void* parent);
 korl_internal void                   korl_math_triangleMesh_add(Korl_Math_TriangleMesh* context, const Korl_Math_V3f32* vertices, u32 verticesSize);
 korl_internal void                   korl_math_triangleMesh_addIndexed(Korl_Math_TriangleMesh* context, const Korl_Math_V3f32* vertices, u32 verticesSize, const u32* indices, u32 indicesSize);
-//@TODO: query Korl_Math_TriangleMesh for collisions
+/* Collision Test Primitives **************************************************/
+// Good resource on intersection test algorithms: https://www.realtimerendering.com/intersections.html
+/**
+ * \return 
+ * (1) NAN32 if the ray does not collide with the plane.  
+ * (2) INFINITY32 if the ray is co-planar with the plane.  
+ * (3) Otherwise, a scalar representing how far from `rayOrigin` in the 
+ *     direction of `rayNormal` the intersection is.
+ * In case (3), the return value will ALWAYS be positive.
+ */
+korl_internal f32 korl_math_collide_ray_plane(const Korl_Math_V3f32 rayOrigin, const Korl_Math_V3f32 rayNormal
+                                             ,const Korl_Math_V3f32 planeNormal, f32 planeDistanceFromOrigin
+                                             ,bool cullPlaneBackFace);
+/**
+ * \return 
+ * (1) NAN32 if the ray does not collide with the sphere
+ * (2) Otherwise, a scalar representing how far from `rayOrigin` in 
+ *     the direction of `rayNormal` the intersection is.
+ * If the ray origin is contained within the sphere, 0 is returned. 
+ */
+korl_internal f32 korl_math_collide_ray_sphere(const Korl_Math_V3f32 rayOrigin, const Korl_Math_V3f32 rayNormal
+                                              ,const Korl_Math_V3f32 sphereOrigin, f32 sphereRadius);
 /* C++ API ********************************************************************/
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar);

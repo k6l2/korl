@@ -104,3 +104,11 @@ korl_internal inline KORL_FUNCTION_korl_math_f32_isNan(korl_math_f32_isNan)
 {
     return 0 != _isnanf(x);
 }
+korl_internal KORL_FUNCTION_korl_math_f32_quietNan(korl_math_f32_quietNan)
+{
+    return nanf("");
+}
+korl_internal KORL_FUNCTION_korl_math_f32_infinity(korl_math_f32_infinity)
+{
+    return INFINITY;
+}

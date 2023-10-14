@@ -60,20 +60,58 @@ korl_internal inline f32 korl_math_f32_positive(f32 x)
         return x;
     return -x;
 }
-korl_internal inline f32 korl_math_f32_nan(void)
-{
-    korl_shared_const u32 MAX_U32 = KORL_U32_MAX;
-    return *KORL_C_CAST(f32*, &MAX_U32);
-}
 korl_internal inline f32 korl_math_f32_lerp(f32 from, f32 to, f32 factor)
 {
-    return from + factor*(to - from);
+    return from + factor * (to - from);
 }
 korl_internal inline f32 korl_math_f32_exponentialDecay(f32 from, f32 to, f32 lambdaFactor, f32 deltaTime)
 {
     // good resource on this:  
     //  https://www.rorydriscoll.com/2016/03/07/frame-rate-independent-damping-using-lerp/
     return korl_math_f32_lerp(to, from, korl_math_f32_exponential(-lambdaFactor * deltaTime));
+}
+korl_internal u8 korl_math_solveQuadraticReal(f32 a, f32 b, f32 c, f32 o_roots[2])
+{
+    /* https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection */
+    const f32 discriminant = b*b - 4*a*c;
+    if(discriminant < 0)/* no real# solution */
+        return 0;
+    if(korl_math_isNearlyZero(a))/* degenerate line equation case */
+    {
+        if(korl_math_isNearlyZero(b))/* horizontal line case: either NO SOLUTION or INFINITE */
+        {
+            if(korl_math_isNearlyZero(c))
+                o_roots[0] = korl_math_f32_infinity();// super-rare case
+            else
+                o_roots[0] = 0;
+            return 0;
+        }
+        o_roots[0] = -c / b;
+        return 1;
+    }
+    u8 result = 1;
+    if(korl_math_isNearlyZero(discriminant))/* rare case: only ONE real# solution */
+        o_roots[0] = -0.5f * b / a;
+    else
+    {
+        result = 2;
+        const f32 q = b > 0
+                      ? -0.5f * (b + korl_math_f32_squareRoot(discriminant))
+                      : -0.5f * (b - korl_math_f32_squareRoot(discriminant));
+        /* given the cases handled above, it should not be possible for q to 
+            approach zero, but just in case let's check that here... same for a */
+        KORL_MATH_ASSERT(!korl_math_isNearlyZero(a));
+        KORL_MATH_ASSERT(!korl_math_isNearlyZero(q));
+        o_roots[0] = q/a;
+        o_roots[1] = c/q;
+        if(o_roots[0] > o_roots[1])// ensure that the result roots are in ascending order
+        {
+            const f32 temp = o_roots[0];
+            o_roots[0] = o_roots[1];
+            o_roots[1] = temp;
+        }
+    }
+    return result;
 }
 korl_internal u$ korl_math_generateMeshSphereVertexCount(u32 latitudeSegments, u32 longitudeSegments)
 {
@@ -329,7 +367,7 @@ korl_internal Korl_Math_V2f32 korl_math_v2f32_max(Korl_Math_V2f32 vA, Korl_Math_
 }
 korl_internal Korl_Math_V2f32 korl_math_v2f32_nan(void)
 {
-    return korl_math_v2f32_make(korl_math_f32_nan(), korl_math_f32_nan());
+    return korl_math_v2f32_make(korl_math_f32_quietNan(), korl_math_f32_quietNan());
 }
 korl_internal bool korl_math_v2f32_hasNan(Korl_Math_V2f32 v)
 {
@@ -961,7 +999,7 @@ korl_internal Korl_Math_M4f32 korl_math_m4f32_invert(const Korl_Math_M4f32*const
             + m->elements[3] * result.elements[12];
     if (korl_math_isNearlyEqualEpsilon(det, 0.f, 1e-10f))
     {
-        result.r0c0 = korl_math_f32_nan();
+        result.r0c0 = korl_math_f32_quietNan();
         return result;
     }
     det = 1.0f / det;
@@ -1369,6 +1407,68 @@ korl_internal void korl_math_triangleMesh_addIndexed(Korl_Math_TriangleMesh* con
         korl_math_aabb3f32_addPointV3(&context->aabb, vertices[v]);
     for(u32 i = 0; i < indicesSize; i++)
         context->stbDaIndices[startIndexIndices + i] = korl_checkCast_u$_to_u32(startIndexVertices + indices[i]);
+}
+korl_internal f32 korl_math_collide_ray_plane(const Korl_Math_V3f32 rayOrigin, const Korl_Math_V3f32 rayNormal
+                                             ,const Korl_Math_V3f32 planeNormal, f32 planeDistanceFromOrigin
+                                             ,bool cullPlaneBackFace)
+{
+    KORL_MATH_ASSERT(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(&rayNormal  ), 1));
+    KORL_MATH_ASSERT(korl_math_isNearlyEqual(korl_math_v3f32_magnitudeSquared(&planeNormal), 1));
+    const Korl_Math_V3f32 planeOrigin = korl_math_v3f32_multiplyScalar(planeNormal, planeDistanceFromOrigin);
+    const f32             denominator = korl_math_v3f32_dot(rayNormal, planeNormal);
+    if(korl_math_isNearlyZero(denominator))
+    /* the ray is PERPENDICULAR to the plane; no real solution */
+    {
+        /* test if the ray is co-planar with the plane */
+        const Korl_Math_V3f32 rayOriginOntoPlane = korl_math_v3f32_project(rayOrigin, planeOrigin, false);
+        if(    korl_math_isNearlyEqual(rayOriginOntoPlane.x, rayOrigin.x)
+            && korl_math_isNearlyEqual(rayOriginOntoPlane.y, rayOrigin.y)
+            && korl_math_isNearlyEqual(rayOriginOntoPlane.z, rayOrigin.z))
+            return korl_math_f32_infinity();
+        /* otherwise, they will never intersect */
+        return korl_math_f32_quietNan();
+    }
+    if(cullPlaneBackFace && denominator/*rayNormal dot planeNormal*/ >= 0)
+    /* if we're colliding with the BACK of the plane (opposite side that the 
+        normal is facing) and the caller doesn't want these collisions, then the 
+        collision fails here */
+        return korl_math_f32_quietNan();
+    const f32 result = korl_math_v3f32_dot(korl_math_v3f32_subtract(planeOrigin, rayOrigin), planeNormal) / denominator;
+    /* if the result is negative, then we are colliding with the ray's line, NOT the ray itself! */
+    if(result < 0)
+        return korl_math_f32_quietNan();
+    return result;
+}
+korl_internal f32 korl_math_collide_ray_sphere(const Korl_Math_V3f32 rayOrigin, const Korl_Math_V3f32 rayNormal
+                                              ,const Korl_Math_V3f32 sphereOrigin, f32 sphereRadius)
+{
+    /* analytic solution.  Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection */
+    const Korl_Math_V3f32 l = korl_math_v3f32_subtract(rayOrigin, sphereOrigin);
+    const f32             a = korl_math_v3f32_dot(rayNormal, rayNormal);
+    const f32             b = 2 * korl_math_v3f32_dot(rayNormal, l);
+    const f32             c = korl_math_v3f32_dot(l, l) - (sphereRadius * sphereRadius);
+    f32 analyticSolutions[2];
+    const u8 analyticSolutionCount = korl_math_solveQuadraticReal(a, b, c, analyticSolutions);
+    /* no quadratic solutions means the ray's LINE never collides with the sphere */
+    if(analyticSolutionCount == 0)
+        return korl_math_f32_quietNan();
+    /* rare case: the ray intersects the sphere at a SINGLE point */
+    if(analyticSolutionCount == 1)
+        if(analyticSolutions[0] < 0)
+            return korl_math_f32_quietNan();/* intersection is on the wrong side of the ray */
+        else
+            return analyticSolutions[0];
+    /* if the first solution is < 0, the sphere either intersects the ray's 
+        origin, or the sphere is colliding with the ray's line BEHIND the ray 
+        (no collision with the ray itself) */
+    KORL_MATH_ASSERT(analyticSolutionCount == 2);
+    if(analyticSolutions[0] < 0)
+        if(analyticSolutions[1] < 0)
+            return korl_math_f32_quietNan();// collision with line behind the ray
+        else
+            return 0;// collision with ray origin
+    else
+        return analyticSolutions[0];// standard collision with ray at some distance
 }
 #ifdef __cplusplus
 korl_internal Korl_Math_V2u32 operator+(Korl_Math_V2u32 v, u32 scalar)

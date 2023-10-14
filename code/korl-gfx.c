@@ -182,14 +182,14 @@ korl_internal KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(korl_gfx_cameraOrthoGetS
                                 ,context->subCamera.orthographic.fixedHeight};}
     default:{
         korl_log(ERROR, "invalid camera type: %i", context->type);
-        return (Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};}
+        return (Korl_Math_V2f32){korl_math_f32_quietNan(), korl_math_f32_quietNan()};}
     }
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_windowToWorld(korl_gfx_camera_windowToWorld)
 {
     _Korl_Gfx_Context*const gfxContext = _korl_gfx_context;
-    Korl_Gfx_ResultRay3d result = {.position  = {korl_math_f32_nan(), korl_math_f32_nan(), korl_math_f32_nan()}
-                                  ,.direction = {korl_math_f32_nan(), korl_math_f32_nan(), korl_math_f32_nan()}};
+    Korl_Gfx_ResultRay3d result = {.position  = {korl_math_f32_quietNan(), korl_math_f32_quietNan(), korl_math_f32_quietNan()}
+                                  ,.direction = {korl_math_f32_quietNan(), korl_math_f32_quietNan(), korl_math_f32_quietNan()}};
     //KORL-PERFORMANCE-000-000-041: gfx: I expect this to be SLOW; we should instead be caching the camera's VP matrices and only update them when they are "dirty"; I know for a fact that SFML does this in its sf::camera class
     const Korl_Math_M4f32 view                  = korl_gfx_camera_view(context);
     const Korl_Math_M4f32 projection            = korl_gfx_camera_projection(context);
@@ -246,7 +246,7 @@ korl_internal KORL_FUNCTION_korl_gfx_camera_worldToWindow(korl_gfx_camera_worldT
     const Korl_Math_V4f32 cameraSpacePoint = korl_math_m4f32_multiplyV4f32(&view, &worldPoint);
     const Korl_Math_V4f32 clipSpacePoint   = korl_math_m4f32_multiplyV4f32(&projection, &cameraSpacePoint);
     if(korl_math_isNearlyZero(clipSpacePoint.w))
-        return (Korl_Math_V2f32){korl_math_f32_nan(), korl_math_f32_nan()};
+        return (Korl_Math_V2f32){korl_math_f32_quietNan(), korl_math_f32_quietNan()};
     /* calculate normalized-device-coordinate-space 
         y is inverted here because screen-space y axis is flipped! */
     const Korl_Math_V3f32 ndcSpacePoint = { clipSpacePoint.x /  clipSpacePoint.w
