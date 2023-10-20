@@ -390,12 +390,12 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
         }
         for(u8 i = 0; i < context->subType.mesh.meshPrimitives; i++)
         {
-            Korl_Resource_Scene3d_MeshPrimitive tentacleMeshPrimitive = korl_resource_scene3d_getMeshPrimitive(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.meshIndex, i);
+            Korl_Resource_Scene3d_MeshPrimitive meshPrimitive = korl_resource_scene3d_getMeshPrimitive(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.meshIndex, i);
             KORL_ZERO_STACK(Korl_Gfx_DrawState, drawStatePrimitive);
-            drawStatePrimitive.material = (materialsSize && i < materialsSize) ? (materials + i) : (&tentacleMeshPrimitive.material);
+            drawStatePrimitive.material = (materialsSize && i < materialsSize) ? (materials + i) : (&meshPrimitive.material);
             if(!korl_gfx_setDrawState(&drawStatePrimitive))
                 continue;
-            korl_gfx_drawVertexBuffer(tentacleMeshPrimitive.vertexBuffer, tentacleMeshPrimitive.vertexBufferByteOffset, &tentacleMeshPrimitive.vertexStagingMeta, tentacleMeshPrimitive.primitiveType);
+            korl_gfx_drawVertexBuffer(meshPrimitive.vertexBuffer, meshPrimitive.vertexBufferByteOffset, &meshPrimitive.vertexStagingMeta, meshPrimitive.primitiveType);
         }
         break;}
     }

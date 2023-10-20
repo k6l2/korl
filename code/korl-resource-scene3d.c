@@ -325,11 +325,14 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 case KORL_CODEC_GLTF_ACCESSOR_COMPONENT_TYPE_U32: sceneMeshPrimitive->vertexStagingMeta.indexType = KORL_GFX_VERTEX_INDEX_TYPE_U32; break;
                 default: korl_log(ERROR, "invalid vertex index componentType: %i", accessor->componentType); break;
                 }
+                /* calculate bytes required for memory alignment */
+                //KORL-ISSUE-000-000-199: scene3d: HACK; hard-coded memory alignment of vertex attribute data; it would be better if there was an API to query the platform for alignment required for each vertex attribute; related to KORL-ISSUE-000-000-178
+                const u32 alignedBytes = korl_checkCast_u$_to_u32(korl_math_nextHighestDivision(bufferView->byteLength, 4)) * 4;
                 /* copy the viewedBufferData to our scene3d's vertex buffer */
-                if(vertexBufferBytesUsed + bufferView->byteLength > vertexBufferBytes)
-                    korl_resource_resize(scene3d->vertexBuffer, KORL_MATH_MAX(vertexBufferBytesUsed + bufferView->byteLength, 2 * vertexBufferBytes));
+                if(vertexBufferBytesUsed + alignedBytes > vertexBufferBytes)
+                    korl_resource_resize(scene3d->vertexBuffer, KORL_MATH_MAX(vertexBufferBytesUsed + alignedBytes, 2 * vertexBufferBytes));
                 korl_resource_update(scene3d->vertexBuffer, viewedBufferData, bufferView->byteLength, vertexBufferBytesUsed);
-                vertexBufferBytesUsed += bufferView->byteLength;
+                vertexBufferBytesUsed += alignedBytes;
             }
             korl_shared_const Korl_Gfx_VertexAttributeBinding GLTF_ATTRIBUTE_BINDINGS[] = 
                 {KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION
@@ -375,11 +378,14 @@ KORL_EXPORT KORL_FUNCTION_korl_resource_descriptorCallback_transcode(_korl_resou
                 case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT3  : sceneMeshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize = 3 * 3; break;
                 case KORL_CODEC_GLTF_ACCESSOR_TYPE_MAT4  : sceneMeshPrimitive->vertexStagingMeta.vertexAttributeDescriptors[binding].vectorSize = 4 * 4; break;
                 }
+                /* calculate bytes required for memory alignment */
+                //KORL-ISSUE-000-000-199: scene3d: HACK; hard-coded memory alignment of vertex attribute data; it would be better if there was an API to query the platform for alignment required for each vertex attribute; related to KORL-ISSUE-000-000-178
+                const u32 alignedBytes = korl_checkCast_u$_to_u32(korl_math_nextHighestDivision(bufferView->byteLength, 4)) * 4;
                 /* copy the viewedBufferData to our scene3d's vertex buffer */
-                if(vertexBufferBytesUsed + bufferView->byteLength > vertexBufferBytes)
-                    korl_resource_resize(scene3d->vertexBuffer, KORL_MATH_MAX(vertexBufferBytesUsed + bufferView->byteLength, 2 * vertexBufferBytes));
+                if(vertexBufferBytesUsed + alignedBytes > vertexBufferBytes)
+                    korl_resource_resize(scene3d->vertexBuffer, KORL_MATH_MAX(vertexBufferBytesUsed + alignedBytes, 2 * vertexBufferBytes));
                 korl_resource_update(scene3d->vertexBuffer, viewedBufferData, bufferView->byteLength, vertexBufferBytesUsed);
-                vertexBufferBytesUsed += bufferView->byteLength;
+                vertexBufferBytesUsed += alignedBytes;
             }
             if(meshPrimitive->material < 0)
                 sceneMeshPrimitive->material = korl_gfx_material_defaultUnlit();
