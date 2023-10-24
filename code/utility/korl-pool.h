@@ -15,7 +15,7 @@
 typedef u32 Korl_Pool_Index;
 typedef u16 Korl_Pool_ItemType;
 typedef u16 Korl_Pool_Salt;
-typedef u64 Korl_Pool_Handle;// composed of {Korl_Pool_Index, Korl_Pool_ItemType + 1, Korl_Pool_Salt}; ItemType is incremented internally to prevent the existence of a {0,0,0} handle, since 0 => invalid handle
+typedef u64 Korl_Pool_Handle;// composed of {Korl_Pool_ItemType + 1 : u16, Korl_Pool_Salt : u16, Korl_Pool_Index : u32}; ItemType is incremented internally to prevent the existence of a {0,0,0} handle, since 0 => invalid handle
 #define KORL_POOL_HANDLE_ITEM_INDEX(poolHandle) KORL_C_CAST(u32, (( poolHandle       ) & KORL_U32_MAX))
 #define KORL_POOL_HANDLE_ITEM_TYPE(poolHandle)  KORL_C_CAST(u16, (((poolHandle) >> 48) & KORL_U16_MAX) - 1)
 typedef struct Korl_Pool_ItemMeta
