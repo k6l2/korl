@@ -1302,6 +1302,33 @@ korl_internal void korl_gfx_drawUtf163d(Korl_Math_V3f32 position, Korl_Math_Quat
 {
     _korl_gfx_drawUtf(position, versor, anchorRatio, utf16Text.data, 16, utf16Text.size, resourceHandleFont, textPixelHeight, outlineSize, material, materialOutline, true, o_textMetrics);
 }
+korl_internal void korl_gfx_drawAabb3(Korl_Math_Aabb3f32 aabb, const Korl_Gfx_Material* material)
+{
+    const Korl_Math_V3f32 aabbSize = korl_math_aabb3f32_size(aabb);
+    Korl_Math_V3f32* vertexPositions;
+    korl_gfx_drawLines3d(KORL_MATH_V3F32_ZERO, KORL_MATH_QUATERNION_IDENTITY, 12, material, &vertexPositions, NULL);
+    /* draw a 2D box intersecting the minimum point */
+    vertexPositions[0] = aabb.min;
+    vertexPositions[1] = korl_math_v3f32_make(aabb.min.x + aabbSize.x, aabb.min.y, aabb.min.z);
+    vertexPositions[2] = korl_math_v3f32_make(aabb.min.x + aabbSize.x, aabb.min.y, aabb.min.z);
+    vertexPositions[3] = korl_math_v3f32_make(aabb.min.x + aabbSize.x, aabb.min.y + aabbSize.y, aabb.min.z);
+    vertexPositions[4] = korl_math_v3f32_make(aabb.min.x + aabbSize.x, aabb.min.y + aabbSize.y, aabb.min.z);
+    vertexPositions[5] = korl_math_v3f32_make(aabb.min.x, aabb.min.y + aabbSize.y, aabb.min.z);
+    vertexPositions[6] = korl_math_v3f32_make(aabb.min.x, aabb.min.y + aabbSize.y, aabb.min.z);
+    vertexPositions[7] = aabb.min;
+    /* draw a 2D box intersecting the maximum point */
+    for(u8 i = 0; i < 8; i++)
+    {
+        vertexPositions[8 + i]    = vertexPositions[i];
+        vertexPositions[8 + i].z += aabbSize.z;
+    }
+    /* draw 4 lines connecting the two boxes */
+    for(u8 i = 0; i < 4; i++)
+    {
+        vertexPositions[16 + 2 * i + 0] = vertexPositions[2 * i];
+        vertexPositions[16 + 2 * i + 1] = vertexPositions[2 * i + 8];
+    }
+}
 korl_internal void korl_gfx_drawMesh(Korl_Resource_Handle resourceHandleScene3d, acu8 utf8MeshName, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V3f32 scale, const Korl_Gfx_Material *materials, u8 materialsSize, Korl_Resource_Scene3d_Skin* skin)
 {
     Korl_Gfx_Drawable mesh = korl_gfx_mesh(resourceHandleScene3d, utf8MeshName);
