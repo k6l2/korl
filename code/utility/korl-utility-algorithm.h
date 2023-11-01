@@ -162,7 +162,7 @@ korl_internal void*               korl_algorithm_bvh_query(Korl_Algorithm_Bvh* c
 #define KORL_ALGORITHM_BVH_FOR_EACH_LEAF_NODE_CALLBACK(name) void name(void* userData, u32 leafNodeVolumesStride, const void* leafNodeVolumes, u32 leafNodeVolumesSize)
 typedef KORL_ALGORITHM_BVH_FOR_EACH_LEAF_NODE_CALLBACK(korl_algorithm_bvh_forEachLeafNodeCallback);
 korl_internal void                korl_algorithm_bvh_forEachLeafNode(Korl_Algorithm_Bvh* context, korl_algorithm_bvh_forEachLeafNodeCallback* callback, void* callbackUserData);
-//@TODO: rename Korl_Algorithm_GraphDirected* to Korl_Algorithm_DAG, as this code _only_ deals with _acyclic_ directed graphs
+//KORL-ISSUE-000-000-200: algorithm: API rectification; rename Korl_Algorithm_GraphDirected* to Korl_Algorithm_DAG, as this code _only_ deals with _acyclic_ directed graphs
 typedef struct Korl_Algorithm_GraphDirected_CreateInfo
 {
     Korl_Memory_AllocatorHandle allocator;
