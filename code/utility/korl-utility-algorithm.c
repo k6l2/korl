@@ -175,9 +175,10 @@ typedef struct _Korl_Algorithm_GraphDirected_Edge
 } _Korl_Algorithm_GraphDirected_Edge;
 typedef struct _Korl_Algorithm_GraphDirected_NodeMeta
 {
-    u32 children;
-    u32 childEdgesIndex;// index into the graphs `edges` member; only valid if `children` != 0
-    u32 inDegree;// transient; calculated & destroyed in `sortTopological`
+    u32  children;
+    u32  childEdgesIndex;// index into the graphs `edges` member; only valid if `children` != 0
+    u32  inDegree;// transient; calculated & destroyed in `sortTopological`; the # of parents this node has
+    bool visited;// transient; used/changed in `sortTopological`
 } _Korl_Algorithm_GraphDirected_NodeMeta;
 korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo)
 {
@@ -216,7 +217,7 @@ korl_internal KORL_ALGORITHM_COMPARE(_korl_algorithm_graphDirected_sortTopologic
                : edgeA->indexChild < edgeB->indexChild ? -1
                  : 0;
 }
-korl_internal bool korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, u32* o_resultIndexArray)
+korl_internal bool korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Algorithm_GraphDirected_SortedElement* o_sortedElements)
 {
     // this is effectively just Kahn's algorithm: https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
     /* sort the list of edges by `indexParent` (order doesn't really matter here I don't think...);
@@ -244,45 +245,61 @@ korl_internal bool korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_G
         }
         context->nodeMetas[context->edges[e].indexParent].children++;
         context->nodeMetas[context->edges[e].indexChild ].inDegree++;
+        if(context->createInfo.isArborescence)
+            // if a graph is an arborescence or an arborescence forest, all nodes _must_ have either 1 or 0 parents
+            korl_assert(context->nodeMetas[context->edges[e].indexChild].inDegree <= 1);
     }
-    /* queue all nodes with in-degree == 0; the `o_resultIndexArray` will by 
-        used by enqueueing items to the back of the array, and dequeueing items 
-        from the front (advancing the front offset simultaneously) - O(n) */
-    u32* resultDequeBegin = o_resultIndexArray;
-    u32* resultDequeEnd   = o_resultIndexArray;
+    /* from here on out, we will use `o_sortedElements` in two ways; the front 
+        of the array is where the final results will be placed, and the back of 
+        the array will be used as a stack, which will be gradually wiped as the 
+        front of the array is built; we can do this because we know that the 
+        node stack will _never_ exceed the # of visited nodes; in other words, 
+        the equation {nodesSorted + nodesStacked <= nodesTotal} _must_ be true */
+    /* add all nodes with in-degree == 0 (no parents) into the stack in the back 
+        of `o_sortedElements` - O(n) */
+    Korl_Algorithm_GraphDirected_SortedElement*            resultNext = o_sortedElements;
+    Korl_Algorithm_GraphDirected_SortedElement*            stackNext  = o_sortedElements + context->createInfo.nodesSize - 1;
+    const Korl_Algorithm_GraphDirected_SortedElement*const stackLast  = stackNext;
     for(u32 n = 0; n < context->createInfo.nodesSize; n++)
         if(0 == context->nodeMetas[n].inDegree)
-            *(resultDequeEnd++) = n;
-    /* perform topological sort using deque recursion to visit all nodes */
-    while(resultDequeEnd - resultDequeBegin > 0)// while we still have queued nodes
+            *(stackNext--) = KORL_STRUCT_INITIALIZE(Korl_Algorithm_GraphDirected_SortedElement){n, context->nodeMetas[n].children};
+    /* if there were no root nodes pushed on the stack, then the graph is not a DAG */
+    if(stackNext == stackLast)
+        return false;// invalid DAG; no root nodes
+    /* perform topological sort using depth-first-search by popping one node off 
+        the stack at a time and recursively adding */
+    while(stackNext < stackLast)
     {
-        /* dequeue the next node */
-        const u32 nextNode = *(resultDequeBegin++);
-        /* reduce in-degree of all adjacent nodes by 1, and queue all those whose in-degree is now 0 */
-        _Korl_Algorithm_GraphDirected_Edge*const nodeEdges = context->edges + context->nodeMetas[nextNode].childEdgesIndex;
-        for(u32 c = 0; c < context->nodeMetas[nextNode].children; c++)
+        /* pop the next node; if the node was already "visited", we have a cycle in the graph; mark it as "visited" */
+        const Korl_Algorithm_GraphDirected_SortedElement nextNode = *(++stackNext);
+        if(context->nodeMetas[nextNode.index].visited)
+            return false;// invalid DAG; cycle detected
+        context->nodeMetas[nextNode.index].visited = true;
+        /* add this node to the result */
+        *(resultNext++) = nextNode;
+        korl_assert(resultNext <= stackNext);/* sanity check to make sure "results" never intersect the "stack" */
+        /* push each child of this node onto the stack */
+        _Korl_Algorithm_GraphDirected_Edge*const nodeEdges = context->edges + context->nodeMetas[nextNode.index].childEdgesIndex;
+        for(u32 c = 0; c < context->nodeMetas[nextNode.index].children; c++)
         {
-            korl_assert(nodeEdges[c].indexParent == nextNode);
-            if(0 == --context->nodeMetas[nodeEdges[c].indexChild].inDegree)
-                *(resultDequeEnd++) = nodeEdges[c].indexChild;
+            korl_assert(nodeEdges[c].indexParent == nextNode.index);
+            *(stackNext--) = KORL_STRUCT_INITIALIZE(Korl_Algorithm_GraphDirected_SortedElement){nodeEdges[c].indexChild, context->nodeMetas[nodeEdges[c].indexChild].children};
+            korl_assert(resultNext <= stackNext);/* sanity check to make sure "results" never intersect the "stack" */
         }
     }
-    /* if a cycle was detected, return failure */
-    if(resultDequeBegin < o_resultIndexArray + context->createInfo.nodesSize)
-        return false;
-    korl_assert(resultDequeBegin == o_resultIndexArray + context->createInfo.nodesSize);// sanity check
-    /* at this point, we have a list of array indices in topological sort 
-        (o_resultIndexArray), but if the user wants de-interleaved sub-trees, etc., 
-        then we have some extra work to do... */
+    /* sanity check to ensure that the # of "results" we generated is correct */
+    korl_assert(resultNext == o_sortedElements + context->createInfo.nodesSize);
     return true;
 }
-korl_internal u32* korl_algorithm_graphDirected_sortTopologicalNew(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
+korl_internal Korl_Algorithm_GraphDirected_SortedElement* korl_algorithm_graphDirected_sortTopologicalNew(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator)
 {
-    u32* resultDeque = KORL_C_CAST(u32*, korl_allocateDirty(allocator, context->createInfo.nodesSize * sizeof(*resultDeque)));
-    if(!korl_algorithm_graphDirected_sortTopological(context, resultDeque))
+    Korl_Algorithm_GraphDirected_SortedElement* sortedElements = KORL_C_CAST(Korl_Algorithm_GraphDirected_SortedElement*
+                                                                            ,korl_allocateDirty(allocator
+                                                                                               ,context->createInfo.nodesSize * sizeof(*sortedElements)));
+    if(!korl_algorithm_graphDirected_sortTopological(context, sortedElements))
     {
-        korl_free(allocator, resultDeque);
+        korl_free(allocator, sortedElements);
         return NULL;
     }
-    return resultDeque;
+    return sortedElements;
 }

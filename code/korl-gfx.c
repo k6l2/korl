@@ -12,6 +12,7 @@
 #include "utility/korl-utility-string.h"
 #include "utility/korl-utility-gfx.h"
 #include "utility/korl-utility-resource.h"
+#include "utility/korl-utility-algorithm.h"
 #include "korl-resource-gfx-buffer.h"
 #include "korl-resource-shader.h"
 #include "korl-resource-texture.h"
@@ -360,24 +361,24 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             const Korl_Vulkan_DescriptorStagingAllocation descriptorStagingAllocationBones = korl_vulkan_stagingAllocateDescriptorData(context->subType.mesh.skin->bonesSize * sizeof(Korl_Math_M4f32));
             Korl_Math_M4f32*const boneMatrices = descriptorStagingAllocationBones.data;
             /* compute bone matrices with respect to topological order */
-            const i32*const boneParentIndices    = korl_resource_scene3d_skin_getBoneParentIndices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
-            const u32*const boneTopologicalOrder = korl_resource_scene3d_skin_getBoneTopologicalOrder(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
+            const i32*const                                        boneParentIndices    = korl_resource_scene3d_skin_getBoneParentIndices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
+            const Korl_Algorithm_GraphDirected_SortedElement*const boneTopologicalOrder = korl_resource_scene3d_skin_getBoneTopologicalOrder(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);
             {/* we treat the (topologically) first bone's computation specially, since it _must_ be the root bone */
                 korl_assert(context->subType.mesh.skin->bonesSize > 0);// ensure there is at least one bone in the skin
-                const u32 boneRoot = boneTopologicalOrder[0];
-                korl_assert(boneParentIndices[boneRoot] < 0);// we expect the first bone in topological order to have _no_ parent, as it _must_ be the common root node
+                const Korl_Algorithm_GraphDirected_SortedElement boneRoot = boneTopologicalOrder[0];
+                korl_assert(boneParentIndices[boneRoot.index] < 0);// we expect the first bone in topological order to have _no_ parent, as it _must_ be the common root node
                 korl_assert(context->transform._m4f32IsUpdated);// this should have been updated at the top of this function
-                korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[boneRoot]);
-                boneMatrices[boneRoot] = korl_math_m4f32_multiply(&context->transform._m4f32, &context->subType.mesh.skin->bones[boneRoot]._m4f32);// the root bone node can simply be the local transform with context's model xform applied, preventing the need to apply the model xform to all vertices in the shader
+                korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[boneRoot.index]);
+                boneMatrices[boneRoot.index] = korl_math_m4f32_multiply(&context->transform._m4f32, &context->subType.mesh.skin->bones[boneRoot.index]._m4f32);// the root bone node can simply be the local transform with context's model xform applied, preventing the need to apply the model xform to all vertices in the shader
             }
             for(u32 bt = 1; bt < context->subType.mesh.skin->bonesSize; bt++)
             {
-                const u32 b  = boneTopologicalOrder[bt];// index of the current bone to process
-                const u32 bp = boneParentIndices[b];    // index of the current bone's parent
-                korl_assert(boneParentIndices[b] >= 0);// we expect _all_ bones after the root to have a parent
+                const Korl_Algorithm_GraphDirected_SortedElement b  = boneTopologicalOrder[bt];// index of the current bone to process
+                const u32                                        bp = boneParentIndices[b.index];    // index of the current bone's parent
+                korl_assert(boneParentIndices[b.index] >= 0);// we expect _all_ bones after the root to have a parent
                 korl_assert(context->subType.mesh.skin->bones[bp]._m4f32IsUpdated);// we're processing bones in topological order; our parent's transform matrix better be updated by now!
-                korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[b]);
-                boneMatrices[b] = korl_math_m4f32_multiply(boneMatrices + bp, &context->subType.mesh.skin->bones[b]._m4f32);
+                korl_math_transform3d_updateM4f32(&context->subType.mesh.skin->bones[b.index]);
+                boneMatrices[b.index] = korl_math_m4f32_multiply(boneMatrices + bp, &context->subType.mesh.skin->bones[b.index]._m4f32);
             }
             /* pre-multiply bone matrices with their respective inverseBindMatrix */
             const Korl_Math_M4f32*const boneInverseBindMatrices = korl_resource_scene3d_skin_getBoneInverseBindMatrices(context->subType.mesh.resourceHandleScene3d, context->subType.mesh.skin->skinIndex);

@@ -34,10 +34,10 @@ typedef struct _Korl_Resource_Scene3d_Animation
 typedef struct _Korl_Resource_Scene3d_Skin
 {
     /** all these array sizes should == this object's respective gltfSkin->joints.size */
-    Korl_Math_M4f32* boneInverseBindMatrices;
-    u32*             boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
-    i32*             boneParentIndices;// < 0 => bone has no parent
-    i32*             nodeIndex_to_boneIndex;// < 0 => gltfNode is not related to any bones of this skin; acceleration structure; useful for topological sort, performing animations on gltfNodes instead of bones
+    Korl_Math_M4f32*                            boneInverseBindMatrices;
+    Korl_Algorithm_GraphDirected_SortedElement* boneTopologicalOrder;// indices of each bone in the boneInverseBindMatrices array, as well as all Korl_Resource_Scene3d_Skin bone members, and all joints in the gltf.skin, in topological order (root nodes first, followed by children)
+    i32*                                        boneParentIndices;// < 0 => bone has no parent
+    i32*                                        nodeIndex_to_boneIndex;// < 0 => gltfNode is not related to any bones of this skin; acceleration structure; useful for topological sort, performing animations on gltfNodes instead of bones
 } _Korl_Resource_Scene3d_Skin;
 typedef struct _Korl_Resource_Scene3d_Mesh
 {

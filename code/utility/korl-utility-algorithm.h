@@ -162,10 +162,12 @@ korl_internal void*               korl_algorithm_bvh_query(Korl_Algorithm_Bvh* c
 #define KORL_ALGORITHM_BVH_FOR_EACH_LEAF_NODE_CALLBACK(name) void name(void* userData, u32 leafNodeVolumesStride, const void* leafNodeVolumes, u32 leafNodeVolumesSize)
 typedef KORL_ALGORITHM_BVH_FOR_EACH_LEAF_NODE_CALLBACK(korl_algorithm_bvh_forEachLeafNodeCallback);
 korl_internal void                korl_algorithm_bvh_forEachLeafNode(Korl_Algorithm_Bvh* context, korl_algorithm_bvh_forEachLeafNodeCallback* callback, void* callbackUserData);
+//@TODO: rename Korl_Algorithm_GraphDirected* to Korl_Algorithm_DAG, as this code _only_ deals with _acyclic_ directed graphs
 typedef struct Korl_Algorithm_GraphDirected_CreateInfo
 {
     Korl_Memory_AllocatorHandle allocator;
     u32                         nodesSize;
+    bool                        isArborescence;// if true, korl_algorithm_graphDirected_sortTopological* functions will assert that the graph is either an arborescence or an arborescence forest
 } Korl_Algorithm_GraphDirected_CreateInfo;
 typedef struct Korl_Algorithm_GraphDirected
 {
@@ -175,15 +177,31 @@ typedef struct Korl_Algorithm_GraphDirected
     u32                                            edgesCapacity;
     u32                                            edgesSize;
 } Korl_Algorithm_GraphDirected;
-korl_internal Korl_Algorithm_GraphDirected korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo);
-korl_internal void                         korl_algorithm_graphDirected_destroy(Korl_Algorithm_GraphDirected* context);
-korl_internal void                         korl_algorithm_graphDirected_addEdge(Korl_Algorithm_GraphDirected* context, u32 indexParent, u32 indexChild);
-/** \param o_resultIndexArray _must_ be >= \c context->createInfo.nodesSize in length
+/** by returning to the user the # of children in each node, & ensuring that the 
+ * SortedElements are arranged in such a way that all their sub-trees are 
+ * contiguous in memory, the user can perform more advanced iteration techniques 
+ * in linear time, such as iterating over each node in any given sub-tree */
+typedef struct Korl_Algorithm_GraphDirected_SortedElement
+{
+    u32 index;// index into the original array of objects the user wants to obtain the topological sort of
+    u32 directChildren;// the # of objects whose parent is the object in the original array at `index`
+} Korl_Algorithm_GraphDirected_SortedElement;
+korl_internal Korl_Algorithm_GraphDirected                korl_algorithm_graphDirected_create(const Korl_Algorithm_GraphDirected_CreateInfo*const createInfo);
+korl_internal void                                        korl_algorithm_graphDirected_destroy(Korl_Algorithm_GraphDirected* context);
+korl_internal void                                        korl_algorithm_graphDirected_addEdge(Korl_Algorithm_GraphDirected* context, u32 indexParent, u32 indexChild);
+/** \param o_sortedElements _must_ be >= \c context->createInfo.nodesSize in length; 
+ * see \c korl_algorithm_graphDirected_sortTopologicalNew return value comments 
+ * for details on what is stored in this location
  * \return \c true if topological sort succeeds, \c false if a cycle is detected */
-korl_internal bool                         korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, u32* o_resultIndexArray);
-/** \return An array of indices into the user's nodes array sorted topologically, 
- * such that parent node indices _always_ come _before_ their child node indices.  
- * If no such order exists (the graph created by the user contains cycles), then 
- * \c NULL is returned.  The result array is allocated via the \c allocator 
- * parameter. */
-korl_internal u32*                         korl_algorithm_graphDirected_sortTopologicalNew(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator);
+korl_internal bool                                        korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_GraphDirected* context, Korl_Algorithm_GraphDirected_SortedElement* o_sortedElements);
+/** \return An array of indices into the user's object array sorted 
+ * topologically, according to what the user provided to the graph via the 
+ * \c korl_algorithm_graphDirected_addEdge function, such that parent node 
+ * indices _always_ come _before_ their child node indices.  
+ * The resulting array is additionally arranged such that all sub-trees in the 
+ * forest are contiguous in memory, which allows the user to easily perform 
+ * advanced iteration techniques, such as recursively enumerating over any given 
+ * sub-tree in linear time.  If no such order exists (the graph created by the 
+ * user contains cycles), then \c NULL is returned.  The result array is 
+ * allocated via the \c allocator parameter. */
+korl_internal Korl_Algorithm_GraphDirected_SortedElement* korl_algorithm_graphDirected_sortTopologicalNew(Korl_Algorithm_GraphDirected* context, Korl_Memory_AllocatorHandle allocator);
