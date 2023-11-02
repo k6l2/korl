@@ -277,14 +277,14 @@ korl_internal bool korl_algorithm_graphDirected_sortTopological(Korl_Algorithm_G
         context->nodeMetas[nextNode.index].visited = true;
         /* add this node to the result */
         *(resultNext++) = nextNode;
-        korl_assert(resultNext <= stackNext);/* sanity check to make sure "results" never intersect the "stack" */
+        korl_assert(resultNext <= stackNext + 1);/* sanity check to make sure "results" never intersect the "stack" */
         /* push each child of this node onto the stack */
         _Korl_Algorithm_GraphDirected_Edge*const nodeEdges = context->edges + context->nodeMetas[nextNode.index].childEdgesIndex;
         for(u32 c = 0; c < context->nodeMetas[nextNode.index].children; c++)
         {
             korl_assert(nodeEdges[c].indexParent == nextNode.index);
             *(stackNext--) = KORL_STRUCT_INITIALIZE(Korl_Algorithm_GraphDirected_SortedElement){nodeEdges[c].indexChild, context->nodeMetas[nodeEdges[c].indexChild].children};
-            korl_assert(resultNext <= stackNext);/* sanity check to make sure "results" never intersect the "stack" */
+            korl_assert(resultNext <= stackNext + 1);/* sanity check to make sure "results" never intersect the "stack" */
         }
     }
     /* sanity check to ensure that the # of "results" we generated is correct */
