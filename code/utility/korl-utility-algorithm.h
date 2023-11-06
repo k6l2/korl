@@ -143,7 +143,7 @@ typedef struct Korl_Algorithm_Bvh_CreateInfo
 typedef struct Korl_Algorithm_Bvh
 {
     Korl_Algorithm_Bvh_CreateInfo createInfo;
-    void*                         nodes;// dynamic array of _Korl_Algorithm_Bvh_Node interleaved with a user-defined "volume" struct for each Node; we can't really utilize stb_ds for this unfortunately, because stb_ds needs to know the datatype's size, and we don't actually know what the user defines as a "volume"
+    void*                         nodes;// dynamic array of Korl_Algorithm_Bvh_Node interleaved with a user-defined "volume" struct for each Node; we can't really utilize stb_ds for this unfortunately, because stb_ds needs to know the datatype's size, and we don't actually know what the user defines as a "volume"
     u32                           nodesCapacity;
     u32                           nodesSize;
     // this struct is followed in memory by the following data:
@@ -177,6 +177,15 @@ typedef struct Korl_Algorithm_GraphDirected
     u32                                            edgesCapacity;
     u32                                            edgesSize;
 } Korl_Algorithm_GraphDirected;
+typedef struct Korl_Algorithm_Bvh_Node
+{
+    u32 leafBoundingVolumeIndexStart;
+    u32 leafBoundingVolumeIndexEnd;
+    u32 bvhNodeChildIndexOffsetLeft;
+    u32 bvhNodeChildIndexOffsetRight;
+    // this struct should be followed by user-defined volume struct, which is where we will store this node's total volume
+    //KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
+} Korl_Algorithm_Bvh_Node;
 /** by returning to the user the # of children in each node, & ensuring that the 
  * SortedElements are arranged in such a way that all their sub-trees are 
  * contiguous in memory, the user can perform more advanced iteration techniques 
