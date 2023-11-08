@@ -191,6 +191,7 @@ korl_internal void            korl_math_v3f32_assignMultiplyScalar(Korl_Math_V3f
 korl_internal Korl_Math_V3f32 korl_math_v3f32_interpolateLinear(Korl_Math_V3f32 vFactorZero, Korl_Math_V3f32 vFactorOne, f32 factor);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_min(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
 // korl_internal Korl_Math_V3f32 korl_math_v3f32_max(Korl_Math_V3f32 vA, Korl_Math_V3f32 vB);
+korl_internal bool            korl_math_v3f32_isNearlyZero(Korl_Math_V3f32 v);
 /* V4u8 ***********************************************************************/
 korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_V4u8 to, f32 factor);
 /* V4f32 **********************************************************************/

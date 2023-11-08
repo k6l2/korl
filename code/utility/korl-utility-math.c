@@ -540,6 +540,12 @@ korl_internal Korl_Math_V3f32 korl_math_v3f32_interpolateLinear(Korl_Math_V3f32 
         vFactorZero.elements[i] = inverseFactor * vFactorZero.elements[i] + factor * vFactorOne.elements[i];
     return vFactorZero;
 }
+korl_internal bool korl_math_v3f32_isNearlyZero(Korl_Math_V3f32 v)
+{
+    return korl_math_isNearlyZero(v.elements[0]) 
+        && korl_math_isNearlyZero(v.elements[1]) 
+        && korl_math_isNearlyZero(v.elements[2]);
+}
 #pragma warning(push)
 #pragma warning(disable:4701)/* uninitialized local variable - trust me bro I know what I'm doing here */
 korl_internal Korl_Math_V4u8 korl_math_v4u8_lerp(Korl_Math_V4u8 from, Korl_Math_V4u8 to, f32 factor)
