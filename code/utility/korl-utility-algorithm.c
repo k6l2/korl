@@ -1,4 +1,5 @@
 #include "utility/korl-utility-algorithm.h"
+#include "utility/korl-checkCast.h"
 korl_internal Korl_Algorithm_Bvh* korl_algorithm_bvh_create(const Korl_Algorithm_Bvh_CreateInfo*const createInfo)
 {
     korl_assert(createInfo->maxLeafVolumesPerNode > 0);
@@ -19,71 +20,99 @@ korl_internal void korl_algorithm_bvh_setBoundingVolume(Korl_Algorithm_Bvh* cont
     korl_assert(leafBoundingVolumeIndex < context->createInfo.leafBoundingVolumes);
     korl_memory_copy(KORL_C_CAST(u8*, context + 1) + leafBoundingVolumeIndex * context->createInfo.boundingVolumeStride, boundingVolume, context->createInfo.boundingVolumeStride);
 }
-korl_internal void _korl_algorithm_bvh_buildRecursive(Korl_Algorithm_Bvh*const context, u32 nodeIndex)
-{
-    const u$ nodeStride = sizeof(Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride;
-    Korl_Algorithm_Bvh_Node* node = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + nodeIndex * nodeStride);
-    /* all nodes must first accumulate their bounding volume */
-    korl_assert(node->leafBoundingVolumeIndexStart < node->leafBoundingVolumeIndexEnd);
-    void*const nodeVolume          = node    + 1;
-    void*const leafVolumes         = context + 1;
-    void*const nodeLeafVolumes     = KORL_C_CAST(u8*, leafVolumes) + (node->leafBoundingVolumeIndexStart * context->createInfo.boundingVolumeStride);
-    const u32  nodeLeafVolumesSize = node->leafBoundingVolumeIndexEnd - node->leafBoundingVolumeIndexStart;
-    for(u32 i = 0; i < nodeLeafVolumesSize; i++)
-    {
-        const void*const leafVolume = KORL_C_CAST(u8*, nodeLeafVolumes) + (i * context->createInfo.boundingVolumeStride);
-        context->createInfo.volumeUnion(nodeVolume, leafVolume);
-    }
-    /* if this node contains <= the maximum leaf volume threshold, we're done */
-    if(nodeLeafVolumesSize <= context->createInfo.maxLeafVolumesPerNode)
-        return;
-    /* this node must be split; we need to: 
-        - sort this node's range of leafVolumes using a user-defined comparator, and the nodeVolume as the context
-        - allocate 2 new nodes
-        - assign the 2 new nodes their respective leafVolume ranges
-            - we can do this by iterating over the leafVolumes & invoking nodeLeafSortCompare; 
-              if the compare result is non-zero, that defines the boundary
-            - if we somehow don't find a boundary (due to numerical error or some nonsense), just split down the middle */
-    korl_algorithm_sort_quick_context(nodeLeafVolumes, nodeLeafVolumesSize, context->createInfo.boundingVolumeStride, context->createInfo.nodeLeafSortCompare, nodeVolume);
-    u32 nodeLeafVolumesSplitIndex = 1;//KORL-PERFORMANCE-000-000-049: algorithm/bvh: we could technically calculate this in the first loop over nodeLeafVolumesSize (when we're calculating the node's volume union), but this would require a separate function callback since the nodes are not yet ordered
-    for(; nodeLeafVolumesSplitIndex < nodeLeafVolumesSize; nodeLeafVolumesSplitIndex++)
-    {
-        const void*const leaf         = KORL_C_CAST(u8*, nodeLeafVolumes) + ( nodeLeafVolumesSplitIndex      * context->createInfo.boundingVolumeStride);
-        const void*const leafPrevious = KORL_C_CAST(u8*, nodeLeafVolumes) + ((nodeLeafVolumesSplitIndex - 1) * context->createInfo.boundingVolumeStride);
-        if(0 != context->createInfo.nodeLeafSortCompare(leafPrevious, leaf, nodeVolume))
-            break;
-    }
-    if(nodeLeafVolumesSplitIndex >= nodeLeafVolumesSize)
-        nodeLeafVolumesSplitIndex = nodeLeafVolumesSize / 2;
-    /* allocate 2 new nodes & assign their respective leafVolume ranges based on nodeLeafVolumesSplitIndex */
-    if(context->nodesSize + 2 > context->nodesCapacity)
-    {
-        context->nodesCapacity *= 2;
-        context->nodes          = korl_reallocate(context->createInfo.allocator, context->nodes, context->nodesCapacity * (sizeof(Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride));
-        node                    = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + nodeIndex * nodeStride);// re-acquire, since context->nodes potentially changed
-    }
-    const u32 nodeIdA = node->bvhNodeChildIndexOffsetLeft  = context->nodesSize++;
-    const u32 nodeIdB = node->bvhNodeChildIndexOffsetRight = context->nodesSize++;
-    Korl_Algorithm_Bvh_Node*const nodeChildA = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + node->bvhNodeChildIndexOffsetLeft  * nodeStride);
-    Korl_Algorithm_Bvh_Node*const nodeChildB = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + node->bvhNodeChildIndexOffsetRight * nodeStride);
-    korl_memory_copy(nodeChildA + 1, context->createInfo.defaultBoundingVolume, context->createInfo.boundingVolumeStride);
-    korl_memory_copy(nodeChildB + 1, context->createInfo.defaultBoundingVolume, context->createInfo.boundingVolumeStride);
-    nodeChildA->leafBoundingVolumeIndexStart = node->leafBoundingVolumeIndexStart;
-    nodeChildA->leafBoundingVolumeIndexEnd   = node->leafBoundingVolumeIndexStart + nodeLeafVolumesSplitIndex;
-    nodeChildB->leafBoundingVolumeIndexStart = node->leafBoundingVolumeIndexStart + nodeLeafVolumesSplitIndex;
-    nodeChildB->leafBoundingVolumeIndexEnd   = node->leafBoundingVolumeIndexEnd;
-    /* we use local nodeId vars here because context->nodes can be reallocated 
-        at any time during these recursive calls, which would invalidate our 
-        Korl_Algorithm_Bvh_Node pointers, but the index of context->nodes for each node is 
-        immutable */
-    _korl_algorithm_bvh_buildRecursive(context, nodeIdA);
-    _korl_algorithm_bvh_buildRecursive(context, nodeIdB);
-}
 korl_internal void korl_algorithm_bvh_build(Korl_Algorithm_Bvh* context)
 {
+    typedef struct _Korl_Algorithm_Bvh_Build_Stack
+    {
+        u32 nodeIndex;
+    } _Korl_Algorithm_Bvh_Build_Stack;
+    const u$   nodeStride  = sizeof(Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride;
+    void*const leafVolumes = context + 1;
     if(context->createInfo.leafBoundingVolumes <= 0)
         return;// nothing to build if there are no leaf volumes!
-    _korl_algorithm_bvh_buildRecursive(context, 0/*index 0 => the root node*/);
+    /* initialize a local "stack" of build iterations; we want to do a recursive 
+        algorithm here without actually using the stack pointer */
+    u32                              buildStackSize     = 0;
+    u32                              buildStackCapacity = KORL_MATH_MAX(1, KORL_C_CAST(u32, korl_math_f32_squareRoot(korl_checkCast_u$_to_f32(context->createInfo.leafBoundingVolumes))));// just some rough estimate, preferably over-estimate so we don't have to realloc, but kept as small as possible to use less memory; ensure that at least _one_ buildStack entry for a root Node
+    _Korl_Algorithm_Bvh_Build_Stack* buildStack         = KORL_C_CAST(_Korl_Algorithm_Bvh_Build_Stack*, korl_allocateDirty(context->createInfo.allocator, buildStackCapacity * sizeof(*buildStack)));
+    /* push the first iteration (root node) onto the buildStack */
+    {
+        korl_assert(buildStackCapacity);
+        _Korl_Algorithm_Bvh_Build_Stack*const buildStackRoot = buildStack + (buildStackSize++);
+        *buildStackRoot = KORL_STRUCT_INITIALIZE_ZERO(_Korl_Algorithm_Bvh_Build_Stack);
+    }
+    /* perform recursive build until the buildStack is empty */
+    while(buildStackSize)
+    {
+        /* pop the next iteration state off the buildStack */
+        _Korl_Algorithm_Bvh_Build_Stack*const buildStackNext = buildStack + (--buildStackSize);
+        /**/
+        Korl_Algorithm_Bvh_Node* node = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + buildStackNext->nodeIndex * nodeStride);
+        /* all nodes must first accumulate their bounding volume */
+        korl_assert(node->leafBoundingVolumeIndexStart < node->leafBoundingVolumeIndexEnd);
+        void*const nodeVolume          = node + 1;
+        void*const nodeLeafVolumes     = KORL_C_CAST(u8*, leafVolumes) + (node->leafBoundingVolumeIndexStart * context->createInfo.boundingVolumeStride);
+        const u32  nodeLeafVolumesSize = node->leafBoundingVolumeIndexEnd - node->leafBoundingVolumeIndexStart;
+        for(u32 i = 0; i < nodeLeafVolumesSize; i++)
+        {
+            const void*const leafVolume = KORL_C_CAST(u8*, nodeLeafVolumes) + (i * context->createInfo.boundingVolumeStride);
+            context->createInfo.volumeUnion(nodeVolume, leafVolume);
+        }
+        /* if this node contains <= the maximum leaf volume threshold, we're done */
+        if(nodeLeafVolumesSize <= context->createInfo.maxLeafVolumesPerNode)
+            continue;
+        /* this node must be split; we need to: 
+            - sort this node's range of leafVolumes using a user-defined comparator, and the nodeVolume as the context
+            - allocate 2 new nodes
+            - assign the 2 new nodes their respective leafVolume ranges
+                - we can do this by iterating over the leafVolumes & invoking nodeLeafSortCompare; 
+                  if the compare result is non-zero, that defines the boundary
+                - if we somehow don't find a boundary (due to numerical error or some nonsense), just split down the middle */
+        korl_algorithm_sort_quick_context(nodeLeafVolumes, nodeLeafVolumesSize, context->createInfo.boundingVolumeStride, context->createInfo.nodeLeafSortCompare, nodeVolume);
+        u32 nodeLeafVolumesSplitIndex = 1;//KORL-PERFORMANCE-000-000-049: algorithm/bvh: we could technically calculate this in the first loop over nodeLeafVolumesSize (when we're calculating the node's volume union), but this would require a separate function callback since the nodes are not yet ordered
+        for(; nodeLeafVolumesSplitIndex < nodeLeafVolumesSize; nodeLeafVolumesSplitIndex++)
+        {
+            const void*const leaf         = KORL_C_CAST(u8*, nodeLeafVolumes) + ( nodeLeafVolumesSplitIndex      * context->createInfo.boundingVolumeStride);
+            const void*const leafPrevious = KORL_C_CAST(u8*, nodeLeafVolumes) + ((nodeLeafVolumesSplitIndex - 1) * context->createInfo.boundingVolumeStride);
+            if(0 != context->createInfo.nodeLeafSortCompare(leafPrevious, leaf, nodeVolume))
+                break;
+        }
+        if(nodeLeafVolumesSplitIndex >= nodeLeafVolumesSize)
+            nodeLeafVolumesSplitIndex = nodeLeafVolumesSize / 2;
+        /* allocate 2 new nodes & assign their respective leafVolume ranges based on nodeLeafVolumesSplitIndex */
+        if(context->nodesSize + 2 > context->nodesCapacity)
+        {
+            context->nodesCapacity *= 2;
+            context->nodes          = korl_reallocate(context->createInfo.allocator, context->nodes, context->nodesCapacity * (sizeof(Korl_Algorithm_Bvh_Node) + context->createInfo.boundingVolumeStride));
+            node                    = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + buildStackNext->nodeIndex * nodeStride);// re-acquire, since context->nodes potentially changed
+        }
+        const u32 nodeIdA = node->bvhNodeChildIndexOffsetLeft  = context->nodesSize++;
+        const u32 nodeIdB = node->bvhNodeChildIndexOffsetRight = context->nodesSize++;
+        Korl_Algorithm_Bvh_Node*const nodeChildA = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + node->bvhNodeChildIndexOffsetLeft  * nodeStride);
+        Korl_Algorithm_Bvh_Node*const nodeChildB = KORL_C_CAST(Korl_Algorithm_Bvh_Node*, KORL_C_CAST(u8*, context->nodes) + node->bvhNodeChildIndexOffsetRight * nodeStride);
+        korl_memory_copy(nodeChildA + 1, context->createInfo.defaultBoundingVolume, context->createInfo.boundingVolumeStride);
+        korl_memory_copy(nodeChildB + 1, context->createInfo.defaultBoundingVolume, context->createInfo.boundingVolumeStride);
+        nodeChildA->leafBoundingVolumeIndexStart = node->leafBoundingVolumeIndexStart;
+        nodeChildA->leafBoundingVolumeIndexEnd   = node->leafBoundingVolumeIndexStart + nodeLeafVolumesSplitIndex;
+        nodeChildB->leafBoundingVolumeIndexStart = node->leafBoundingVolumeIndexStart + nodeLeafVolumesSplitIndex;
+        nodeChildB->leafBoundingVolumeIndexEnd   = node->leafBoundingVolumeIndexEnd;
+        /* ensure the buildStack has enough memory for our two child Nodes */
+        if(buildStackSize + 2 > buildStackCapacity)
+        {
+            buildStackCapacity = KORL_MATH_MAX(buildStackCapacity + 2, 2 * buildStackCapacity);
+            buildStack         = KORL_C_CAST(_Korl_Algorithm_Bvh_Build_Stack*, korl_reallocateDirty(context->createInfo.allocator, buildStack, buildStackCapacity * sizeof(*buildStack)));
+        }
+        /* we use local nodeId vars here because context->nodes can be reallocated 
+            at any time during these recursive calls, which would invalidate our 
+            Korl_Algorithm_Bvh_Node pointers, but the index of context->nodes for each node is 
+            immutable */
+        _Korl_Algorithm_Bvh_Build_Stack*const buildStackChildA = buildStack + (buildStackSize++);
+        _Korl_Algorithm_Bvh_Build_Stack*const buildStackChildB = buildStack + (buildStackSize++);
+        buildStackChildA->nodeIndex = nodeIdA;
+        buildStackChildB->nodeIndex = nodeIdB;
+    }
+    /* clean-up */
+    korl_free(context->createInfo.allocator, buildStack);
 }
 korl_internal void _korl_algorithm_bvh_queryRecursive(Korl_Algorithm_Bvh* context, u32 nodeIndex, const void* boundingVolume, void** pResult, u$* pResultCapacity, u$* o_resultArraySize, fnSig_korl_algorithm_bvh_volumeIntersects* volumeIntersects)
 {
