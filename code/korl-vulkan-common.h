@@ -161,7 +161,8 @@ typedef struct _Korl_Vulkan_Context
     /* for now we're just going to have a single window with Vulkan rendering, 
         so we only have to make one device, ergo we only need one global 
         instance of these variables */
-    VkPhysicalDevice physicalDevice;
+    VkPhysicalDevice         physicalDevice;
+    VkPhysicalDeviceFeatures physicalDeviceFeatures;// cache features so we can perform logic based on feature support of the physical device
     VkDevice         device;
     /* we save this data member because once we query for this meta data in the 
         device creation routines, we basically never have to query for it again 

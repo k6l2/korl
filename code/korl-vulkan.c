@@ -131,6 +131,9 @@ korl_internal bool _korl_vulkan_isBetterDevice(const VkPhysicalDevice deviceOld
     /* don't consider using devices that don't support anisotropic filtering */
     if(!featuresNew->samplerAnisotropy)
         return false;
+    /* prefer, but don't require, support for geometry shaders */
+    if(featuresOld->geometryShader && !featuresNew->geometryShader)
+        return false;
     /* always attempt to use a discrete GPU first */
     if(    propertiesNew->deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
         && propertiesOld->deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
@@ -1286,8 +1289,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _KORL_VULKAN_CHECK(
         vkEnumeratePhysicalDevices(context->instance, &physicalDeviceCount, physicalDevices));
     KORL_ZERO_STACK(VkPhysicalDeviceProperties, devicePropertiesBest);
-    KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeaturesBest);
-    KORL_ZERO_STACK(u32, queueFamilyCountBest);
+    KORL_ZERO_STACK(VkPhysicalDeviceFeatures  , deviceFeaturesBest);
+    KORL_ZERO_STACK(u32                       , queueFamilyCountBest);
     KORL_ZERO_STACK(_Korl_Vulkan_DeviceSurfaceMetaData, deviceSurfaceMetaDataBest);
     for(u32 d = 0; d < physicalDeviceCount; d++)
     {
@@ -1304,8 +1307,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
         KORL_ZERO_STACK(VkPhysicalDeviceFeatures, deviceFeatures);
         vkGetPhysicalDeviceProperties(physicalDevices[d], &deviceProperties);
         vkGetPhysicalDeviceFeatures(physicalDevices[d], &deviceFeatures);
-        _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = 
-            _korl_vulkan_deviceSurfaceMetaData(physicalDevices[d], surfaceContext->surface);
+        _Korl_Vulkan_DeviceSurfaceMetaData deviceSurfaceMetaData = _korl_vulkan_deviceSurfaceMetaData(physicalDevices[d], surfaceContext->surface);
         if(_korl_vulkan_isBetterDevice(context->physicalDevice, physicalDevices[d]
                                       ,&queueFamilyMetaData, &deviceSurfaceMetaData
                                       ,&devicePropertiesBest, &deviceProperties
@@ -1425,6 +1427,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     KORL_ZERO_STACK(VkPhysicalDeviceFeatures, physicalDeviceFeatures);
     physicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
     physicalDeviceFeatures.fillModeNonSolid  = VK_TRUE;// allows VkPolygonMode values other than FILL, easier wireframe drawing
+    physicalDeviceFeatures.geometryShader    = deviceFeaturesBest.geometryShader;
     KORL_ZERO_STACK(VkPhysicalDeviceVulkan13Features, physicalDeviceFeatures13);
     physicalDeviceFeatures13.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     physicalDeviceFeatures13.synchronization2 = VK_TRUE;
@@ -1443,6 +1446,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _KORL_VULKAN_CHECK(
         vkCreateDevice(context->physicalDevice, &createInfoDevice
                       ,context->allocator, &context->device));
+    context->physicalDeviceFeatures = physicalDeviceFeatures;// cache the actual list of enabled features
     /* obtain opaque handles to the queues that we need */
     vkGetDeviceQueue(context->device
                     ,context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics
