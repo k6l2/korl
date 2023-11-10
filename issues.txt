@@ -183,13 +183,14 @@
 [ ] KORL-FEATURE-000-000-060: gfx: add "Material" asset/resource; we should be able to define materials in some kind of file (GLB, JSON, etc.)
 [ ] KORL-FEATURE-000-000-061: file: add ability for the user to enumerate over files in a directory; use case: a game where each "map" is a file, and we want to load all of them, or at least process their metadata (such as file name)
 [ ] KORL-FEATURE-000-000-062: resource: add ability for resource descriptors to pre-process file assets & write a cached pre-processed file to disc, then just use the pre-processed file instead of the original
-[@TODO] KORL-FEATURE-000-000-063: Korl_Math_TriangleMesh; we want a data struct that gives us the ability to query arbitrary tri mesh data for collisions
 [ ] KORL-FEATURE-000-000-064: gltf: import rigged collision geometry, preferably so that we're able to attach colliders with specific bones on a skinned mesh; https://docs.unrealengine.com/5.3/en-US/fbx-static-mesh-pipeline-in-unreal-engine/#collision
 [ ] KORL-FEATURE-000-000-065: scene3d: skinned mesh animation blending; we want to be able to target sub-trees of the skinned mesh armature; we want to provide weights to each desired blended animation
 [ ] KORL-FEATURE-000-000-066: scene3d: skinned mesh animation re-targeting; https://wickedengine.net/2022/09/23/animation-retargeting/
 [ ] KORL-FEATURE-000-000-067: vulkan: render to texture; https://github.com/SaschaWillems/Vulkan/blob/master/examples/offscreen/offscreen.cpp
 [ ] KORL-FEATURE-000-000-068: vulkan: shadows; https://ogldev.org/index.html; http://www.opengl-tutorial.org/
 [ ] KORL-FEATURE-000-000-069: vulkan: deferred shading; https://ogldev.org/www/tutorial35/tutorial35.html
+[ ] KORL-FEATURE-000-000-070: vulkan: geometry shader support
+[ ] KORL-FEATURE-000-000-071: vulkan: mesh shader support; VK_EXT_mesh_shader; http://zone.dog/braindump/mesh_shaders/; https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/; https://github.com/KhronosGroup/Vulkan-Docs/blob/main/proposals/VK_EXT_mesh_shader.adoc; https://www.khronos.org/blog/mesh-shading-for-vulkan
 [x] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAG_LAZY is specified
 [x] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
 [x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose
@@ -323,3 +324,4 @@
 [x] KORL-FEATURE-000-000-056: vulkan: material system; the user needs the ability to provide custom shaders to make things more interesting
 [x] KORL-FEATURE-000-000-057: vulkan: lighting system
 [x] KORL-FEATURE-000-000-059: gfx: add "Light" asset/resource; we should be able to define lights in some kind of file (JSON, etc.)
+[x] KORL-FEATURE-000-000-063: Korl_Math_TriangleMesh; we want a data struct that gives us the ability to query arbitrary tri mesh data for collisions

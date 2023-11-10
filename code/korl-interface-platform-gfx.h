@@ -281,7 +281,7 @@ typedef struct Korl_Gfx_VertexStagingMeta
 typedef void* Korl_Gfx_DeviceBufferHandle;// opaque type; example: for Vulkan implementation, it's a VkBuffer
 typedef struct Korl_Gfx_StagingAllocation
 {
-    void*                       buffer;
+    void*                       buffer;// CPU-visible address of the data in device staging memory
     u$                          bytes;
     Korl_Gfx_DeviceBufferHandle deviceBuffer;
     u$                          deviceBufferOffset;

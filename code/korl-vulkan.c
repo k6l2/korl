@@ -720,7 +720,7 @@ korl_internal void _korl_vulkan_setPipelineMetaData(_Korl_Vulkan_Pipeline pipeli
         /* search for a pipeline that can handle the data we're trying to batch */
         u$ pipelineIndex = _korl_vulkan_addPipeline(pipeline);
         korl_assert(pipelineIndex < arrlenu(context->stbDaPipelines));
-        newPipelineIndex      = pipelineIndex;
+        newPipelineIndex = pipelineIndex;
     }
     /* then, actually change to a new pipeline for the next batch */
     korl_assert(newPipelineIndex < arrlenu(context->stbDaPipelines));//sanity check!
