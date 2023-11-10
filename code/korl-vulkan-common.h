@@ -117,6 +117,7 @@ typedef struct _Korl_Vulkan_Pipeline
         itself: */
     Korl_Gfx_Material_PrimitiveType primitiveType;
     Korl_Gfx_Material_Modes         materialModes;
+    VkShaderModule                  shaderGeometry;
     VkShaderModule                  shaderVertex;
     VkShaderModule                  shaderFragment;
     struct

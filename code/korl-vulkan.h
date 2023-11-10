@@ -66,6 +66,7 @@ typedef struct Korl_Vulkan_DescriptorStagingAllocation
 #define KORL_VULKAN_MAX_TEXTURE2D_FRAGMENT 3
 typedef struct Korl_Vulkan_DrawState
 {
+    Korl_Vulkan_ShaderHandle                   shaderGeometry;
     Korl_Vulkan_ShaderHandle                   shaderVertex;
     Korl_Vulkan_ShaderHandle                   shaderFragment;
     const Korl_Gfx_Material_Modes*             materialModes;

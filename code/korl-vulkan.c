@@ -639,7 +639,8 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoDynamicState.dynamicStateCount = korl_arraySize(dynamicStates);
     createInfoDynamicState.pDynamicStates    = dynamicStates;
     /* create pipeline */
-    KORL_ZERO_STACK_ARRAY(VkPipelineShaderStageCreateInfo, createInfoShaderStages, 2);
+    u32 stageCount = 2;// vertex/fragment shaders are _required_
+    KORL_ZERO_STACK_ARRAY(VkPipelineShaderStageCreateInfo, createInfoShaderStages, 3);
     createInfoShaderStages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     createInfoShaderStages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
     createInfoShaderStages[0].module = pipeline->shaderVertex;
@@ -648,6 +649,14 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoShaderStages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
     createInfoShaderStages[1].module = pipeline->shaderFragment;
     createInfoShaderStages[1].pName  = "main";
+    if(context->physicalDeviceFeatures.geometryShader && pipeline->shaderGeometry != VK_NULL_HANDLE)
+    {
+        createInfoShaderStages[stageCount].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        createInfoShaderStages[stageCount].stage  = VK_SHADER_STAGE_GEOMETRY_BIT;
+        createInfoShaderStages[stageCount].module = pipeline->shaderGeometry;
+        createInfoShaderStages[stageCount].pName  = "main";
+        stageCount++;
+    }
     KORL_ZERO_STACK(VkPipelineDepthStencilStateCreateInfo, createInfoDepthStencil);
     createInfoDepthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     createInfoDepthStencil.depthTestEnable  = (pipeline->materialModes.flags & KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST ) ? VK_TRUE : VK_FALSE;
@@ -655,7 +664,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     createInfoDepthStencil.depthCompareOp   = _KORL_VULKAN_DEPTH_COMPARE_OP;
     KORL_ZERO_STACK(VkGraphicsPipelineCreateInfo, createInfoPipeline);
     createInfoPipeline.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    createInfoPipeline.stageCount          = korl_arraySize(createInfoShaderStages);
+    createInfoPipeline.stageCount          = stageCount;
     createInfoPipeline.pStages             = createInfoShaderStages;
     createInfoPipeline.pVertexInputState   = &createInfoVertexInput;
     createInfoPipeline.pInputAssemblyState = &createInfoInputAssembly;
@@ -1031,7 +1040,8 @@ korl_internal void _korl_vulkan_frameBegin(void)
                 for(_Korl_Vulkan_Pipeline* pipeline = context->stbDaPipelines; pipeline < pipelinesEnd; )
                 {
                     if(   pipeline->shaderVertex   == shaderTrash->shader.shaderModule
-                       || pipeline->shaderFragment == shaderTrash->shader.shaderModule)
+                       || pipeline->shaderFragment == shaderTrash->shader.shaderModule
+                       || pipeline->shaderGeometry == shaderTrash->shader.shaderModule)
                     {
                         vkDestroyPipeline(context->device, pipeline->pipeline, context->allocator);
                         *pipeline = arrlast(context->stbDaPipelines);
@@ -1817,6 +1827,8 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     /* all we have to do is configure the pipeline config cache here, as the 
         actual vulkan pipeline will be created & bound when we call draw */
     _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
+    if(context->physicalDeviceFeatures.geometryShader && state->shaderGeometry)
+        pipelineCache->shaderGeometry = context->stbDaShaders[state->shaderGeometry - 1].shaderModule;
     if(state->shaderVertex)
         pipelineCache->shaderVertex = context->stbDaShaders[state->shaderVertex - 1].shaderModule;
     if(state->shaderFragment)
@@ -2180,7 +2192,8 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
         return;
     /* if the drawState is not currently configured with valid shader handles, 
         just skip this draw call since we can't possibly build a pipeline 
-        without shader programs */
+        without shader programs; NOTE: _only_ vertex & fragment shader stages 
+        are required */
     if(   surfaceContext->drawState.pipelineConfigurationCache.shaderVertex   == VK_NULL_HANDLE
        || surfaceContext->drawState.pipelineConfigurationCache.shaderFragment == VK_NULL_HANDLE)
         return;
