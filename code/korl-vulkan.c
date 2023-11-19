@@ -1829,6 +1829,8 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     _Korl_Vulkan_Pipeline*const pipelineCache = &surfaceContext->drawState.pipelineConfigurationCache;
     if(context->physicalDeviceFeatures.geometryShader && state->shaderGeometry)
         pipelineCache->shaderGeometry = context->stbDaShaders[state->shaderGeometry - 1].shaderModule;
+    else// if the DrawState doesn't contain a geometry shader, disable the pipeline's geometry shader
+        pipelineCache->shaderGeometry = VK_NULL_HANDLE;
     if(state->shaderVertex)
         pipelineCache->shaderVertex = context->stbDaShaders[state->shaderVertex - 1].shaderModule;
     if(state->shaderFragment)
@@ -2203,13 +2205,13 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     /* compose the draw commands */
     if(0 != korl_memory_compare(surfaceContext->drawState.pushConstantData.vertex, surfaceContext->drawStateLast.pushConstantData.vertex, sizeof(surfaceContext->drawState.pushConstantData.vertex)))
         vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
-                          ,VK_SHADER_STAGE_VERTEX_BIT
+                          ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_VERTEX].stageFlags
                           ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_VERTEX].offset
                           ,sizeof(surfaceContext->drawState.pushConstantData.vertex)
                           ,&surfaceContext->drawState.pushConstantData.vertex);
     if(0 != korl_memory_compare(surfaceContext->drawState.pushConstantData.fragment, surfaceContext->drawStateLast.pushConstantData.fragment, sizeof(surfaceContext->drawState.pushConstantData.fragment)))
         vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
-                          ,VK_SHADER_STAGE_FRAGMENT_BIT
+                          ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT].stageFlags
                           ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT].offset
                           ,sizeof(surfaceContext->drawState.pushConstantData.fragment)
                           ,&surfaceContext->drawState.pushConstantData.fragment);

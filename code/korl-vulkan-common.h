@@ -46,7 +46,8 @@ korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOU
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_SCENE_PROPERTIES_UBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
      ,.descriptorCount = 1
-     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT}/*_Korl_Vulkan_Uniform_SceneProperties*/};
+     //KORL-ISSUE-000-000-201: vulkan; HACK; we're sending this UBO to more than just the VERTEX stage; maybe we can do a better job at separating these descriptor sets?
+     ,.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT}/*_Korl_Vulkan_Uniform_SceneProperties*/};
 korl_global_const VkDescriptorSetLayoutBinding _KORL_VULKAN_DESCRIPTOR_SET_LAYOUT_BINDINGS_LIGHTS[] = 
     {{.binding         = _KORL_VULKAN_DESCRIPTOR_SET_BINDING_LIGHTS_SSBO
      ,.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
@@ -85,8 +86,9 @@ enum
 korl_global_const VkPushConstantRange _KORL_VULKAN_PUSH_CONSTANT_RANGES[] = 
     /* here, we split this minimum limit between desired shader stages; 
         using this pre-defined set of push constant ranges allows us to continue using a single pipeline layout, while allowing the user to potentially use these ranges however they like for their shaders */
-    {{.stageFlags = VK_SHADER_STAGE_VERTEX_BIT  , .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, vertex  ), .size = sizeof((Korl_Gfx_DrawState_PushConstantData){0}.vertex)}
-    ,{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, fragment), .size = sizeof((Korl_Gfx_DrawState_PushConstantData){0}.fragment)}};
+    //KORL-ISSUE-000-000-202: vulkan; HACK; we're sending the PushConstantData::vertex data to the geometry stage just to test something; indirectly related to KORL-ISSUE-000-000-201
+    {{.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, vertex  ), .size = sizeof(KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState_PushConstantData).vertex)}
+    ,{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT                             , .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, fragment), .size = sizeof(KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState_PushConstantData).fragment)}};
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -219,6 +221,7 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     /** ----- dynamic uniform state (push constants, descriptors, etc...) ----- */
     Korl_Gfx_DrawState_PushConstantData       pushConstantData;
     VkRect2D                                  scissor;
+    //KORL-ISSUE-000-000-201: vulkan; HACK; we're sending this UBO to more than just the VERTEX stage; maybe we can do a better job at separating these descriptor sets?
     Korl_Vulkan_DescriptorStagingAllocation   uboVertex[KORL_VULKAN_MAX_UBOS_VERTEX];
     Korl_Vulkan_DescriptorStagingAllocation   uboFragment[KORL_VULKAN_MAX_UBOS_FRAGMENT];
     Korl_Vulkan_DescriptorStagingAllocation   ssboVertex[KORL_VULKAN_MAX_SSBOS_VERTEX];

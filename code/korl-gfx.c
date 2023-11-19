@@ -407,6 +407,9 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);
     if(drawState->material)
     {
+        if(drawState->material->shaders.resourceHandleShaderGeometry)
+            vulkanDrawState.shaderGeometry = korl_resource_shader_getHandle(drawState->material->shaders.resourceHandleShaderGeometry);
+            // let's assume, for now, that geometry shaders are _optional_ for drawing
         if(drawState->material->shaders.resourceHandleShaderVertex)
         {
             vulkanDrawState.shaderVertex = korl_resource_shader_getHandle(drawState->material->shaders.resourceHandleShaderVertex);

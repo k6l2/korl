@@ -110,6 +110,8 @@
 [ ] KORL-ISSUE-000-000-198: CRASH; dangling VkBuffer is causing a vulkan validation error when korl_vulkan_destroySurface is called immediately after loading a korl-memoryState
 [ ] KORL-ISSUE-000-000-199: scene3d: HACK; hard-coded memory alignment of vertex attribute data; it would be better if there was an API to query the platform for alignment required for each vertex attribute; related to KORL-ISSUE-000-000-178
 [ ] KORL-ISSUE-000-000-200: algorithm: API rectification; rename Korl_Algorithm_GraphDirected* to Korl_Algorithm_DAG, as this code _only_ deals with _acyclic_ directed graphs
+[ ] KORL-ISSUE-000-000-201: vulkan; HACK; we're sending this UBO to more than just the VERTEX stage; maybe we can do a better job at separating these descriptor sets?; indirectly related to KORL-ISSUE-000-000-202
+[ ] KORL-ISSUE-000-000-202: vulkan; HACK; we're sending the PushConstantData::vertex data to the geometry stage just to test something; indirectly related to KORL-ISSUE-000-000-201
 [ ] KORL-PERFORMANCE-000-000-002: memory: you will never have a texture & font asset at the same time, so we could potentially overload this to the same string pointer
 [ ] KORL-PERFORMANCE-000-000-003: memory: once again, only used by text batches; create a PTU here to save space?
 [ ] KORL-PERFORMANCE-000-000-004: speed: most likely there is a MUCH more efficient way to build a matrix using these parameters

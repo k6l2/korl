@@ -219,6 +219,7 @@ typedef struct Korl_Gfx_Material_Maps
 } Korl_Gfx_Material_Maps;
 typedef struct Korl_Gfx_Material_Shaders
 {
+    Korl_Resource_Handle resourceHandleShaderGeometry;
     Korl_Resource_Handle resourceHandleShaderVertex;
     Korl_Resource_Handle resourceHandleShaderFragment;
 } Korl_Gfx_Material_Shaders;
