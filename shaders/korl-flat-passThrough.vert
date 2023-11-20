@@ -7,9 +7,17 @@
 #include "korl.glsl"
 /* NOTE: we don't read SceneProperties UBO, and we don't read any PushConstants, because we're pushing that functionality to the GEOMETRY stage */
 layout(location = KORL_VERTEX_INPUT_POSITION) in vec3 attributePosition;
-layout(location = KORL_FRAGMENT_INPUT_COLOR) out vec4 fragmentColor;
+layout(location = KORL_FRAGMENT_INPUT_COLOR)                out vec4 fragmentColor;
+layout(location = KORL_FRAGMENT_INPUT_UV)                   out vec2 fragmentUv;
+layout(location = KORL_FRAGMENT_INPUT_VIEW_NORMAL)          out vec3 fragmentViewNormal;
+layout(location = KORL_FRAGMENT_INPUT_VIEW_POSITION)        out vec3 fragmentViewPosition;
+layout(location = KORL_FRAGMENT_INPUT_BARYCENTRIC_POSITION) out vec2 fragmentBarycentricPosition;
 void main()
 {
-    fragmentColor = vec4(1);
-    gl_Position   = vec4(attributePosition, 1);
+    fragmentColor               = vec4(1);
+    fragmentUv                  = vec2(0);
+    fragmentViewNormal          = vec3(0);
+    fragmentViewPosition        = vec3(0);
+    fragmentBarycentricPosition = vec2(0);
+    gl_Position                 = vec4(attributePosition, 1);
 }

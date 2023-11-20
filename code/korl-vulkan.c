@@ -2180,7 +2180,6 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
 }
 korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
-    //KORL-PERFORMANCE-000-000-052: vulkan: MAJOR; `_korl_vulkan_draw` is dragging 70% of our CPU time; this might involve multiple PERFORMANCE sub-issues; stop doing the following when not necessary: vkAllocateDescriptorSets, vkUpdateDescriptorSets, vkCmdBindDescriptorSets, vkCmdPushConstants, vkCmdSetScissor, vkCmdBindVertexBuffers
     _Korl_Vulkan_Context*const               context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const        surfaceContext        = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];

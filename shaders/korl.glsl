@@ -17,10 +17,11 @@
 #define KORL_VERTEX_INPUT_EXTRA_0         4
 #define KORL_VERTEX_INPUT_JOINTS_0        5
 #define KORL_VERTEX_INPUT_JOINT_WEIGHTS_0 6
-#define KORL_FRAGMENT_INPUT_COLOR         0
-#define KORL_FRAGMENT_INPUT_UV            1
-#define KORL_FRAGMENT_INPUT_VIEW_NORMAL   2
-#define KORL_FRAGMENT_INPUT_VIEW_POSITION 3
+#define KORL_FRAGMENT_INPUT_COLOR                0
+#define KORL_FRAGMENT_INPUT_UV                   1
+#define KORL_FRAGMENT_INPUT_VIEW_NORMAL          2
+#define KORL_FRAGMENT_INPUT_VIEW_POSITION        3
+#define KORL_FRAGMENT_INPUT_BARYCENTRIC_POSITION 4 // since barycentric coordinates must add to 1, it is sufficient to use a vec2, and derive the Z-coordinate via `Z = 1 - X - Y`
 #define KORL_FRAGMENT_OUTPUT_COLOR 0
 #define KORL_PUSH_CONSTANT_OFFSET_VERTEX   0
 #define KORL_PUSH_CONSTANT_OFFSET_FRAGMENT 64
