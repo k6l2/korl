@@ -10,14 +10,12 @@ layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
 layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
       ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_BASE_TEXTURE) 
     uniform sampler2D baseTexture;
-#if 0
-layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
-      ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_SPECULAR_TEXTURE) 
-    uniform sampler2D specularTexture;
-layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
-      ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_EMISSIVE_TEXTURE) 
-    uniform sampler2D emissiveTexture;
-#endif
+// layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
+//       ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_SPECULAR_TEXTURE) 
+//     uniform sampler2D specularTexture;
+// layout(set     = KORL_DESCRIPTOR_SET_MATERIALS
+//       ,binding = KORL_DESCRIPTOR_SET_BINDING_MATERIALS_EMISSIVE_TEXTURE) 
+//     uniform sampler2D emissiveTexture;
 layout(location = KORL_FRAGMENT_INPUT_UV)            in vec2 fragmentUv;
 layout(location = KORL_FRAGMENT_INPUT_VIEW_NORMAL)   in vec3 fragmentViewNormal;
 layout(location = KORL_FRAGMENT_INPUT_VIEW_POSITION) in vec3 fragmentViewPosition;
