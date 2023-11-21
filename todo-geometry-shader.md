@@ -12,7 +12,7 @@ After researching this a bit, the geometry stage seems like it's being deprecate
 
 So really, this feature's implementation should be emphasized as _optional_.
 
-[ ] KORL-FEATURE-000-000-070: vulkan: geometry shader support
+[x] KORL-FEATURE-000-000-070: vulkan: geometry shader support
     [x] update korl-build-glsl.bat to handle .geom shaders
     [x] _optionally_ enable geometry shader feature via VkPhysicalDeviceFeatures
     [x] add geometry VkShaderModule to _Korl_Vulkan_Pipeline state
