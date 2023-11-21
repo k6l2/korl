@@ -1,6 +1,11 @@
 /** derived from: 
  * https://catlikecoding.com/unity/tutorials/advanced-rendering/flat-and-wireframe-shading/Flat-and-Wireframe-Shading.pdf 
- * http://www2.imm.dtu.dk/pubdb/edoc/imm4884.pdf */
+ * http://www2.imm.dtu.dk/pubdb/edoc/imm4884.pdf 
+ * Note that we use `material.colorFactorSpecular` to determine the color of the 
+ * wireframe.  In addition, if the user provides a colorFactorBase whose `a` 
+ * component == 0, the non-wireframe fragments of the triangles are discarded 
+ * (masked opacity).  Otherwise, the non-wireframe fragments are filled with the 
+ * colorFactorBase.  */
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "korl.glsl"
@@ -41,9 +46,10 @@ void main()
                                                      ,barycentricDerivatives * (wireframeThickness + wireframeSmoothing)
                                                      ,barycentricColor);
     const float minBarycentric           = min(dBarycentricStepped.x, min(dBarycentricStepped.y, dBarycentricStepped.z));
-    if(minBarycentric > 0.01)
+    if(minBarycentric > 0 && material.colorFactorBase.a == 0)
         discard;
     outColor = brightness 
                * fragmentColor 
-               * vec4(texture(baseTexture, fragmentUv).rgb * material.colorFactorBase.rgb, 1);
+               * (  vec4(vec3(    minBarycentric), 1) * vec4(texture(baseTexture, fragmentUv).rgb * material.colorFactorBase.rgb, 1)
+                  + vec4(vec3(1 - minBarycentric), 1) * material.colorFactorSpecular);
 }
