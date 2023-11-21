@@ -33,6 +33,7 @@ korl_internal Korl_Gfx_Material  korl_gfx_material_defaultSolid(void);
 korl_internal Korl_Gfx_Material  korl_gfx_material_defaultSolidColorbase(Korl_Math_V4f32 colorLinear4Base);
 korl_internal Korl_Gfx_Material  korl_gfx_material_defaultLit(void);
 korl_internal Korl_Gfx_Material  korl_gfx_material_defaultLitColorbase(Korl_Math_V4f32 colorLinear4Base);
+korl_internal Korl_Gfx_Material  korl_gfx_material_flatSolidTriangleWireframe(Korl_Math_V4f32 colorLinear4Base, Korl_Math_V4f32 colorLinear4Wireframe);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createOrtho(f32 clipDepth);
 korl_internal Korl_Gfx_Camera    korl_gfx_camera_createOrthoFixedHeight(f32 fixedHeight, f32 clipDepth);

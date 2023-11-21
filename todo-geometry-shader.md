@@ -16,5 +16,5 @@ So really, this feature's implementation should be emphasized as _optional_.
     [x] update korl-build-glsl.bat to handle .geom shaders
     [x] _optionally_ enable geometry shader feature via VkPhysicalDeviceFeatures
     [x] add geometry VkShaderModule to _Korl_Vulkan_Pipeline state
-    [ ] add geometry shader Resource_Handle to material shader
-    [ ] test a material configured to use a geometry shader
+    [x] add geometry shader Resource_Handle to material shader
+    [x] test a material configured to use a geometry shader

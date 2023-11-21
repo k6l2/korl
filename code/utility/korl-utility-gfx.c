@@ -380,6 +380,24 @@ korl_internal Korl_Gfx_Material korl_gfx_material_defaultLitColorbase(Korl_Math_
                                                     ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
                                                                 ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
 }
+korl_internal Korl_Gfx_Material korl_gfx_material_flatSolidTriangleWireframe(Korl_Math_V4f32 colorLinear4Base, Korl_Math_V4f32 colorLinear4Wireframe)
+{
+    return KORL_STRUCT_INITIALIZE(Korl_Gfx_Material){.modes = {.polygonMode   = KORL_GFX_MATERIAL_POLYGON_MODE_FILL
+                                                              ,.cullMode      = colorLinear4Base.w == 0 ? KORL_GFX_MATERIAL_CULL_MODE_NONE : KORL_GFX_MATERIAL_CULL_MODE_BACK
+                                                              ,.blend         = KORL_GFX_BLEND_ALPHA
+                                                              ,.flags         =  KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST 
+                                                                               | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE}
+                                                    ,.fragmentShaderUniform = {.factorColorBase     = colorLinear4Base
+                                                                              ,.factorColorEmissive = KORL_MATH_V3F32_ZERO
+                                                                              ,.factorColorSpecular = colorLinear4Wireframe
+                                                                              ,.shininess           = 32}
+                                                    ,.maps = {.resourceHandleTextureBase     = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureSpecular = korl_gfx_getBlankTexture()
+                                                             ,.resourceHandleTextureEmissive = korl_gfx_getBlankTexture()}
+                                                    ,.shaders = {.resourceHandleShaderVertex   = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-flat-passThrough.vert.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderGeometry = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-flat-wireframe.geom.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)
+                                                                ,.resourceHandleShaderFragment = korl_resource_fromFile(KORL_RAW_CONST_UTF8(KORL_RESOURCE_DESCRIPTOR_NAME_SHADER), KORL_RAW_CONST_UTF8("build/shaders/korl-lit-solid-wireframe.frag.spv"), KORL_ASSETCACHE_GET_FLAG_LAZY)}};
+}
 korl_internal Korl_Gfx_Camera korl_gfx_camera_createFov(f32 fovVerticalDegrees, f32 clipNear, f32 clipFar, Korl_Math_V3f32 position, Korl_Math_V3f32 normalForward, Korl_Math_V3f32 normalUp)
 {
     KORL_ZERO_STACK(Korl_Gfx_Camera, result);
