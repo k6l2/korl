@@ -8,6 +8,7 @@ rem --- Iterate over build script arguments ------------------------------------
 set "buildOptionNoThreads=FALSE"
 set "buildOptionVerbose=FALSE"
 set "buildOptionGlsl=FALSE"
+set "buildOptionDynamic=%KORL_GAME_IS_DYNAMIC%"
 if "%~1"=="" goto ARGUMENT_LOOP_END
 rem set argNumber=0
 :ARGUMENT_LOOP_START
@@ -23,6 +24,11 @@ if "%~1"=="verbose" (
 if "%~1"=="glsl" (
     set "buildOptionGlsl=TRUE"
     echo "glsl" option selected; running glsl build script
+    echo:
+)
+if "%~1"=="static" (
+    set "buildOptionDynamic=FALSE"
+    echo "static" option selected
     echo:
 )
 shift
@@ -135,7 +141,7 @@ if not "%buildOptionVerbose%"=="TRUE" (
 set "buildCommand=%buildCommand% /showIncludes"
 :SKIP_SHOW_GAME_INCLUDES
 set "buildCommand=cl.exe %CL% %buildCommand% %_CL_%"
-if %KORL_GAME_IS_DYNAMIC% == TRUE ( 
+if %buildOptionDynamic% == TRUE ( 
     goto :BUILD_GAME_SET_OPTIONS_DYNAMIC 
 )
 :BUILD_GAME_SET_OPTIONS_STATIC
@@ -232,7 +238,7 @@ echo %KORL_SOURCE_BASE_NAME% build complete!
 echo:
 :SKIP_BUILD_PLATFORM_OBJECT
 rem ---------------------- synchronize game object build  ----------------------
-if %KORL_GAME_IS_DYNAMIC% == TRUE ( 
+if %buildOptionDynamic% == TRUE ( 
     goto :SKIP_WAIT_FOR_BUILD_PLATFORM_EXE
 )
 echo Waiting for game obj build...
@@ -250,7 +256,7 @@ if "%_KORL_BUILD_SKIP_PLATFORM_CODE%"=="TRUE" (
 set "buildCommand=link.exe"
 set "buildCommand=%buildCommand% %KORL_SOURCE_BASE_NAME%.obj"
 :BUILD_LINK_GAME_MODULE_STATIC
-    if %KORL_GAME_IS_DYNAMIC% == TRUE (
+    if %buildOptionDynamic% == TRUE (
         goto :END_BUILD_LINK_GAME_MODULE_STATIC
     )
     set "buildCommand=%buildCommand% %KORL_GAME_SOURCE_BASE_NAME%.obj"
@@ -302,7 +308,7 @@ echo %KORL_EXE_NAME%.exe failed to link!
 GOTO :ON_FAILURE_EXE
 :SKIP_BUILD_PLATFORM_EXECUTABLE
 rem --------- synchronize the platform EXE build w/ the game DLL build ---------
-if NOT %KORL_GAME_IS_DYNAMIC% == TRUE ( 
+if NOT %buildOptionDynamic% == TRUE ( 
     goto :SKIP_WAIT_FOR_BUILD_DYNAMIC_GAME_MODULE
 )
 echo Waiting for game DLL build...
