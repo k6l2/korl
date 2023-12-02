@@ -191,6 +191,7 @@
 [ ] KORL-FEATURE-000-000-068: vulkan: shadows; https://ogldev.org/index.html; http://www.opengl-tutorial.org/
 [ ] KORL-FEATURE-000-000-069: vulkan: deferred shading; https://ogldev.org/www/tutorial35/tutorial35.html
 [ ] KORL-FEATURE-000-000-071: vulkan: mesh shader support; VK_EXT_mesh_shader; http://zone.dog/braindump/mesh_shaders/; https://developer.nvidia.com/blog/introduction-turing-mesh-shaders/; https://github.com/KhronosGroup/Vulkan-Docs/blob/main/proposals/VK_EXT_mesh_shader.adoc; https://www.khronos.org/blog/mesh-shading-for-vulkan
+[ ] KORL-FEATURE-000-000-072: scene3d/codec-glb: rig collision geometry to bones via GLTF import; perhaps use similar workflow to https://docs.unrealengine.com/5.3/en-US/fbx-static-mesh-pipeline-in-unreal-engine/#collision ? If not, maybe we can create our own custom JSON resource for rigging collision geometry
 [x] KORL-ISSUE-000-000-000: lazy load asset if KORL_ASSETCACHE_GET_FLAG_LAZY is specified
 [x] KORL-ISSUE-000-000-001: only assert that the file loaded when we're not lazy loading
 [x] KORL-ISSUE-000-000-002: VERY primitive implementation of `isVisibleCharacter`; we should just be using stbtt_IsGlyphEmpty for this purpose

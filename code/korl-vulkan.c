@@ -381,20 +381,13 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     createInfoRenderPass.pSubpasses      = &subPass;
     createInfoRenderPass.dependencyCount = korl_arraySize(subpassDependency);
     createInfoRenderPass.pDependencies   = subpassDependency;
-    _KORL_VULKAN_CHECK(
-        vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, 
-                           &context->renderPass));
+    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &context->renderPass));
     /* get swap chain images */
-    _KORL_VULKAN_CHECK(
-        vkGetSwapchainImagesKHR(context->device, surfaceContext->swapChain, 
-                                &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/));
-    surfaceContext->swapChainImagesSize = KORL_MATH_MIN(surfaceContext->swapChainImagesSize, 
-                                                        korl_arraySize(surfaceContext->swapChainImages));
+    _KORL_VULKAN_CHECK(vkGetSwapchainImagesKHR(context->device, surfaceContext->swapChain, &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/));
+    surfaceContext->swapChainImagesSize = KORL_MATH_MIN(surfaceContext->swapChainImagesSize
+                                                       ,korl_arraySize(surfaceContext->swapChainImages));
     korl_log(INFO, "swapChainImagesSize=%i", surfaceContext->swapChainImagesSize);
-    _KORL_VULKAN_CHECK(
-        vkGetSwapchainImagesKHR(context->device, surfaceContext->swapChain, 
-                                &surfaceContext->swapChainImagesSize, 
-                                surfaceContext->swapChainImages));
+    _KORL_VULKAN_CHECK(vkGetSwapchainImagesKHR(context->device, surfaceContext->swapChain, &surfaceContext->swapChainImagesSize, surfaceContext->swapChainImages));
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         /* create image views for all the swap chain images */
@@ -412,9 +405,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
         createInfoImageView.subresourceRange.baseArrayLayer = 0;
         createInfoImageView.subresourceRange.levelCount     = 1;
         createInfoImageView.subresourceRange.baseMipLevel   = 0;
-        _KORL_VULKAN_CHECK(
-            vkCreateImageView(context->device, &createInfoImageView, context->allocator, 
-                              &surfaceContext->swapChainImageContexts[i].imageView));
+        _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &surfaceContext->swapChainImageContexts[i].imageView));
         /* create a frame buffer for all the swap chain image views */
         VkImageView frameBufferAttachments[] = 
             { surfaceContext->swapChainImageContexts[i].imageView
@@ -427,15 +418,13 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
         createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
         createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
         createInfoFrameBuffer.layers          = 1;
-        _KORL_VULKAN_CHECK(
-            vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, 
-                                &surfaceContext->swapChainImageContexts[i].frameBuffer));
+        _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &surfaceContext->swapChainImageContexts[i].frameBuffer));
         /* initialize pool of descriptor pools */
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaDescriptorPools, 8);
-#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
-        /* initialize a debug pool of device asset indices */
-        mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
-#endif
+        #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+            /* initialize a debug pool of device asset indices */
+            mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
+        #endif
     }
 }
 korl_internal void _korl_vulkan_destroySwapChain(void)
