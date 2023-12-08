@@ -221,12 +221,14 @@ typedef struct _Korl_Vulkan_SurfaceContextDrawState
     /** ----- dynamic uniform state (push constants, descriptors, etc...) ----- */
     Korl_Gfx_DrawState_PushConstantData       pushConstantData;
     VkRect2D                                  scissor;
+    #if 0//@TODO: delete/recycle; we want the user to be able to configure their own custom descriptorsetlayouts/pipelinelayouts/pipelines anyway
     //KORL-ISSUE-000-000-201: vulkan; HACK; we're sending this UBO to more than just the VERTEX stage; maybe we can do a better job at separating these descriptor sets?
     Korl_Vulkan_DescriptorStagingAllocation   uboVertex[KORL_VULKAN_MAX_UBOS_VERTEX];
     Korl_Vulkan_DescriptorStagingAllocation   uboFragment[KORL_VULKAN_MAX_UBOS_FRAGMENT];
     Korl_Vulkan_DescriptorStagingAllocation   ssboVertex[KORL_VULKAN_MAX_SSBOS_VERTEX];
     Korl_Vulkan_DescriptorStagingAllocation   ssboFragment[KORL_VULKAN_MAX_SSBOS_FRAGMENT];
     Korl_Vulkan_DeviceMemory_AllocationHandle texture2dFragment[KORL_VULKAN_MAX_TEXTURE2D_FRAGMENT];
+    #endif
     /** ----- vertex data state (vertex buffers, index buffer) ----- */
     VkBuffer     vertexBuffers          [KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
     VkDeviceSize vertexBufferByteOffsets[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
@@ -281,18 +283,18 @@ typedef struct _Korl_Vulkan_QueuedBufferTransfer
  */
 typedef struct _Korl_Vulkan_SurfaceContext
 {
-    VkSurfaceKHR surface;
-    Korl_Math_V3f32 frameBeginClearColor;
-    /** the index of the swap chain we are working with for the current frame */
-    u32 frameSwapChainImageIndex;
-    VkSurfaceFormatKHR swapChainSurfaceFormat;
-    VkExtent2D         swapChainImageExtent;
-    VkSwapchainKHR     swapChain;
+    VkSurfaceKHR                       surface;
+    Korl_Math_V3f32                    frameBeginClearColor;
+    u32                                frameSwapChainImageIndex;/** the index of the swap chain we are working with for the current frame */
+    bool                               frameSwapChainImagePresented;// raised only if the last acquired swap chain image (via frameSwapChainImageIndex) was ever queued for presentation (via vkQueuePresentKHR)
+    VkSurfaceFormatKHR                 swapChainSurfaceFormat;
+    VkExtent2D                         swapChainImageExtent;
+    VkSwapchainKHR                     swapChain;
     u32                                swapChainImagesSize;
     VkImage                            swapChainImages       [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    unsigned wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
-    unsigned wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
+    unsigned                           wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
+    unsigned                           wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
     struct
     {
         VkSemaphore semaphoreTransfersDone;// tells the primary graphics command buffer submission that memory transfers are complete for this frame
@@ -302,27 +304,22 @@ typedef struct _Korl_Vulkan_SurfaceContext
         VkCommandBuffer commandBufferTransfer;
         VkCommandBuffer commandBufferGraphics;
     } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    bool deferredResize;
-    u32 deferredResizeX, deferredResizeY;
-    /** expected to be nullified at the end of each call to \c frameBegin() */
-    _Korl_Vulkan_SurfaceContextDrawState drawState;
-    _Korl_Vulkan_SurfaceContextDrawState drawStateLast;// assigned at the end of every draw call; used to determine if we need to allocate/bind a new/different descriptorSet/pipeline
-    bool hasStencilComponent;//KORL-ISSUE-000-000-018: unused
-    /** this allocator will maintain device-local objects required during the 
-     * render process, such as depth buffers, etc. */
-    _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryRenderResources;
-    Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;
-    /** Used for allocation of host-visible staging buffers */
-    _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryHostVisible;
-    _Korl_Vulkan_Buffer* stbDaStagingBuffers;
-    u16 stagingBufferIndexLastUsed;// used to more evenly distribute the usage of staging buffers instead of more heavily utilizing some far more than others
-    /** Used for allocation of device-local assets, such as textures, mesh 
-     * manifolds, SSBOs, etc... */
-    _Korl_Vulkan_DeviceMemory_Allocator deviceMemoryDeviceLocal;
+    bool                                      deferredResize;
+    u32                                       deferredResizeX;
+    u32                                       deferredResizeY;
+    _Korl_Vulkan_SurfaceContextDrawState      drawState;/** expected to be nullified at the end of each call to \c frameBegin() */
+    _Korl_Vulkan_SurfaceContextDrawState      drawStateLast;// assigned at the end of every draw call; used to determine if we need to allocate/bind a new/different descriptorSet/pipeline
+    bool                                      hasStencilComponent;//KORL-ISSUE-000-000-018: unused
+    _Korl_Vulkan_DeviceMemory_Allocator       deviceMemoryRenderResources;/** this allocator will maintain device-local objects required during the render process, such as depth buffers, etc. */
+    Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;//@TODO: delete this; replace with a system that allows the user to declare "transient framebuffer attachments"
+    _Korl_Vulkan_DeviceMemory_Allocator       deviceMemoryHostVisible;/** Used for allocation of host-visible staging buffers */
+    _Korl_Vulkan_Buffer*                      stbDaStagingBuffers;
+    u16                                       stagingBufferIndexLastUsed;// used to more evenly distribute the usage of staging buffers instead of more heavily utilizing some far more than others
+    _Korl_Vulkan_DeviceMemory_Allocator       deviceMemoryDeviceLocal;/** Used for allocation of device-local assets, such as textures, mesh manifolds, SSBOs, etc... */
     KORL_MEMORY_POOL_DECLARE(_Korl_Vulkan_DeviceLocalAllocationShallowDequeueBatch, deviceLocalAllocationShallowDequeueBatches, 8);// used to remember how many device-local allocations we performed a shallow free on, so that we can completely free them when we know they are definitely no longer in use
     _Korl_Vulkan_QueuedFreeDeviceLocalAllocation* stbDaDeviceLocalFreeQueue;// used to defer the destruction of device-local assets until we know that they are no longer in use
-    Korl_Vulkan_DeviceMemory_AllocationHandle defaultTexture;
-    VkCommandPool   commandPool;
+    Korl_Vulkan_DeviceMemory_AllocationHandle     defaultTexture;
+    VkCommandPool                                 commandPool;
 } _Korl_Vulkan_SurfaceContext;
 korl_global_variable _Korl_Vulkan_Context g_korl_vulkan_context;
 /** 

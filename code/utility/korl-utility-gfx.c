@@ -214,7 +214,9 @@ korl_internal void korl_gfx_text_draw(Korl_Gfx_Text* context, Korl_Math_Aabb2f32
     storageBuffers.resourceHandleVertex = fontResources.resourceHandleSsboGlyphMeshVertices;
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.storageBuffers = &storageBuffers;
+    #if 0//@TODO: delete
     korl_assert(korl_gfx_setDrawState(&drawState));
+    #endif
     /* now we can iterate over each text line and conditionally draw them using line-specific draw state */
     KORL_ZERO_STACK(Korl_Gfx_DrawState_PushConstantData, pushConstantData);
     Korl_Math_M4f32*const pushConstantModelM4f32 = KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex);

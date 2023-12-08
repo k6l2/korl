@@ -159,7 +159,9 @@ korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.scissor         = &scissor;
     drawState.sceneProperties = &sceneProperties;
+    #if 0//@TODO: delete/recycle or do something entirely different; we likely need to reconfigure korl-gfx to manage custom pipelines
     korl_assert(korl_gfx_setDrawState(&drawState));
+    #endif
     korl_time_probeStop(useCamera);
 }
 korl_internal KORL_FUNCTION_korl_gfx_camera_getCurrent(korl_gfx_camera_getCurrent)
@@ -184,7 +186,9 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
     *KORL_C_CAST(Korl_Math_M4f32*, pushConstantData.vertex) = korl_math_transform3d_m4f32(&context->transform);
     KORL_ZERO_STACK(Korl_Gfx_DrawState, drawState);
     drawState.pushConstantData = &pushConstantData;
+    #if 0//@TODO: delete/recycle or do something entirely different; we likely need to reconfigure korl-gfx to manage custom pipelines
     korl_assert(korl_gfx_setDrawState(&drawState));
+    #endif
     switch(context->type)
     {
     case KORL_GFX_DRAWABLE_TYPE_INVALID:
@@ -293,9 +297,11 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
             for(u32 b = 0; b < context->subType.mesh.skin->bonesSize; b++)
                 boneMatrices[b] = korl_math_m4f32_multiply(boneMatrices + b, boneInverseBindMatrices + b);
             /* apply the bone matrix descriptor to vulkan DrawState */
+            #if 0//@TODO: delete/recycle
             KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);
             vulkanDrawState.uboVertex[1] = descriptorStagingAllocationBones;
             korl_vulkan_setDrawState(&vulkanDrawState);
+            #endif
         }
         for(u8 i = 0; i < context->subType.mesh.meshPrimitives; i++)
         {
@@ -311,6 +317,8 @@ korl_internal KORL_FUNCTION_korl_gfx_draw(korl_gfx_draw)
 }
 korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
 {
+    return false;
+    #if 0//@TODO: delete/recycle
     //KORL-ISSUE-000-000-185: gfx: manage custom descriptor set layouts; here, we are currently manually selecting arbitrary descriptor data channels to propagate various data, which looks & feels very hacky; we should be able to modify korl-vulkan to allow us to create & manage our own custom descriptor set & pipeline layouts for specific rendering purposes; related to the todo item currently found in _korl_vulkan_flushDescriptors; related to KORL-ISSUE-000-000-184
     KORL_ZERO_STACK(Korl_Vulkan_DrawState, vulkanDrawState);
     if(drawState->material)
@@ -391,6 +399,7 @@ korl_internal KORL_FUNCTION_korl_gfx_setDrawState(korl_gfx_setDrawState)
     }
     korl_vulkan_setDrawState(&vulkanDrawState);
     return true;
+    #endif
 }
 korl_internal KORL_FUNCTION_korl_gfx_stagingAllocate(korl_gfx_stagingAllocate)
 {
@@ -463,7 +472,7 @@ korl_internal void korl_gfx_defragment(Korl_Memory_AllocatorHandle stackAllocato
         return;
     Korl_Heap_DefragmentPointer* stbDaDefragmentPointers = NULL;
     mcarrsetcap(KORL_STB_DS_MC_CAST(stackAllocator), stbDaDefragmentPointers, 16);
-    KORL_MEMORY_STB_DA_DEFRAGMENT                (stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);
+    KORL_MEMORY_STB_DA_DEFRAGMENT(stackAllocator, stbDaDefragmentPointers, _korl_gfx_context);
     korl_stringPool_collectDefragmentPointers(_korl_gfx_context->stringPool, KORL_STB_DS_MC_CAST(stackAllocator), &stbDaDefragmentPointers, _korl_gfx_context);
     korl_memory_allocator_defragment(_korl_gfx_context->allocatorHandle, stbDaDefragmentPointers, arrlenu(stbDaDefragmentPointers), stackAllocator);
 }

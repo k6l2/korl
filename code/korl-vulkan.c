@@ -426,10 +426,14 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
             mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
         #endif
     }
+    /* assume that our vulkan state is setup such that korl-vulkan can now 
+        acquire the next swap chain image; prime korl-vulkan state so that this 
+        is true: */
+    surfaceContext->frameSwapChainImagePresented = true;
 }
 korl_internal void _korl_vulkan_destroySwapChain(void)
 {
-    _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
     _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
@@ -1053,16 +1057,16 @@ korl_internal void _korl_vulkan_frameBegin(void)
         /* reset the debug pool of device asset indices */
         mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices, 0);
     #endif
-    if(!unableToAcquireSwapChainImage)
+    if(!unableToAcquireSwapChainImage && surfaceContext->frameSwapChainImagePresented)
     {
         /* acquire the next image from the swap chain */
-        const VkResult resultAcquireNextImage = 
-            vkAcquireNextImageKHR(context->device, surfaceContext->swapChain
-                                 ,UINT64_MAX/*timeout; UINT64_MAX -> disable*/
-                                 ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable
-                                 ,VK_NULL_HANDLE/*fence*/
-                                 ,/*return value address*/&surfaceContext->frameSwapChainImageIndex);
+        const VkResult resultAcquireNextImage = vkAcquireNextImageKHR(context->device, surfaceContext->swapChain
+                                                                     ,UINT64_MAX/*timeout; UINT64_MAX -> disable*/
+                                                                     ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable
+                                                                     ,VK_NULL_HANDLE/*fence*/
+                                                                     ,/*return value address*/&surfaceContext->frameSwapChainImageIndex);
         _KORL_VULKAN_CHECK(resultAcquireNextImage);
+        surfaceContext->frameSwapChainImagePresented = false;
         swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
         /* reset all descriptor pools for this swap chain image */
         for(u$ d = 0; d < arrlenu(swapChainImageContext->stbDaDescriptorPools); d++)
@@ -1099,6 +1103,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     _KORL_VULKAN_CHECK(vkBeginCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferTransfer, &beginInfoCommandBuffer));
     if(swapChainImageContext)
         _KORL_VULKAN_CHECK(vkBeginCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, &beginInfoCommandBuffer));
+    #if 0//@TODO: instead of beginning a monolithic RenderPass for the entire frame, let's allow the user to create multiple RenderPasses & maybe build a separate command buffer per-pass
     if(swapChainImageContext)
     {
         // define the color we are going to clear the color attachment with when 
@@ -1134,6 +1139,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     // setting the current pipeline index to be out of bounds effectively sets 
     //  the default nullified pipeline to be used
     surfaceContext->drawState.currentPipeline = KORL_U$_MAX;//KORL-ISSUE-000-000-148: vulkan: this is gross, as using an arbitrarily large integer here theoretically still leaves us in the situation where the index can suddenly become valid if new pipelines are created, even if this is basically impossible to reach KORL_U$_MAX pipelines
+    #endif
 }
 /** This API is platform-specific, and thus must be defined within the code base 
  * of whatever the current target platform is. */
@@ -1552,10 +1558,8 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     KORL_ZERO_STACK(VkCommandPoolCreateInfo, createInfoCommandPool);
     createInfoCommandPool.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     createInfoCommandPool.queueFamilyIndex = context->queueFamilyMetaData.indexQueueUnion.indexQueues.graphics;
-    createInfoCommandPool.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;// we're going to delete each of these command buffers after each frame
-    _KORL_VULKAN_CHECK(
-        vkCreateCommandPool(context->device, &createInfoCommandPool, context->allocator, 
-                            &surfaceContext->commandPool));
+    createInfoCommandPool.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;// we're going to delete each of these command buffers at the "start" of each frame; note: frame "start" time is _immediately_ after the previous frame's "end"
+    _KORL_VULKAN_CHECK(vkCreateCommandPool(context->device, &createInfoCommandPool, context->allocator, &surfaceContext->commandPool));
     /* initialize the rest of the surface context's host memory structures */
     mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaPipelines                  , 128);
     mcarrsetlen(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaders                    , 128);
@@ -1685,11 +1689,14 @@ korl_internal void korl_vulkan_frameEnd(void)
     if(   surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE
        || surfaceContext->deferredResize)
         swapChainImageContext = NULL;
+    const bool graphicsCommandsThisFrame = swapChainImageContext && surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics;
     /* now we can finalize the primary command buffers for the current frame */
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferTransfer));
     if(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics)
     {
+        #if 0//@TODO: delete
         vkCmdEndRenderPass(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics);
+        #endif
         _KORL_VULKAN_CHECK(vkEndCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics));
     }
     /* close the frame-complete indication fence in preparation to submit 
@@ -1713,24 +1720,24 @@ korl_internal void korl_vulkan_frameEnd(void)
         /* we only want to signal to the graphics command queue submission that 
             transfers are done if there is no deferred resize 
             (we're doing graphics commands this frame) */
-        if(!surfaceContext->deferredResize)
+        if(graphicsCommandsThisFrame)
         {
             submitInfoGraphics[0].signalSemaphoreInfoCount = korl_arraySize(semaphoreSubmitInfoSignal);
             submitInfoGraphics[0].pSignalSemaphoreInfos    = semaphoreSubmitInfoSignal;
         }
-        const VkFence signalFence = surfaceContext->deferredResize 
+        const VkFence signalFence = graphicsCommandsThisFrame 
+            ? VK_NULL_HANDLE
             /* If we have a deferred resize, we are not going to submit our 
                 graphics commands for this frame, so we can signal the frame is 
                 complete after just the transfer buffer completes. */
-            ? surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete 
-            : VK_NULL_HANDLE;
+            : surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete;
         _KORL_VULKAN_CHECK(
             vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics, signalFence));
         korl_time_probeStop(submit_xfer_cmds_to_gfx_q);
     }
     /* we shouldn't have to submit any graphics commands if our surface context 
         is in an invalid state */
-    if(!surfaceContext->deferredResize)
+    if(graphicsCommandsThisFrame)
     {
         /* submit graphics commands to the graphics queue */
         korl_time_probeStart(submit_gfx_cmds_to_gfx_q);
@@ -1761,6 +1768,7 @@ korl_internal void korl_vulkan_frameEnd(void)
                           ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
         korl_time_probeStop(submit_gfx_cmds_to_gfx_q);
     }
+    #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
     /* present the swap chain */
     if(swapChainImageContext)
     {
@@ -1786,8 +1794,10 @@ korl_internal void korl_vulkan_frameEnd(void)
         default:
             _KORL_VULKAN_CHECK(resultQueuePresent);
         }
+        surfaceContext->frameSwapChainImagePresented = true;
         korl_time_probeStop(present_swap_chain);
     }
+    #endif
     /* advance to the next WIP frame index */
     surfaceContext->wipFrameCurrent = (surfaceContext->wipFrameCurrent + 1) % surfaceContext->swapChainImagesSize;
     surfaceContext->wipFrameCount   = KORL_MATH_MIN(surfaceContext->wipFrameCount + 1, surfaceContext->swapChainImagesSize);
@@ -1804,6 +1814,7 @@ korl_internal void korl_vulkan_deferredResize(u32 sizeX, u32 sizeY)
     surfaceContext->deferredResizeX = sizeX;
     surfaceContext->deferredResizeY = sizeY;
 }
+#if 0//@TODO: delete
 korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
@@ -1851,6 +1862,7 @@ korl_internal void korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state)
     done:
         korl_time_probeStop(set_draw_state);
 }
+#endif
 korl_internal VkDeviceSize _korl_vulkan_vertexAttribute_vectorBytes(const Korl_Gfx_VertexAttributeDescriptor* vertexAttributeDescriptor)
 {
     VkDeviceSize elementBytes = 0;
@@ -2002,6 +2014,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
     KORL_MEMORY_POOL_ZERO(descriptorBufferInfos);
     KORL_MEMORY_POOL_DECLARE(VkDescriptorImageInfo, descriptorImageInfos, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_MEMORY_POOL_ZERO(descriptorImageInfos);
+    #if 0//@TODO: recycle/delete
     //KORL-ISSUE-000-000-184: vulkan: descriptor set flexibility; in here we are arbitrarily picking which data channels belong to each descriptor set; we _should_ be able to allow the user to define their own VkDescriptorSetLayouts & VkPipelineLayouts, which would certainly give Vulkan a much better idea of how to optimize, as well as give the user the ability to compose descriptors however they wish without having to modify this code :|; related to KORL-ISSUE-000-000-185
     // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE //
     if(   surfaceContext->drawState.uboVertex[0].descriptorBufferInfo.buffer != VK_NULL_HANDLE 
@@ -2129,6 +2142,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
             descriptorWriteCount++;
         }
     }
+    #endif
     korl_assert(descriptorWriteCount <= korl_arraySize(descriptorSetWrites));
     /* allocate a new descriptor set conditionally, and configure the composed 
         descriptor set writes to modify it */
@@ -2272,10 +2286,13 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
 }
 korl_internal void korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
+    #if 0//@TODO: delete
     _korl_vulkan_draw(stagingAllocation->deviceBuffer, stagingAllocation->deviceBufferOffset, stagingMeta, primitiveType);
+    #endif
 }
 korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_AllocationHandle vertexBuffer, u$ vertexBufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
+    #if 0//@TODO: delete
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     /* attempt to obtain the vertex buffer device memory allocation; we can't do anything if the handle is invalid */
     _Korl_Vulkan_DeviceMemory_Alloctation*const bufferAllocation = _korl_vulkan_deviceMemory_allocator_getAllocation(&surfaceContext->deviceMemoryDeviceLocal, vertexBuffer);
@@ -2284,6 +2301,7 @@ korl_internal void korl_vulkan_drawVertexBuffer(Korl_Vulkan_DeviceMemory_Allocat
     korl_assert(bufferAllocation->type == _KORL_VULKAN_DEVICEMEMORY_ALLOCATION_TYPE_VERTEX_BUFFER);// sanity check; make sure user is using a Buffer allocation
     /**/
     _korl_vulkan_draw(bufferAllocation->subType.buffer.vulkanBuffer, vertexBufferByteOffset, stagingMeta, primitiveType);
+    #endif
 }
 korl_internal Korl_Vulkan_DeviceMemory_AllocationHandle korl_vulkan_deviceAsset_createTexture(const Korl_Resource_Texture_CreateInfo* createInfo, Korl_Vulkan_DeviceMemory_AllocationHandle requiredHandle)
 {
@@ -2357,7 +2375,7 @@ korl_internal void korl_vulkan_texture_update(Korl_Vulkan_DeviceMemory_Allocatio
     const VkDeviceSize imageBytes = deviceMemoryAllocation->subType.texture.sizeX
                                   * deviceMemoryAllocation->subType.texture.sizeY
                                   * deviceMemoryAllocation->subType.texture.pixelByteStride;
-    VkBuffer bufferStaging;
+    VkBuffer     bufferStaging;
     VkDeviceSize bufferStagingOffset;
     const VkDeviceSize pixelDataStagingAlignment = 4;//KORL-ISSUE-000-000-193: vulkan-texture: hack; we need to align to a multiple of the format's texel block size; The Vulkan spec states: If pname:dstImage does not have either a depth/stencil or a multi-planar format, then for each element of pRegions, bufferOffset must be a multiple of the format's texel block size (https://vulkan.lunarg.com/doc/view/1.3.224.1/windows/1.3-extensions/vkspec.html#VUID-vkCmdCopyBufferToImage-bufferOffset-01558)
     void*const pixelDataStagingMemory = _korl_vulkan_getStagingPool(imageBytes, pixelDataStagingAlignment, &bufferStaging, &bufferStagingOffset);

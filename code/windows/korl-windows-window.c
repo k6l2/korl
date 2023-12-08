@@ -62,7 +62,7 @@ typedef struct _Korl_Windows_Window_Context
         fnSig_korl_game_update*          korl_game_update;
         fnSig_korl_game_onAssetReloaded* korl_game_onAssetReloaded;
     } gameApi;
-    HMODULE gameDll;
+    HMODULE               gameDll;
     KorlPlatformDateStamp gameDllLastWriteDateStamp;
     bool deferSaveStateSave;// defer until the beginning of the next frame; the best place to synchronize save state operations
     bool deferSaveStateLoad;// defer until the beginning of the next frame; the best place to synchronize save state operations
@@ -86,7 +86,7 @@ typedef struct _Korl_Windows_Window_Context
     } configuration;
 } _Korl_Windows_Window_Context;
 korl_global_variable _Korl_Windows_Window_Context _korl_windows_window_context;
-korl_global_variable Korl_KeyboardCode _korl_windows_window_virtualKeyMap[0xFF];
+korl_global_variable Korl_KeyboardCode            _korl_windows_window_virtualKeyMap[0xFF];
 //KORL-ISSUE-000-000-113: windows-window: (minor) korl_clipboard_* API is being placed inside the korl-windows-window module due to the fact that we require a HWND to use these API on Windows; not sure if there is a better way to organize this...
 korl_internal KORL_FUNCTION_korl_clipboard_set(korl_clipboard_set)
 {

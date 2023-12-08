@@ -70,9 +70,9 @@
 
 # TODO list
 
-[ ] disable all current korl-vulkan operations
-    [ ] stubify all korl-vulkan platform APIs
-    [ ] stubify all korl-vulkan internal APIs
+[x] disable all current korl-vulkan operations
+    [x] stubify all korl-vulkan platform APIs
+    [x] stubify all korl-vulkan internal APIs
         - no more vkBegin/EndRenderPass calls, etc.
 [ ] allow user to compose a "render graph"
     - RenderNodes can be a resource (ImageBuffer/View) or a RenderPass; or, maybe RenderPass nodes are just a separate thing altogether
