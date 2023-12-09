@@ -178,13 +178,17 @@ typedef struct _Korl_Vulkan_Context
     _Korl_Vulkan_Shader*      stbDaShaders;
     _Korl_Vulkan_ShaderTrash* stbDaShaderTrash;
     _Korl_Vulkan_Pipeline*    stbDaPipelines;
+    #if 0//@TODO: delete; replace with user-composable pipeline layouts; we know we're going to have to do this now since in order to make a pipeline, we need to be able to specify a RenderPass to bind to, ergo we need to first implement a RenderPass builder/system (render graph), then we need to implement a pipeline builder/system which utilizes the render graph system in order to draw anything again
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
     VkPipelineLayout pipelineLayout;
     /** layouts for the descriptor data which are shared between all KORL Vulkan Surfaces
      * (UBO, view projection, texture samplers, etc...) */
     VkDescriptorSetLayout descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT];
+    #endif
+    #if 0//@TODO: delete; replace with a user-composable "render graph" system
     /* render passes are (potentially) shared between pipelines */
     VkRenderPass renderPass;
+    #endif
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool stringPool;
@@ -197,7 +201,9 @@ typedef struct _Korl_Vulkan_DescriptorPool
 typedef struct _Korl_Vulkan_SwapChainImageContext
 {
     VkImageView                  imageView;
+    #if 0//@TODO: delete; replace with system that allows the user to compose a custom "presentation frame buffer"
     VkFramebuffer                frameBuffer;
+    #endif
     // KORL-PERFORMANCE-000-000-037: vulkan: it may or may not be better to handle descriptor pools similar to stbDaStagingBuffers (at the SurfaceContext level), and just fill each pool until it is full, then move onto the next pool, allocating more pools as-needed with frames sharing pools; theoretically this should lead to pools being reset less often, which intuitively seems like better performance to me...
     _Korl_Vulkan_DescriptorPool* stbDaDescriptorPools;// these will all get reset at the beginning of each frame
     #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
@@ -311,7 +317,9 @@ typedef struct _Korl_Vulkan_SurfaceContext
     _Korl_Vulkan_SurfaceContextDrawState      drawStateLast;// assigned at the end of every draw call; used to determine if we need to allocate/bind a new/different descriptorSet/pipeline
     bool                                      hasStencilComponent;//KORL-ISSUE-000-000-018: unused
     _Korl_Vulkan_DeviceMemory_Allocator       deviceMemoryRenderResources;/** this allocator will maintain device-local objects required during the render process, such as depth buffers, etc. */
-    Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;//@TODO: delete this; replace with a system that allows the user to declare "transient framebuffer attachments"
+    #if 0//@TODO: delete this; replace with a system that allows the user to declare "transient framebuffer attachments"
+    Korl_Vulkan_DeviceMemory_AllocationHandle depthStencilImageBuffer;
+    #endif
     _Korl_Vulkan_DeviceMemory_Allocator       deviceMemoryHostVisible;/** Used for allocation of host-visible staging buffers */
     _Korl_Vulkan_Buffer*                      stbDaStagingBuffers;
     u16                                       stagingBufferIndexLastUsed;// used to more evenly distribute the usage of staging buffers instead of more heavily utilizing some far more than others

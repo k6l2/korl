@@ -45,8 +45,9 @@
 #include "korl-assetCache.h"
 #include "korl-interface-platform-gfx.h"
 #include "utility/korl-utility-resource.h"
-typedef u64 Korl_Vulkan_DeviceMemory_AllocationHandle;// 0 => NULL/invalid, as usual
-typedef u64 Korl_Vulkan_ShaderHandle;                 // 0 => NULL/invalid, as usual
+typedef u64   Korl_Vulkan_DeviceMemory_AllocationHandle;// 0 => NULL/invalid, as usual
+typedef u64   Korl_Vulkan_ShaderHandle;                 // 0 => NULL/invalid, as usual
+typedef void* Korl_Vulkan_RenderPassHandle;             // 0 => NULL/invalid, as usual
 typedef struct Korl_Vulkan_CreateInfoShader
 {
     const void* data;
@@ -93,7 +94,7 @@ korl_internal void                                      korl_vulkan_deferredResi
 korl_internal Korl_Vulkan_DescriptorStagingAllocation   korl_vulkan_stagingAllocateDescriptorData(u$ bytes);// used for allocation of UBO & SSBO data
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingAllocate(const Korl_Gfx_VertexStagingMeta* stagingMeta);
 korl_internal Korl_Gfx_StagingAllocation                korl_vulkan_stagingReallocate(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation);
-#if 0//@TODO: delete
+#if 0//@TODO: delete or update to support specific render passes
 korl_internal void                                      korl_vulkan_setDrawState(const Korl_Vulkan_DrawState* state);
 #endif
 korl_internal void                                      korl_vulkan_drawStagingAllocation(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType);
@@ -109,4 +110,4 @@ korl_internal void*                                     korl_vulkan_buffer_getSt
 korl_internal VkDescriptorBufferInfo                    korl_vulkan_buffer_getDescriptorBufferInfo(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle);
 korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
 korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);
-// korl_internal ?                                      korl_vulkan_renderpass_create(?)
+// korl_internal Korl_Vulkan_RenderPassHandle              korl_vulkan_renderpass_create(?);

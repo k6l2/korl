@@ -320,6 +320,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     //  on the surface like this (but I don't need this information right now): 
     surfaceContext->hasStencilComponent = formatDepthBuffer == VK_FORMAT_D32_SFLOAT_S8_UINT
                                        || formatDepthBuffer == VK_FORMAT_D24_UNORM_S8_UINT;
+    #if 0// @TODO: delete; replace with a user-composable RenderPass system & transient resource (framebuffer) system
     // now that we have selected a format, we can create the depth buffer image //
     _Korl_Vulkan_DeviceMemory_Alloctation* allocationDepthStencilImageBuffer = NULL;
     surfaceContext->depthStencilImageBuffer = _korl_vulkan_deviceMemory_allocateImageBuffer(&surfaceContext->deviceMemoryRenderResources
@@ -382,6 +383,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
     createInfoRenderPass.dependencyCount = korl_arraySize(subpassDependency);
     createInfoRenderPass.pDependencies   = subpassDependency;
     _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &context->renderPass));
+    #endif
     /* get swap chain images */
     _KORL_VULKAN_CHECK(vkGetSwapchainImagesKHR(context->device, surfaceContext->swapChain, &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/));
     surfaceContext->swapChainImagesSize = KORL_MATH_MIN(surfaceContext->swapChainImagesSize
@@ -406,6 +408,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
         createInfoImageView.subresourceRange.levelCount     = 1;
         createInfoImageView.subresourceRange.baseMipLevel   = 0;
         _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &surfaceContext->swapChainImageContexts[i].imageView));
+        #if 0//@TODO: delete
         /* create a frame buffer for all the swap chain image views */
         VkImageView frameBufferAttachments[] = 
             { surfaceContext->swapChainImageContexts[i].imageView
@@ -419,6 +422,7 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
         createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
         createInfoFrameBuffer.layers          = 1;
         _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &surfaceContext->swapChainImageContexts[i].frameBuffer));
+        #endif
         /* initialize pool of descriptor pools */
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaDescriptorPools, 8);
         #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
@@ -436,13 +440,17 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
+    #if 0//@TODO: delete
     _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
     surfaceContext->depthStencilImageBuffer = 0;
     vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
+    #endif
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &(surfaceContext->swapChainImageContexts[i]);
+        #if 0//@TODO: delete
         vkDestroyFramebuffer(context->device,swapChainImageContext->frameBuffer, context->allocator);
+        #endif
         vkDestroyImageView  (context->device,swapChainImageContext->imageView  , context->allocator);
         for(u$ d = 0; d < arrlenu(swapChainImageContext->stbDaDescriptorPools); d++)
         {
@@ -539,6 +547,8 @@ korl_internal VkBlendFactor _korl_vulkan_blendFactor_to_vulkan(Korl_Gfx_BlendFac
 }
 korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
 {
+    korl_assert(!"@TODO");
+    #if 0// pipelines must be created on a specific RenderPass
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     korl_assert(pipelineIndex < arrlenu(context->stbDaPipelines));
@@ -673,6 +683,7 @@ korl_internal void _korl_vulkan_createPipeline(u$ pipelineIndex)
     _KORL_VULKAN_CHECK(
         vkCreateGraphicsPipelines(context->device, VK_NULL_HANDLE/*pipeline cache*/
                                  ,1, &createInfoPipeline, context->allocator, &pipeline->pipeline));
+    #endif
 }
 /**
  * \return The index of the pipeline in \c context->pipelines , or 
@@ -1509,6 +1520,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
             _KORL_VULKAN_CHECK(vkCreateFence    (context->device, &createInfoFence    , context->allocator, &surfaceContext->wipFrames[i].fenceFrameComplete));
         }
     }
+    #if 0//@TODO: delete
     /* --- create batch descriptor set layouts --- 
         _must_ be created _before_ the pipelines are created */
     {/* SCENE_TRANSFORMS descriptor set layout */
@@ -1554,6 +1566,7 @@ korl_internal void korl_vulkan_createSurface(void* createSurfaceUserData, u32 si
     _KORL_VULKAN_CHECK(
         vkCreatePipelineLayout(context->device, &createInfoPipelineLayout, context->allocator
                               ,&context->pipelineLayout));
+    #endif
     /* create command pool for graphics queue family */
     KORL_ZERO_STACK(VkCommandPoolCreateInfo, createInfoCommandPool);
     createInfoCommandPool.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1634,9 +1647,11 @@ korl_internal void korl_vulkan_destroySurface(void)
             vkDestroyShaderModule(context->device, shaderTrash->shader.shaderModule, context->allocator);
         mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash);
     }
+    #if 0 //@TODO: delete
     for(u$ d = 0; d < korl_arraySize(context->descriptorSetLayouts); d++)
         vkDestroyDescriptorSetLayout(context->device, context->descriptorSetLayouts[d], context->allocator);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, context->allocator);
+    #endif
     vkDestroyDevice(context->device, context->allocator);
 }
 korl_internal Korl_Math_V2u32 korl_vulkan_getSurfaceSize(void)
@@ -2142,7 +2157,6 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
             descriptorWriteCount++;
         }
     }
-    #endif
     korl_assert(descriptorWriteCount <= korl_arraySize(descriptorSetWrites));
     /* allocate a new descriptor set conditionally, and configure the composed 
         descriptor set writes to modify it */
@@ -2180,6 +2194,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
                                ,setCount/*set count */, &(descriptorSets[firstSet])
                                ,/*dynamic offset count*/0, /*pDynamicOffsets*/NULL);
     }
+    #endif
 }
 korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
 {
@@ -2204,6 +2219,7 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
     surfaceContext->drawState.pipelineConfigurationCache.primitiveType = primitiveType;
     _korl_vulkan_flushPipelineState(stagingMeta);// calls vkCmdBindPipeline
     _korl_vulkan_flushDescriptors();// calls vkUpdateDescriptorSets & vkCmdBindDescriptorSets
+    #if 0//@TODO: delete
     /* compose the draw commands */
     if(0 != korl_memory_compare(surfaceContext->drawState.pushConstantData.vertex, surfaceContext->drawStateLast.pushConstantData.vertex, sizeof(surfaceContext->drawState.pushConstantData.vertex)))
         vkCmdPushConstants(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, context->pipelineLayout
@@ -2217,6 +2233,7 @@ korl_internal void _korl_vulkan_draw(VkBuffer buffer, VkDeviceSize bufferByteOff
                           ,_KORL_VULKAN_PUSH_CONSTANT_RANGES[_KORL_VULKAN_PUSH_CONSTANT_RANGE_FRAGMENT].offset
                           ,sizeof(surfaceContext->drawState.pushConstantData.fragment)
                           ,&surfaceContext->drawState.pushConstantData.fragment);
+    #endif
     if(0 != korl_memory_compare(&surfaceContext->drawState.scissor, &surfaceContext->drawStateLast.scissor, sizeof(surfaceContext->drawState.scissor)))
         vkCmdSetScissor(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
                        ,0/*firstScissor*/, 1/*scissorCount*/, &surfaceContext->drawState.scissor);
