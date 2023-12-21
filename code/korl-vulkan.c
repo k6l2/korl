@@ -8,13 +8,14 @@
 #include "korl-assetCache.h"
 #include "korl-vulkan-common.h"
 #include "korl-stb-image.h"
-#include "korl-stb-ds.h"
 #include "korl-time.h"
 #include "korl-resource.h"
 #include "korl-resource-shader.h"
 #include "korl-resource-gfx-buffer.h"
 #include "korl-resource-texture.h"
 #include "utility/korl-utility-gfx.h"
+#include "utility/korl-utility-stb-ds.h"
+#include "utility/korl-utility-algorithm.h"
 #if defined(KORL_PLATFORM_WINDOWS)
     #include <vulkan/vulkan_win32.h>
 #endif// defined(KORL_PLATFORM_WINDOWS)
@@ -202,8 +203,7 @@ korl_internal _Korl_Vulkan_QueueFamilyMetaData _korl_vulkan_queueFamilyMetaData(
 }
 /** This API will create the parts of the swap chain which can be destroyed & 
  * re-created in the event that the swap chain needs to be resized. */
-korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY, 
-                                                const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData)
+korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY, const _Korl_Vulkan_DeviceSurfaceMetaData*const deviceSurfaceMetaData)
 {
     _Korl_Vulkan_Context*const context               = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -292,21 +292,19 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
         createInfoSwapChain.queueFamilyIndexCount = 2;
         createInfoSwapChain.pQueueFamilyIndices   = context->queueFamilyMetaData.indexQueueUnion.indices;
     }
-    _KORL_VULKAN_CHECK(
-        vkCreateSwapchainKHR(context->device, &createInfoSwapChain, 
-                             context->allocator, &surfaceContext->swapChain));
+    _KORL_VULKAN_CHECK(vkCreateSwapchainKHR(context->device, &createInfoSwapChain
+                                           ,context->allocator, &surfaceContext->swapChain));
     /* ------ create a depth buffer ------ */
     // first, attempt to find the "most optimal" format for the depth buffer //
     const VkFormat depthBufferFormatCandidates[] = 
         { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
-    const VkImageTiling depthBufferTiling          = VK_IMAGE_TILING_OPTIMAL;
+    const VkImageTiling        depthBufferTiling   = VK_IMAGE_TILING_OPTIMAL;
     const VkFormatFeatureFlags depthBufferFeatures = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
     u$ depthBufferFormatSelection = 0; 
     for(; depthBufferFormatSelection < korl_arraySize(depthBufferFormatCandidates); depthBufferFormatSelection++)
     {
         VkFormatProperties formatProperties;
-        vkGetPhysicalDeviceFormatProperties(context->physicalDevice, depthBufferFormatCandidates[depthBufferFormatSelection], 
-                                            &formatProperties);
+        vkGetPhysicalDeviceFormatProperties(context->physicalDevice, depthBufferFormatCandidates[depthBufferFormatSelection], &formatProperties);
         if(   depthBufferTiling == VK_IMAGE_TILING_LINEAR 
            && ((formatProperties.linearTilingFeatures & depthBufferFeatures) == depthBufferFeatures))
             break;
@@ -330,59 +328,6 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY,
                                                                                            ,VK_IMAGE_ASPECT_DEPTH_BIT, formatDepthBuffer, depthBufferTiling
                                                                                            ,0// 0 => generate new handle automatically
                                                                                            ,&allocationDepthStencilImageBuffer);
-    /* ----- create render pass ----- */
-    KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
-    attachments[0].format         = surfaceContext->swapChainSurfaceFormat.format;
-    attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
-    attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[0].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    attachments[1].format         = formatDepthBuffer;
-    attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass 
-    attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[1].finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceColor);
-    attachmentReferenceColor.attachment = 0;
-    attachmentReferenceColor.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceDepth);
-    attachmentReferenceDepth.attachment = 1;
-    attachmentReferenceDepth.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkSubpassDescription, subPass);
-    subPass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subPass.colorAttachmentCount    = 1;
-    subPass.pColorAttachments       = &attachmentReferenceColor;
-    subPass.pDepthStencilAttachment = &attachmentReferenceDepth;
-    /* setup subpass dependencies for synchronization between frames; derived from:
-        https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples#swapchain-image-acquire-and-present */
-    KORL_ZERO_STACK_ARRAY(VkSubpassDependency, subpassDependency, 2);
-    subpassDependency[0].srcSubpass    = VK_SUBPASS_EXTERNAL;
-    subpassDependency[0].dstSubpass    = 0;
-    subpassDependency[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    subpassDependency[0].srcAccessMask = VK_ACCESS_NONE_KHR;
-    subpassDependency[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    subpassDependency[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    subpassDependency[1].srcSubpass    = 0;
-    subpassDependency[1].dstSubpass    = VK_SUBPASS_EXTERNAL;
-    subpassDependency[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    subpassDependency[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    subpassDependency[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    subpassDependency[1].dstAccessMask = VK_ACCESS_NONE_KHR;
-    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
-    createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfoRenderPass.attachmentCount = korl_arraySize(attachments);
-    createInfoRenderPass.pAttachments    = attachments;
-    createInfoRenderPass.subpassCount    = 1;
-    createInfoRenderPass.pSubpasses      = &subPass;
-    createInfoRenderPass.dependencyCount = korl_arraySize(subpassDependency);
-    createInfoRenderPass.pDependencies   = subpassDependency;
-    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &context->renderPass));
     #endif
     /* get swap chain images */
     _KORL_VULKAN_CHECK(vkGetSwapchainImagesKHR(context->device, surfaceContext->swapChain, &surfaceContext->swapChainImagesSize, NULL/*pSwapchainImages*/));
@@ -440,6 +385,7 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
+    // korl_assert(!"@TODO: invalidate/destroy render passes, since render passes need to have an up-to-date format of the swap chain");
     #if 0//@TODO: delete
     _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
     surfaceContext->depthStencilImageBuffer = 0;
@@ -985,6 +931,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
             vkWaitForFences(context->device, 1
                            ,&surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete
                            ,VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+    // korl_assert(!"@TODO: checkpoint for transient resources; free transient render graph objects here");
     /* at this point, we know for certain that a frame has been processed, so we 
         can update our memory pools to reflect this history, allowing us to 
         reuse pools that we can deduce _must_ no longer be in use */
@@ -1268,10 +1215,13 @@ korl_internal void korl_vulkan_construct(void)
                                        context->allocator, &context->debugMessenger));
 #endif// KORL_DEBUG
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
+    korl_pool_initialize(&context->poolRenderPasses, context->allocatorHandle, sizeof(_Korl_Vulkan_RenderPass), 16);
 }
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    korl_pool_destroy(&context->poolRenderPasses);
+    korl_stringPool_destroy(&context->stringPool);
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(context->instance, context->debugMessenger, context->allocator);
     vkDestroyInstance(context->instance, context->allocator);
@@ -1716,8 +1666,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     }
     /* close the frame-complete indication fence in preparation to submit 
         commands to the graphics queue for the current WIP frame */
-    _KORL_VULKAN_CHECK(
-        vkResetFences(context->device, 1, &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
+    _KORL_VULKAN_CHECK(vkResetFences(context->device, 1, &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
     /* submit transfer commands to the graphics queue */
     {
         korl_time_probeStart(submit_xfer_cmds_to_gfx_q);
@@ -1741,13 +1690,12 @@ korl_internal void korl_vulkan_frameEnd(void)
             submitInfoGraphics[0].pSignalSemaphoreInfos    = semaphoreSubmitInfoSignal;
         }
         const VkFence signalFence = graphicsCommandsThisFrame 
-            ? VK_NULL_HANDLE
-            /* If we have a deferred resize, we are not going to submit our 
-                graphics commands for this frame, so we can signal the frame is 
-                complete after just the transfer buffer completes. */
-            : surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete;
-        _KORL_VULKAN_CHECK(
-            vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics, signalFence));
+                                    ? VK_NULL_HANDLE
+                                    /* If we have a deferred resize, we are not going to submit our 
+                                        graphics commands for this frame, so we can signal the frame is 
+                                        complete after just the transfer buffer completes. */
+                                    : surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete;
+        _KORL_VULKAN_CHECK(vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics, signalFence));
         korl_time_probeStop(submit_xfer_cmds_to_gfx_q);
     }
     /* we shouldn't have to submit any graphics commands if our surface context 
@@ -1815,7 +1763,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     #endif
     /* advance to the next WIP frame index */
     surfaceContext->wipFrameCurrent = (surfaceContext->wipFrameCurrent + 1) % surfaceContext->swapChainImagesSize;
-    surfaceContext->wipFrameCount   = KORL_MATH_MIN(surfaceContext->wipFrameCount + 1, surfaceContext->swapChainImagesSize);
+    surfaceContext->wipFrameCount   = korl_checkCast_u$_to_u8(KORL_MATH_MIN(surfaceContext->wipFrameCount + 1u, surfaceContext->swapChainImagesSize));
     /* begin the next frame */
     _korl_vulkan_frameBegin();
 }
@@ -2607,4 +2555,146 @@ korl_internal void korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHan
     _Korl_Vulkan_Shader*const shader = context->stbDaShaders + shaderIndex;
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash, ((_Korl_Vulkan_ShaderTrash){.shader = *shader, .framesSinceQueued = 0}));
     shader->shaderModule = VK_NULL_HANDLE;
+}
+korl_internal VkFormat _korl_vulkan_gfxImageFormat_to_vulkan(Korl_Gfx_ImageFormat imageFormat)
+{
+    switch(imageFormat)
+    {
+    case KORL_GFX_IMAGE_FORMAT_UNDEFINED    : return VK_FORMAT_UNDEFINED;
+    case KORL_GFX_IMAGE_FORMAT_B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_SRGB;
+    }
+    korl_log(ERROR, "invalid imageFormat: %u", imageFormat);
+    return VK_FORMAT_MAX_ENUM;
+}
+korl_internal VkAttachmentLoadOp _korl_vulkan_gfxRenderPassAttachmentLoadOperation_to_vulkan(Korl_Gfx_RenderPass_Attachment_LoadOperation loadOperation)
+{
+    switch(loadOperation)
+    {
+    case KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_LOAD     : return VK_ATTACHMENT_LOAD_OP_LOAD;
+    case KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_DONT_CARE: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    case KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_CLEAR    : return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    }
+    korl_log(ERROR, "invalid loadOperation: %u", loadOperation);
+    return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
+}
+korl_internal VkAttachmentStoreOp _korl_vulkan_gfxRenderPassAttachmentStoreOperation_to_vulkan(Korl_Gfx_RenderPass_Attachment_StoreOperation storeOperation)
+{
+    switch(storeOperation)
+    {
+    case KORL_GFX_RENDER_PASS_ATTACHMENT_STORE_OPERATION_STORE    : return VK_ATTACHMENT_STORE_OP_STORE;
+    case KORL_GFX_RENDER_PASS_ATTACHMENT_STORE_OPERATION_DONT_CARE: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    }
+    korl_log(ERROR, "invalid storeOperation: %u", storeOperation);
+    return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
+}
+korl_internal Korl_Vulkan_RenderPassHandle korl_vulkan_renderGraph_addRenderPass(const Korl_Gfx_RenderPass* renderPass)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    _Korl_Vulkan_RenderPass* newRenderPass = NULL;
+    Korl_Vulkan_RenderPassHandle renderPassHandle = korl_pool_add(&context->poolRenderPasses, 0/*Pool_ItemType; unused for now*/, &newRenderPass);
+    newRenderPass->handle       = renderPassHandle;
+    newRenderPass->vulkanHandle = VK_NULL_HANDLE;// likely redundant, but that's okay
+    korl_assert(renderPass->attachmentsSize < korl_arraySize(newRenderPass->attachments));
+    newRenderPass->attachmentsSize = renderPass->attachmentsSize;
+    for(u8 i = 0; i < renderPass->attachmentsSize; i++)
+    {
+        newRenderPass->attachments[i].format         = _korl_vulkan_gfxImageFormat_to_vulkan                       (renderPass->attachments[i].imageFormat);
+        newRenderPass->attachments[i].loadOperation  = _korl_vulkan_gfxRenderPassAttachmentLoadOperation_to_vulkan (renderPass->attachments[i].loadOperation);
+        newRenderPass->attachments[i].storeOperation = _korl_vulkan_gfxRenderPassAttachmentStoreOperation_to_vulkan(renderPass->attachments[i].storeOperation);
+    }
+    return renderPassHandle;
+}
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_renderGraph_build_forEachRenderPass)
+{
+    _Korl_Vulkan_Context*const          context            = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const   surfaceContext     = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_RenderPass*const       renderPass         = KORL_C_CAST(_Korl_Vulkan_RenderPass*, item);
+    Korl_Vulkan_RenderPassHandle**const pStbDaRenderPasses = KORL_C_CAST(Korl_Vulkan_RenderPassHandle**, userData);
+    if(renderPass->vulkanHandle == VK_NULL_HANDLE)
+    {
+        mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), *pStbDaRenderPasses, renderPass->handle);
+        renderPass->surfaceWipFrameIndex = surfaceContext->wipFrameCurrent;
+    }
+    return KORL_POOL_FOR_EACH_CONTINUE;
+}
+korl_internal void korl_vulkan_renderGraph_build(void)
+{
+    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    /* loop over all RenderPasses that don't yet have a Vulkan handle to identify the new RenderGraph nodes */
+    Korl_Vulkan_RenderPassHandle* stbDaRenderPasses = NULL;
+    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocator), stbDaRenderPasses, 16);
+    korl_pool_forEach(&context->poolRenderPasses, _korl_vulkan_renderGraph_build_forEachRenderPass, &stbDaRenderPasses);
+    /* perform topological sort to ensure that the graph is valid (directed, acyclic, rooted tree) */
+    #if 0//@TODO: ???
+    {
+        /* create the graph data structure */
+        /* build the graph edges by dereferencing each render graph node handle */
+        const Korl_Vulkan_RenderPassHandle*const stbDaRenderPassesEnd = stbDaRenderPasses + arrlen(stbDaRenderPasses);
+        for(Korl_Vulkan_RenderPassHandle* renderPass = stbDaRenderPasses; renderPass < stbDaRenderPassesEnd; renderPass++)
+        {
+        }
+        /* perform topological sort */
+        /* clean up temp graph data struct */
+    }
+    #endif
+    /* determine the "presentation" RenderPass; the last RenderPass is attached to the swap chain framebuffer */
+    /* construct all the vulkan objects of the graph; VkRenderPass, VkCommandBuffer, transient VkFramebuffers */
+    #if 0//@TODO: recycle
+    /* ----- create render pass ----- */
+    KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
+    attachments[0].format         = surfaceContext->swapChainSurfaceFormat.format;
+    attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
+    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
+    attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[0].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[0].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[1].format         = formatDepthBuffer;
+    attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
+    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass 
+    attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[1].finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceColor);
+    attachmentReferenceColor.attachment = 0;
+    attachmentReferenceColor.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceDepth);
+    attachmentReferenceDepth.attachment = 1;
+    attachmentReferenceDepth.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    KORL_ZERO_STACK(VkSubpassDescription, subPass);
+    subPass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subPass.colorAttachmentCount    = 1;
+    subPass.pColorAttachments       = &attachmentReferenceColor;
+    subPass.pDepthStencilAttachment = &attachmentReferenceDepth;
+    /* setup subpass dependencies for synchronization between frames; derived from:
+        https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples#swapchain-image-acquire-and-present */
+    KORL_ZERO_STACK_ARRAY(VkSubpassDependency, subpassDependency, 2);
+    subpassDependency[0].srcSubpass    = VK_SUBPASS_EXTERNAL;
+    subpassDependency[0].dstSubpass    = 0;
+    subpassDependency[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency[0].srcAccessMask = VK_ACCESS_NONE_KHR;
+    subpassDependency[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    subpassDependency[1].srcSubpass    = 0;
+    subpassDependency[1].dstSubpass    = VK_SUBPASS_EXTERNAL;
+    subpassDependency[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpassDependency[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    subpassDependency[1].dstAccessMask = VK_ACCESS_NONE_KHR;
+    KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
+    createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfoRenderPass.attachmentCount = korl_arraySize(attachments);
+    createInfoRenderPass.pAttachments    = attachments;
+    createInfoRenderPass.subpassCount    = 1;
+    createInfoRenderPass.pSubpasses      = &subPass;
+    createInfoRenderPass.dependencyCount = korl_arraySize(subpassDependency);
+    createInfoRenderPass.pDependencies   = subpassDependency;
+    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &context->renderPass));
+    #endif
+    /* initialize all the RenderPass CommandBuffers so that we can begin recording them, via vkCmdBeginRenderPass */
+    /* clean up */
+    mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), stbDaRenderPasses);
 }

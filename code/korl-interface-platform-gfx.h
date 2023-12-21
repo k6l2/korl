@@ -287,6 +287,7 @@ typedef struct Korl_Gfx_StagingAllocation
     Korl_Gfx_DeviceBufferHandle deviceBuffer;
     u$                          deviceBufferOffset;
 } Korl_Gfx_StagingAllocation;
+//@TODO: the only API to use Drawable is korl_gfx_draw, and if korl_gfx_draw is going to be moved to korl-utility-gfx, we should move all these structs into korl-utility-gfx as well
 /** For \c KORL_GFX_DRAWABLE_TYPE_RUNTIME , do _not_ store pointers to update 
  * buffers obtained from any of the \c korl_gfx_* APIs, as they are invalidated 
  * either at end-of-frame, _or_ the next call to obtain an update buffer (such 
@@ -361,6 +362,7 @@ typedef struct Korl_Gfx_Drawable
 #define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)                    Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
 #define KORL_FUNCTION_korl_gfx_getSurfaceSize(name)                          Korl_Math_V2u32            name(void)
 #define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                       name(u8 red, u8 green, u8 blue)
+//@TODO: this is no longer calling any internal KORL APIs; ergo, we should move this into korl-utility-gfx
 #define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
 #define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
 #define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)

@@ -141,6 +141,27 @@ typedef struct _Korl_Vulkan_ShaderTrash
     _Korl_Vulkan_Shader shader;
     u8                  framesSinceQueued;// once this value >= SurfaceContext::swapChainImagesSize, we can safely delete the shader module
 } _Korl_Vulkan_ShaderTrash;
+typedef enum _Korl_Vulkan_RenderPass_Attachment_SourceType
+{
+    _KORL_VULKAN_RENDERPASS_ATTACHMENT_SOURCE_TYPE_UNDEFINED,
+    _KORL_VULKAN_RENDERPASS_ATTACHMENT_SOURCE_TYPE_SWAP_CHAIN_IMAGE,
+} _Korl_Vulkan_RenderPass_Attachment_SourceType;
+typedef struct _Korl_Vulkan_RenderPass_Attachment
+{
+    _Korl_Vulkan_RenderPass_Attachment_SourceType sourceType;
+    VkFormat                                      format;
+    VkAttachmentLoadOp                            loadOperation;
+    VkAttachmentStoreOp                           storeOperation;
+} _Korl_Vulkan_RenderPass_Attachment;
+/** contains all the meta data necessary for a RenderPass in an unbuilt render graph */
+typedef struct _Korl_Vulkan_RenderPass
+{
+    Korl_Vulkan_RenderPassHandle       handle;
+    VkRenderPass                       vulkanHandle;
+    u8                                 surfaceWipFrameIndex;// WIP frame index of the SurfaceContext tied to this object
+    _Korl_Vulkan_RenderPass_Attachment attachments[8];
+    u8                                 attachmentsSize;
+} _Korl_Vulkan_RenderPass;
 typedef struct _Korl_Vulkan_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
@@ -192,6 +213,7 @@ typedef struct _Korl_Vulkan_Context
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool stringPool;
+    Korl_Pool       poolRenderPasses;// pool of _Korl_Vulkan_RenderPass objects
 } _Korl_Vulkan_Context;
 typedef struct _Korl_Vulkan_DescriptorPool
 {
@@ -277,8 +299,8 @@ typedef struct _Korl_Vulkan_QueuedTextureUpload
 } _Korl_Vulkan_QueuedTextureUpload;
 typedef struct _Korl_Vulkan_QueuedBufferTransfer
 {
-    VkBuffer bufferSource;
-    VkBuffer bufferTarget;
+    VkBuffer     bufferSource;
+    VkBuffer     bufferTarget;
     VkBufferCopy copyRegion;
 } _Korl_Vulkan_QueuedBufferTransfer;
 /**
@@ -299,8 +321,8 @@ typedef struct _Korl_Vulkan_SurfaceContext
     u32                                swapChainImagesSize;
     VkImage                            swapChainImages       [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
-    unsigned                           wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
-    unsigned                           wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
+    u8                                 wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
+    u8                                 wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
     struct
     {
         VkSemaphore semaphoreTransfersDone;// tells the primary graphics command buffer submission that memory transfers are complete for this frame
