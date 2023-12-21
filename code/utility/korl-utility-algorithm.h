@@ -149,6 +149,15 @@ typedef struct Korl_Algorithm_Bvh
     // this struct is followed in memory by the following data:
     // (leafBoundingVolumes * boundingVolumeStride) boundingVolumes;
 } Korl_Algorithm_Bvh;
+typedef struct Korl_Algorithm_Bvh_Node
+{
+    u32 leafBoundingVolumeIndexStart;
+    u32 leafBoundingVolumeIndexEnd;
+    u32 bvhNodeChildIndexOffsetLeft;
+    u32 bvhNodeChildIndexOffsetRight;
+    // this struct should be followed by user-defined volume struct, which is where we will store this node's total volume
+    //KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
+} Korl_Algorithm_Bvh_Node;
 korl_internal Korl_Algorithm_Bvh* korl_algorithm_bvh_create(const Korl_Algorithm_Bvh_CreateInfo*const createInfo);
 korl_internal void                korl_algorithm_bvh_setBoundingVolume(Korl_Algorithm_Bvh* context, u32 leafBoundingVolumeIndex, const void* boundingVolume);
 korl_internal void                korl_algorithm_bvh_build(Korl_Algorithm_Bvh* context);
@@ -177,15 +186,6 @@ typedef struct Korl_Algorithm_GraphDirected
     u32                                            edgesCapacity;
     u32                                            edgesSize;
 } Korl_Algorithm_GraphDirected;
-typedef struct Korl_Algorithm_Bvh_Node
-{
-    u32 leafBoundingVolumeIndexStart;
-    u32 leafBoundingVolumeIndexEnd;
-    u32 bvhNodeChildIndexOffsetLeft;
-    u32 bvhNodeChildIndexOffsetRight;
-    // this struct should be followed by user-defined volume struct, which is where we will store this node's total volume
-    //KORL-ISSUE-000-000-154: algorithm/bvh: this is currently a waste of space, as the user-defined volume also includes a pointer back to user-defined struct that is encapsulated by the volume; consider making the user-defined volume struct _just_ be the AABB
-} Korl_Algorithm_Bvh_Node;
 /** by returning to the user the # of children in each node, & ensuring that the 
  * SortedElements are arranged in such a way that all their sub-trees are 
  * contiguous in memory, the user can perform more advanced iteration techniques 

@@ -5,6 +5,7 @@
 #include "utility/korl-checkCast.h"
 #include "korl-vulkan.h"
 #include "korl-stb-ds.h"
+#include "korl-interface-platform.h"
 korl_internal void korl_gui_windows_processMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, Korl_KeyboardCode* virtualKeyMap, u$ virtualKeyMapSize)
 {
     _Korl_Gui_Context*const context = _korl_gui_context;
