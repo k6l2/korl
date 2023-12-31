@@ -113,6 +113,7 @@ korl_internal void*                                     korl_vulkan_buffer_getSt
 korl_internal VkDescriptorBufferInfo                    korl_vulkan_buffer_getDescriptorBufferInfo(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle);
 korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
 korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);
+#if 0//@TODO: delete; bad idea; render graph should not be in korl-vulkan; it should be an API within korl-gfx
 //@TODO: move all these enums/structs into korl-platform-gfx
 typedef enum Korl_Gfx_ImageFormat
 {
@@ -151,4 +152,6 @@ typedef struct Korl_Gfx_RenderPass
     u8                              attachmentsSize;
 } Korl_Gfx_RenderPass;
 korl_internal Korl_Vulkan_RenderPassHandle              korl_vulkan_renderGraph_addRenderPass(const Korl_Gfx_RenderPass* renderPass);
+korl_internal void                                      korl_vulkan_renderGraph_addFrameBuffer(void);
 korl_internal void                                      korl_vulkan_renderGraph_build(void);// initializes all previously generated Korl_Vulkan_RenderPassHandles such that commands can be recorded for them
+#endif

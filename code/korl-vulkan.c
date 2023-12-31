@@ -353,21 +353,6 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY, const _Kor
         createInfoImageView.subresourceRange.levelCount     = 1;
         createInfoImageView.subresourceRange.baseMipLevel   = 0;
         _KORL_VULKAN_CHECK(vkCreateImageView(context->device, &createInfoImageView, context->allocator, &surfaceContext->swapChainImageContexts[i].imageView));
-        #if 0//@TODO: delete
-        /* create a frame buffer for all the swap chain image views */
-        VkImageView frameBufferAttachments[] = 
-            { surfaceContext->swapChainImageContexts[i].imageView
-            , allocationDepthStencilImageBuffer->subType.imageBuffer.imageView };
-        KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
-        createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        createInfoFrameBuffer.renderPass      = context->renderPass;
-        createInfoFrameBuffer.attachmentCount = korl_arraySize(frameBufferAttachments);
-        createInfoFrameBuffer.pAttachments    = frameBufferAttachments;
-        createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
-        createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
-        createInfoFrameBuffer.layers          = 1;
-        _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &surfaceContext->swapChainImageContexts[i].frameBuffer));
-        #endif
         /* initialize pool of descriptor pools */
         mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaDescriptorPools, 8);
         #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
@@ -927,10 +912,9 @@ korl_internal void _korl_vulkan_frameBegin(void)
     /* wait on the next "wip frame" synchronization struct so that we have a set 
         of sync primitives that aren't currently being used by the device */
     if(surfaceContext->wipFrameCount >= surfaceContext->swapChainImagesSize)
-        _KORL_VULKAN_CHECK(
-            vkWaitForFences(context->device, 1
-                           ,&surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete
-                           ,VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+        _KORL_VULKAN_CHECK(vkWaitForFences(context->device, 1
+                                          ,&surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete
+                                          ,VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
     // korl_assert(!"@TODO: checkpoint for transient resources; free transient render graph objects here");
     /* at this point, we know for certain that a frame has been processed, so we 
         can update our memory pools to reflect this history, allowing us to 
@@ -959,7 +943,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
     /* same as with staging buffers, we can now nullify device assets that we 
         know are no longer being used */
     u$ freedDeviceLocalAllocations = 0;
-    u8 framesSinceQueuedLast = KORL_U8_MAX;// used to help ensure that the device local free queue does in fact contain monotonically increasing values for each member's framesSinceQueued value
+    u8 framesSinceQueuedLast       = KORL_U8_MAX;// used to help ensure that the device local free queue does in fact contain monotonically increasing values for each member's framesSinceQueued value
     for(_Korl_Vulkan_QueuedFreeDeviceLocalAllocation* queuedFreeDeviceAllocation = surfaceContext->stbDaDeviceLocalFreeQueue;
         queuedFreeDeviceAllocation < surfaceContext->stbDaDeviceLocalFreeQueue + arrlen(surfaceContext->stbDaDeviceLocalFreeQueue);
         queuedFreeDeviceAllocation++)
@@ -1215,12 +1199,16 @@ korl_internal void korl_vulkan_construct(void)
                                        context->allocator, &context->debugMessenger));
 #endif// KORL_DEBUG
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
+    #if 0//@TODO: introduce this later when we need render passes
     korl_pool_initialize(&context->poolRenderPasses, context->allocatorHandle, sizeof(_Korl_Vulkan_RenderPass), 16);
+    #endif
 }
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    #if 0//@TODO: introduce this later when we need render passes
     korl_pool_destroy(&context->poolRenderPasses);
+    #endif
     korl_stringPool_destroy(&context->stringPool);
 #if KORL_DEBUG
     context->vkDestroyDebugUtilsMessengerEXT(context->instance, context->debugMessenger, context->allocator);
@@ -1714,21 +1702,24 @@ korl_internal void korl_vulkan_frameEnd(void)
         KORL_ZERO_STACK_ARRAY(VkCommandBufferSubmitInfo, commandBufferSubmitInfo, 1);
         commandBufferSubmitInfo[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
         commandBufferSubmitInfo[0].commandBuffer = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics;
+        #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
         KORL_ZERO_STACK_ARRAY(VkSemaphoreSubmitInfo, semaphoreSubmitInfoSignal, 1);
         semaphoreSubmitInfoSignal[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
         semaphoreSubmitInfoSignal[0].semaphore = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreRenderDone;
         semaphoreSubmitInfoSignal[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        #endif
         KORL_ZERO_STACK_ARRAY(VkSubmitInfo2, submitInfoGraphics, 1);
         submitInfoGraphics[0].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
         submitInfoGraphics[0].waitSemaphoreInfoCount   = korl_arraySize(semaphoreSubmitInfoWait);
         submitInfoGraphics[0].pWaitSemaphoreInfos      = semaphoreSubmitInfoWait;
         submitInfoGraphics[0].commandBufferInfoCount   = korl_arraySize(commandBufferSubmitInfo);
         submitInfoGraphics[0].pCommandBufferInfos      = commandBufferSubmitInfo;
+        #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
         submitInfoGraphics[0].signalSemaphoreInfoCount = korl_arraySize(semaphoreSubmitInfoSignal);
         submitInfoGraphics[0].pSignalSemaphoreInfos    = semaphoreSubmitInfoSignal;
-        _KORL_VULKAN_CHECK(
-            vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics
-                          ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
+        #endif
+        _KORL_VULKAN_CHECK(vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics
+                                         ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
         korl_time_probeStop(submit_gfx_cmds_to_gfx_q);
     }
     #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
@@ -2556,6 +2547,7 @@ korl_internal void korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHan
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash, ((_Korl_Vulkan_ShaderTrash){.shader = *shader, .framesSinceQueued = 0}));
     shader->shaderModule = VK_NULL_HANDLE;
 }
+#if 0//@TODO: delete; see comment in korl-vulkan.h
 korl_internal VkFormat _korl_vulkan_gfxImageFormat_to_vulkan(Korl_Gfx_ImageFormat imageFormat)
 {
     switch(imageFormat)
@@ -2616,6 +2608,25 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_renderGraph_build_forEach
         renderPass->surfaceWipFrameIndex = surfaceContext->wipFrameCurrent;
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
+}
+korl_internal void korl_vulkan_renderGraph_addFrameBuffer(void)
+{
+    korl_assert(!"@TODO");
+    #if 0//@TODO: delete
+    /* create a frame buffer for all the swap chain image views */
+    VkImageView frameBufferAttachments[] = 
+        { surfaceContext->swapChainImageContexts[i].imageView
+        , allocationDepthStencilImageBuffer->subType.imageBuffer.imageView };
+    KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
+    createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    createInfoFrameBuffer.renderPass      = context->renderPass;
+    createInfoFrameBuffer.attachmentCount = korl_arraySize(frameBufferAttachments);
+    createInfoFrameBuffer.pAttachments    = frameBufferAttachments;
+    createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
+    createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
+    createInfoFrameBuffer.layers          = 1;
+    _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &surfaceContext->swapChainImageContexts[i].frameBuffer));
+    #endif
 }
 korl_internal void korl_vulkan_renderGraph_build(void)
 {
@@ -2698,3 +2709,4 @@ korl_internal void korl_vulkan_renderGraph_build(void)
     /* clean up */
     mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), stbDaRenderPasses);
 }
+#endif

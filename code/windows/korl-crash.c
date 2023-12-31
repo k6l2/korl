@@ -35,9 +35,9 @@ korl_internal LONG _korl_crash_fatalException(PEXCEPTION_POINTERS pExceptionPoin
         korl_string_formatBufferUtf16(messageBuffer, sizeof(messageBuffer)
                                      ,L"Exception code: 0x%X\n"
                                      ,pExceptionPointers->ExceptionRecord->ExceptionCode);
-        const int resultMessageBox = MessageBox(NULL/*no owner window*/, 
-                                                messageBuffer, cStrOrigin, 
-                                                MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
+        const int resultMessageBox = MessageBox(NULL/*no owner window*/
+                                               ,messageBuffer, cStrOrigin
+                                               ,MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
         if(resultMessageBox == 0)
             korl_logLastError("MessageBox failed!");
         else
@@ -117,7 +117,7 @@ korl_internal void korl_crash_initialize(void)
         SetUnhandledExceptionFilter(_korl_crash_unhandledExceptionFilter);
     if(exceptionFilterPrevious != NULL)
         korl_log(INFO, "replaced previous exception filter 0x%X with "
-                 "_korl_crash_unhandledExceptionFilter", exceptionFilterPrevious);
+                       "_korl_crash_unhandledExceptionFilter", exceptionFilterPrevious);
     /* set up the vectored exception handler */
     korl_assert(NULL != AddVectoredExceptionHandler(TRUE/*we want this exception handler to fire before all others*/, 
                                                     _korl_crash_vectoredExceptionHandler));
@@ -128,8 +128,8 @@ korl_internal void korl_crash_initialize(void)
     const ULONG reservedStackBytesDesired = korl_checkCast_u$_to_u32(korl_math_kilobytes(32) + 1);
     ULONG stackSizeBytes = reservedStackBytesDesired;
     if(SetThreadStackGuarantee(&stackSizeBytes))
-        korl_log(INFO, "Previous reserved stack=%ld, new reserved stack=%ld", 
-                 stackSizeBytes, reservedStackBytesDesired);
+        korl_log(INFO, "Previous reserved stack=%ld, new reserved stack=%ld"
+                ,stackSizeBytes, reservedStackBytesDesired);
     else
         korl_log(WARNING, "Failed to set & retrieve reserved stack size!  "
                           "The system probably won't be able to log stack "
@@ -172,24 +172,24 @@ korl_internal KORL_FUNCTION__korl_crash_assertConditionFailed(_korl_crash_assert
             would be just silly if it was not possible to obtain full stack 
             exception information just because we're in a debugger lol... */
         if(IsDebuggerPresent())
-            korl_file_generateMemoryDump(NULL/*we don't have any exception data*/, 
-                                         KORL_FILE_PATHTYPE_TEMPORARY_DATA, 
-                                         _KORL_CRASH_MAX_DUMP_COUNT);
+            korl_file_generateMemoryDump(NULL/*we don't have any exception data*/
+                                        ,KORL_FILE_PATHTYPE_TEMPORARY_DATA
+                                        ,_KORL_CRASH_MAX_DUMP_COUNT);
         else
             __try
             {
                 RaiseException(STATUS_ASSERTION_FAILURE, 0, 0, NULL);
             }
-            __except(korl_file_generateMemoryDump(GetExceptionInformation(), 
-                                                  KORL_FILE_PATHTYPE_TEMPORARY_DATA, 
-                                                  _KORL_CRASH_MAX_DUMP_COUNT), 
-                     EXCEPTION_EXECUTE_HANDLER)
+            __except(korl_file_generateMemoryDump(GetExceptionInformation()
+                                                 ,KORL_FILE_PATHTYPE_TEMPORARY_DATA
+                                                 ,_KORL_CRASH_MAX_DUMP_COUNT)
+                                                 ,EXCEPTION_EXECUTE_HANDLER)
             {
             }
     }
-    _korl_log_variadic(1, KORL_LOG_LEVEL_ASSERT, 
-                       cStringFileName, cStringFunctionName, lineNumber, 
-                       L"ASSERT FAILED: \"%ws\"", conditionString);
+    _korl_log_variadic(1, KORL_LOG_LEVEL_ASSERT
+                      ,cStringFileName, cStringFunctionName, lineNumber
+                      ,L"ASSERT FAILED: \"%ws\"", conditionString);
     if(isFirstAssert)
     {
         const wchar_t BASE_MESSAGE[] = L"Condition: %ws\n";

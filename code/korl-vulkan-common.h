@@ -141,6 +141,7 @@ typedef struct _Korl_Vulkan_ShaderTrash
     _Korl_Vulkan_Shader shader;
     u8                  framesSinceQueued;// once this value >= SurfaceContext::swapChainImagesSize, we can safely delete the shader module
 } _Korl_Vulkan_ShaderTrash;
+#if 0//@TODO: introduce this later when we need render passes
 typedef enum _Korl_Vulkan_RenderPass_Attachment_SourceType
 {
     _KORL_VULKAN_RENDERPASS_ATTACHMENT_SOURCE_TYPE_UNDEFINED,
@@ -162,6 +163,7 @@ typedef struct _Korl_Vulkan_RenderPass
     _Korl_Vulkan_RenderPass_Attachment attachments[8];
     u8                                 attachmentsSize;
 } _Korl_Vulkan_RenderPass;
+#endif
 typedef struct _Korl_Vulkan_Context
 {
     Korl_Memory_AllocatorHandle allocatorHandle;
@@ -213,7 +215,9 @@ typedef struct _Korl_Vulkan_Context
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool stringPool;
+    #if 0//@TODO: introduce this later when we actually need render passes
     Korl_Pool       poolRenderPasses;// pool of _Korl_Vulkan_RenderPass objects
+    #endif
 } _Korl_Vulkan_Context;
 typedef struct _Korl_Vulkan_DescriptorPool
 {
