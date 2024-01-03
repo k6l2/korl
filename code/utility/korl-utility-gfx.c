@@ -4,6 +4,77 @@
 #include "utility/korl-utility-resource.h"
 #include "utility/korl-utility-stb-ds.h"
 #include "korl-interface-platform.h"
+typedef enum _Korl_Gfx_RenderGraph_Node_Type
+{
+    _KORL_GFX_RENDERGRAPH_NODE_TYPE_INVALID,
+    _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS,
+    _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER,
+} _Korl_Gfx_RenderGraph_Node_Type;
+typedef struct _Korl_Gfx_RenderGraph_Node
+{
+    _Korl_Gfx_RenderGraph_Node_Type type;
+    union
+    {
+        struct
+        {
+            void* dummy;//@TODO: delete
+        } pass;
+        struct
+        {
+            void* dummy;//@TODO: delete
+        } framebuffer;
+    } subType;
+} _Korl_Gfx_RenderGraph_Node;
+korl_internal Korl_Gfx_RenderGraph* korl_gfx_renderGraph_create(Korl_Memory_AllocatorHandle allocator)
+{
+    Korl_Gfx_RenderGraph* renderGraph = KORL_C_CAST(Korl_Gfx_RenderGraph*, korl_allocate(allocator, sizeof(*renderGraph)));
+    renderGraph->allocator = allocator;
+    korl_pool_initialize(&renderGraph->poolNodes, allocator, sizeof(_Korl_Gfx_RenderGraph_Node), 16);
+    return renderGraph;
+}
+korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newPass(Korl_Gfx_RenderGraph* context)
+{
+    korl_assert(!context->_built);
+    _Korl_Gfx_RenderGraph_Node* newNode = NULL;
+    const Korl_Gfx_RenderGraph_NodeHandle nodeHandle = korl_pool_add(&context->poolNodes, _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS, KORL_C_CAST(void**, &newNode));
+    newNode->type = _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS;
+    return nodeHandle;
+}
+korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
+{
+    korl_assert(!context->_built);
+    korl_assert(!"@TODO");
+    context->_built = true;
+}
+korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffer(Korl_Gfx_RenderGraph* context)
+{
+    korl_assert(!context->_built);
+    _Korl_Gfx_RenderGraph_Node* newNode = NULL;
+    const Korl_Gfx_RenderGraph_NodeHandle nodeHandle = korl_pool_add(&context->poolNodes, _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER, KORL_C_CAST(void**, &newNode));
+    newNode->type = _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER;
+    return nodeHandle;
+}
+korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle framebuffer, Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo attachmentInfo)
+{
+    korl_assert(!renderGraph->_built);
+    _Korl_Gfx_RenderGraph_Node*const node = KORL_C_CAST(_Korl_Gfx_RenderGraph_Node*, korl_pool_get(&renderGraph->poolNodes, &framebuffer));
+    korl_assert(node->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER);
+    switch(attachmentInfo.type)
+    {
+    case KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_INVALID:
+        korl_log(ERROR, "invalid attachmentInfo.type: %i", attachmentInfo.type);
+        break;
+    case KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_SWAPCHAIN_IMAGE:
+        korl_assert(!"@TODO");
+        break;
+    }
+}
+korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChild, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParent, u8 attachIndexParent)
+{
+    korl_assert(!renderGraph->_built);
+    korl_assert(!"@TODO: ensure that the child has a non-zero # of image attachments");
+    korl_assert(!"@TODO: add the child attachments to the parent");
+}
 korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{{0,1}}, {{0,0}}, {{1,1}}, {{1,0}}};
 /* Since we expect that all KORL renderer code requires right-handed 
     triangle normals (counter-clockwise vertex winding), all tri quads have 
