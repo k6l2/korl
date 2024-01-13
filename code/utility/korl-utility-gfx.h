@@ -2,14 +2,14 @@
 #include "korl-globalDefines.h"
 #include "korl-interface-platform-gfx.h"
 #include "utility/korl-utility-resource.h"
-#include "utility/korl-pool.h"
+typedef struct _Korl_Gfx_RenderGraph_Node _Korl_Gfx_RenderGraph_Node;
 typedef struct Korl_Gfx_RenderGraph
 {
     Korl_Memory_AllocatorHandle allocator;
     bool                        _built;// raised when renderGraph_build has been called
-    Korl_Pool                   poolNodes;// pool of _Korl_Gfx_RenderGraph_Node objects
+    _Korl_Gfx_RenderGraph_Node* stbDaNodes;// we use a simple dynamic array for the collection of Nodes, since Nodes will never be removed from a RenderGraph due to the transient nature of the RenderGraph itself; we are assuming that the user will be building a new RenderGraph each frame
 } Korl_Gfx_RenderGraph;
-typedef Korl_Pool_Handle Korl_Gfx_RenderGraph_NodeHandle;
+typedef u32 Korl_Gfx_RenderGraph_NodeHandle;
 typedef enum Korl_Gfx_RenderGraph_Framebuffer_AttachmentType
 {
     KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_INVALID,
@@ -19,12 +19,12 @@ typedef struct Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo
 {
     Korl_Gfx_RenderGraph_Framebuffer_AttachmentType type;
 } Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo;
-korl_internal Korl_Gfx_RenderGraph*           korl_gfx_renderGraph_create(Korl_Memory_AllocatorHandle allocator);
+korl_internal Korl_Gfx_RenderGraph*           korl_gfx_renderGraph_create(Korl_Memory_AllocatorHandle allocator);// since any given RenderGraph is only valid for a single frame, I recommend passing in an allocator which is automatically emptied at the end of each frame
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newPass(Korl_Gfx_RenderGraph* context);
 korl_internal void                            korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context);
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffer(Korl_Gfx_RenderGraph* context);
 korl_internal void                            korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle framebuffer, Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo attachmentInfo);
-korl_internal void                            korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChild, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParent, u8 attachIndexParent);
+korl_internal void                            korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChildHandle, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParentHandle, u8 attachIndexParent);
 /** \return \c true if the codepoint should be drawn, \c false otherwise */
 #define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, u32 codepoint, u8 codepointCodeUnits, const u8* currentCodeUnit, u8 bytesPerCodeUnit, Korl_Math_V4f32* o_currentLineColor)
 typedef KORL_GFX_TEXT_CODEPOINT_TEST(fnSig_korl_gfx_text_codepointTest);

@@ -91,6 +91,10 @@ korl_internal void korl_gfx_update(Korl_Math_V2u32 surfaceSize, f32 deltaSeconds
     _korl_gfx_context->flushedLights = -1;
     _korl_gfx_context->lastFragmentShaderUniformUsed = false;
 }
+korl_internal KORL_FUNCTION_korl_gfx_getSwapchainImageView(korl_gfx_getSwapchainImageView)
+{
+    return korl_vulkan_getSwapchainImageView();
+}
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
     _Korl_Gfx_Context*const context = _korl_gfx_context;

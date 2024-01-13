@@ -1,9 +1,11 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-utility-math.h"
+#include "utility/korl-pool.h"
 #include "korl-interface-platform-memory.h"
 #include "korl-interface-platform-resource.h"
-typedef Korl_Math_V4u8 Korl_Gfx_Color4u8;
+typedef Korl_Pool_Handle Korl_Gfx_PlatformTransientResource;// opaque handle for platform-specific resources that are only meaningful for a single frame, such as transient image views
+typedef Korl_Math_V4u8   Korl_Gfx_Color4u8;
 #define KORL_COLOR4U8_TRANSPARENT korl_math_v4u8_make(  0,   0,   0,   0)
 #define KORL_COLOR4U8_RED         korl_math_v4u8_make(255,   0,   0, 255)
 #define KORL_COLOR4U8_GREEN       korl_math_v4u8_make(  0, 255,   0, 255)
@@ -279,6 +281,7 @@ typedef struct Korl_Gfx_VertexStagingMeta
     u32                                vertexCount;
     Korl_Gfx_VertexAttributeDescriptor vertexAttributeDescriptors[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_ENUM_COUNT];
 } Korl_Gfx_VertexStagingMeta;
+//@TODO: rename Korl_Gfx_DeviceBufferHandle to Korl_Gfx_PlatformBufferHandle
 typedef void* Korl_Gfx_DeviceBufferHandle;// opaque type; example: for Vulkan implementation, it's a VkBuffer
 typedef struct Korl_Gfx_StagingAllocation
 {
@@ -351,25 +354,29 @@ typedef struct Korl_Gfx_Drawable
         } mesh;
     } subType;
 } Korl_Gfx_Drawable;
-#define KORL_FUNCTION_korl_gfx_useCamera(name)                               void                       name(Korl_Gfx_Camera camera)
-#define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)                       Korl_Gfx_Camera            name(void)
-#define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)                      Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context)
+/** \return \c NULL if the swapchain image view cannot be obtained this frame; 
+ * this can happen if the swapchain is in an invalid state, such as when the 
+ * window is minimized */
+#define KORL_FUNCTION_korl_gfx_getSwapchainImageView(name)    Korl_Gfx_PlatformTransientResource name(void)
+#define KORL_FUNCTION_korl_gfx_useCamera(name)                void                               name(Korl_Gfx_Camera camera)
+#define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)        Korl_Gfx_Camera                    name(void)
+#define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)       Korl_Math_V2f32                    name(const Korl_Gfx_Camera*const context)
 /** \return \c {{NaN,NaN,NaN},{NaN,NaN,NaN}} if the coordinate transform fails */
-#define KORL_FUNCTION_korl_gfx_camera_windowToWorld(name)                    Korl_Gfx_ResultRay3d       name(const Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition)
+#define KORL_FUNCTION_korl_gfx_camera_windowToWorld(name)     Korl_Gfx_ResultRay3d               name(const Korl_Gfx_Camera*const context, Korl_Math_V2i32 windowPosition)
 /** \return \c {Nan,Nan} if the world position is not contained within the 
  * camera's clip space. This does NOT mean that \c non-{NaN,NaN} values are on 
  * the screen!*/
-#define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)                    Korl_Math_V2f32            name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
-#define KORL_FUNCTION_korl_gfx_getSurfaceSize(name)                          Korl_Math_V2u32            name(void)
-#define KORL_FUNCTION_korl_gfx_setClearColor(name)                           void                       name(u8 red, u8 green, u8 blue)
+#define KORL_FUNCTION_korl_gfx_camera_worldToWindow(name)     Korl_Math_V2f32                    name(const Korl_Gfx_Camera*const context, Korl_Math_V3f32 worldPosition)
+#define KORL_FUNCTION_korl_gfx_getSurfaceSize(name)           Korl_Math_V2u32                    name(void)
+#define KORL_FUNCTION_korl_gfx_setClearColor(name)            void                               name(u8 red, u8 green, u8 blue)
 //@TODO: this is no longer calling any internal KORL APIs; ergo, we should move this into korl-utility-gfx
-#define KORL_FUNCTION_korl_gfx_draw(name)                                    void                       name(Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
-#define KORL_FUNCTION_korl_gfx_light_use(name)                               void                       name(const Korl_Gfx_Light*const lights, u$ lightsSize)
-#define KORL_FUNCTION_korl_gfx_getBlankTexture(name)                         Korl_Resource_Handle       name(void)
-#define KORL_FUNCTION_korl_gfx_setDrawState(name)                            bool                       name(const Korl_Gfx_DrawState* drawState)
-#define KORL_FUNCTION_korl_gfx_stagingAllocate(name)                         Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
-#define KORL_FUNCTION_korl_gfx_stagingReallocate(name)                       Korl_Gfx_StagingAllocation name(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
-#define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)                   void                       name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
-#define KORL_FUNCTION_korl_gfx_drawVertexBuffer(name)                        void                       name(Korl_Resource_Handle resourceHandleBuffer, u$ bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
-#define KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(name)                  Korl_Resource_Handle       name(const Korl_Gfx_VertexStagingMeta* vertexStagingMeta)
-#define KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(name)                Korl_Resource_Handle       name(const Korl_Gfx_Material* material)
+#define KORL_FUNCTION_korl_gfx_draw(name)                     void                               name(Korl_Gfx_Drawable*const context, const Korl_Gfx_Material* materials, u8 materialsSize)
+#define KORL_FUNCTION_korl_gfx_light_use(name)                void                               name(const Korl_Gfx_Light*const lights, u$ lightsSize)
+#define KORL_FUNCTION_korl_gfx_getBlankTexture(name)          Korl_Resource_Handle               name(void)
+#define KORL_FUNCTION_korl_gfx_setDrawState(name)             bool                               name(const Korl_Gfx_DrawState* drawState)
+#define KORL_FUNCTION_korl_gfx_stagingAllocate(name)          Korl_Gfx_StagingAllocation         name(const Korl_Gfx_VertexStagingMeta* stagingMeta)
+#define KORL_FUNCTION_korl_gfx_stagingReallocate(name)        Korl_Gfx_StagingAllocation         name(const Korl_Gfx_VertexStagingMeta* stagingMeta, const Korl_Gfx_StagingAllocation* stagingAllocation)
+#define KORL_FUNCTION_korl_gfx_drawStagingAllocation(name)    void                               name(const Korl_Gfx_StagingAllocation* stagingAllocation, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
+#define KORL_FUNCTION_korl_gfx_drawVertexBuffer(name)         void                               name(Korl_Resource_Handle resourceHandleBuffer, u$ bufferByteOffset, const Korl_Gfx_VertexStagingMeta* stagingMeta, Korl_Gfx_Material_PrimitiveType primitiveType)
+#define KORL_FUNCTION_korl_gfx_getBuiltInShaderVertex(name)   Korl_Resource_Handle               name(const Korl_Gfx_VertexStagingMeta* vertexStagingMeta)
+#define KORL_FUNCTION_korl_gfx_getBuiltInShaderFragment(name) Korl_Resource_Handle               name(const Korl_Gfx_Material* material)

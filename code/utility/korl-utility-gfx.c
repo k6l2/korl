@@ -10,9 +10,31 @@ typedef enum _Korl_Gfx_RenderGraph_Node_Type
     _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS,
     _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER,
 } _Korl_Gfx_RenderGraph_Node_Type;
+#define _KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS 8
+typedef enum _Korl_Gfx_RenderGraph_Node_Attachment_Type
+{
+    _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_INVALID,
+    _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE,
+    _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_CHILD_NODE_ATTACHMENT,
+} _Korl_Gfx_RenderGraph_Node_Attachment_Type;
+typedef struct _Korl_Gfx_RenderGraph_Node_Attachment
+{
+    _Korl_Gfx_RenderGraph_Node_Attachment_Type type;
+    union
+    {
+        Korl_Gfx_PlatformTransientResource platformTransientResource;
+        struct
+        {
+            Korl_Gfx_RenderGraph_NodeHandle nodeHandle;
+            u8                              attachmentIndex;
+        } childNodeAttachment;
+    } subType;
+} _Korl_Gfx_RenderGraph_Node_Attachment;
 typedef struct _Korl_Gfx_RenderGraph_Node
 {
-    _Korl_Gfx_RenderGraph_Node_Type type;
+    _Korl_Gfx_RenderGraph_Node_Type       type;
+    _Korl_Gfx_RenderGraph_Node_Attachment attachments[_KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS];
+    u8                                    attachmentsSize;
     union
     {
         struct
@@ -25,20 +47,53 @@ typedef struct _Korl_Gfx_RenderGraph_Node
         } framebuffer;
     } subType;
 } _Korl_Gfx_RenderGraph_Node;
+typedef struct _Korl_Gfx_RenderGraph_NodeHandleUnpacked
+{
+    u8                              index;
+    _Korl_Gfx_RenderGraph_Node_Type type;
+} _Korl_Gfx_RenderGraph_NodeHandleUnpacked;
+korl_internal Korl_Gfx_RenderGraph_NodeHandle _korl_gfx_renderGraph_node_handle_pack(_Korl_Gfx_RenderGraph_NodeHandleUnpacked unpackedHandle)
+{
+    /* ensure the handle index is non-zero */
+    unpackedHandle.index++;
+    korl_assert(unpackedHandle.index > 0);
+    /* ensure the node type fits in a u8 */
+    korl_assert(unpackedHandle.type > 0 && unpackedHandle.type <= KORL_U8_MAX);
+    /**/
+    return (KORL_C_CAST(Korl_Gfx_RenderGraph_NodeHandle, unpackedHandle.type) << 8) 
+         |  KORL_C_CAST(Korl_Gfx_RenderGraph_NodeHandle, unpackedHandle.index);
+}
+korl_internal _Korl_Gfx_RenderGraph_NodeHandleUnpacked _korl_gfx_renderGraph_node_handle_unpack(Korl_Gfx_RenderGraph_NodeHandle handle)
+{
+    return KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_NodeHandleUnpacked){KORL_C_CAST(u8                             , (handle & 0xFF) - 1)
+                                                                           ,KORL_C_CAST(_Korl_Gfx_RenderGraph_Node_Type, (handle >> 8) & 0xFF)};
+}
+korl_internal _Korl_Gfx_RenderGraph_Node* _korl_gfx_renderGraph_getNode(Korl_Gfx_RenderGraph* context, Korl_Gfx_RenderGraph_NodeHandle nodeHandle)
+{
+    const _Korl_Gfx_RenderGraph_NodeHandleUnpacked nodeHandleUnpacked = _korl_gfx_renderGraph_node_handle_unpack(nodeHandle);
+    if(nodeHandleUnpacked.index >= arrlenu(context->stbDaNodes))
+        return NULL;
+    _Korl_Gfx_RenderGraph_Node*const node = context->stbDaNodes + nodeHandleUnpacked.index;
+    if(node->type != nodeHandleUnpacked.type)
+        return NULL;
+    return node;
+}
 korl_internal Korl_Gfx_RenderGraph* korl_gfx_renderGraph_create(Korl_Memory_AllocatorHandle allocator)
 {
     Korl_Gfx_RenderGraph* renderGraph = KORL_C_CAST(Korl_Gfx_RenderGraph*, korl_allocate(allocator, sizeof(*renderGraph)));
     renderGraph->allocator = allocator;
-    korl_pool_initialize(&renderGraph->poolNodes, allocator, sizeof(_Korl_Gfx_RenderGraph_Node), 16);
+    mcarrsetcap(KORL_STB_DS_MC_CAST(allocator), renderGraph->stbDaNodes, 16);
     return renderGraph;
 }
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newPass(Korl_Gfx_RenderGraph* context)
 {
     korl_assert(!context->_built);
-    _Korl_Gfx_RenderGraph_Node* newNode = NULL;
-    const Korl_Gfx_RenderGraph_NodeHandle nodeHandle = korl_pool_add(&context->poolNodes, _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS, KORL_C_CAST(void**, &newNode));
-    newNode->type = _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS;
-    return nodeHandle;
+    const _Korl_Gfx_RenderGraph_Node               newNode               = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_Node){_KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS};
+    const _Korl_Gfx_RenderGraph_NodeHandleUnpacked newNodeHandleUnpacked = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_NodeHandleUnpacked){korl_checkCast_u$_to_u8(arrlenu(context->stbDaNodes))
+                                                                                                                                           ,newNode.type};
+    const Korl_Gfx_RenderGraph_NodeHandle          newNodeHandle         = _korl_gfx_renderGraph_node_handle_pack(newNodeHandleUnpacked);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaNodes, newNode);
+    return newNodeHandle;
 }
 korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
 {
@@ -49,15 +104,18 @@ korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffer(Korl_Gfx_RenderGraph* context)
 {
     korl_assert(!context->_built);
-    _Korl_Gfx_RenderGraph_Node* newNode = NULL;
-    const Korl_Gfx_RenderGraph_NodeHandle nodeHandle = korl_pool_add(&context->poolNodes, _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER, KORL_C_CAST(void**, &newNode));
-    newNode->type = _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER;
-    return nodeHandle;
+    const _Korl_Gfx_RenderGraph_Node               newNode               = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_Node){_KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER};
+    const _Korl_Gfx_RenderGraph_NodeHandleUnpacked newNodeHandleUnpacked = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_NodeHandleUnpacked){korl_checkCast_u$_to_u8(arrlenu(context->stbDaNodes))
+                                                                                                                                           ,newNode.type};
+    const Korl_Gfx_RenderGraph_NodeHandle          newNodeHandle         = _korl_gfx_renderGraph_node_handle_pack(newNodeHandleUnpacked);
+    mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaNodes, newNode);
+    return newNodeHandle;
 }
 korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle framebuffer, Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo attachmentInfo)
 {
     korl_assert(!renderGraph->_built);
-    _Korl_Gfx_RenderGraph_Node*const node = KORL_C_CAST(_Korl_Gfx_RenderGraph_Node*, korl_pool_get(&renderGraph->poolNodes, &framebuffer));
+    _Korl_Gfx_RenderGraph_Node*const node = _korl_gfx_renderGraph_getNode(renderGraph, framebuffer);
+    korl_assert(node);
     korl_assert(node->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER);
     switch(attachmentInfo.type)
     {
@@ -65,15 +123,31 @@ korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_Rende
         korl_log(ERROR, "invalid attachmentInfo.type: %i", attachmentInfo.type);
         break;
     case KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_SWAPCHAIN_IMAGE:
-        korl_assert(!"@TODO");
+        korl_assert(node->attachmentsSize < korl_arraySize(node->attachments));
+        _Korl_Gfx_RenderGraph_Node_Attachment*const newAttachment = node->attachments + (node->attachmentsSize++);
+        newAttachment->type                              = _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE;
+        newAttachment->subType.platformTransientResource = korl_gfx_getSwapchainImageView();
         break;
     }
 }
-korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChild, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParent, u8 attachIndexParent)
+korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChildHandle, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParentHandle, u8 attachIndexParent)
 {
     korl_assert(!renderGraph->_built);
-    korl_assert(!"@TODO: ensure that the child has a non-zero # of image attachments");
-    korl_assert(!"@TODO: add the child attachments to the parent");
+    /* obtail the parent & child RenderGraph_Nodes */
+    _Korl_Gfx_RenderGraph_Node*const nodeChild  = _korl_gfx_renderGraph_getNode(renderGraph, nodeChildHandle);
+    _Korl_Gfx_RenderGraph_Node*const nodeParent = _korl_gfx_renderGraph_getNode(renderGraph, nodeParentHandle);
+    korl_assert(nodeChild);
+    korl_assert(nodeParent);
+    /* add the child attachments to the parent */
+    korl_assert(nodeChild->attachmentsSize > 0);
+    korl_assert(nodeParent->attachmentsSize + nodeChild->attachmentsSize < korl_arraySize(nodeParent->attachments));
+    for(u8 i = 0; i < nodeChild->attachmentsSize; i++)
+    {
+        _Korl_Gfx_RenderGraph_Node_Attachment*const newAttachment = nodeParent->attachments + (nodeParent->attachmentsSize++);
+        newAttachment->type                                        = _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_CHILD_NODE_ATTACHMENT;
+        newAttachment->subType.childNodeAttachment.nodeHandle      = nodeChildHandle;
+        newAttachment->subType.childNodeAttachment.attachmentIndex = i;
+    }
 }
 korl_global_const Korl_Math_V2f32 _KORL_UTILITY_GFX_QUAD_POSITION_NORMALS_TRI_STRIP[4] = {{{0,1}}, {{0,0}}, {{1,1}}, {{1,0}}};
 /* Since we expect that all KORL renderer code requires right-handed 

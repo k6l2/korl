@@ -155,3 +155,4 @@ korl_internal Korl_Vulkan_RenderPassHandle              korl_vulkan_renderGraph_
 korl_internal void                                      korl_vulkan_renderGraph_addFrameBuffer(void);
 korl_internal void                                      korl_vulkan_renderGraph_build(void);// initializes all previously generated Korl_Vulkan_RenderPassHandles such that commands can be recorded for them
 #endif
+korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_getSwapchainImageView(void);

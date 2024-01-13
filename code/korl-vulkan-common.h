@@ -7,6 +7,7 @@
 #include "korl-vulkan-memory.h"
 #include "utility/korl-utility-math.h"
 #include "utility/korl-stringPool.h"
+#include "utility/korl-pool.h"
 #include "korl-memoryPool.h"
 #include "korl-interface-platform-gfx.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
@@ -141,6 +142,17 @@ typedef struct _Korl_Vulkan_ShaderTrash
     _Korl_Vulkan_Shader shader;
     u8                  framesSinceQueued;// once this value >= SurfaceContext::swapChainImagesSize, we can safely delete the shader module
 } _Korl_Vulkan_ShaderTrash;
+typedef enum _Korl_Vulkan_TransientResource_Type
+{
+    _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID,
+    _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE,
+} _Korl_Vulkan_TransientResource_Type;
+typedef struct _Korl_Vulkan_TransientResource
+{
+    Korl_Pool_Handle handle;// encoded with the _Korl_Vulkan_TransientResource_Type
+    u8               swapChainImageIndex;// used in conjunction with `framesSinceQueued`; the index of the swap chain image that this resource's lifetime is tied to; once created, the resource will remain valid until synchronization occurs in `_korl_vulkan_frameBegin`, when a WIP frame's fence confirms that _all_ work on that frame is complete
+    //@TODO: investigate whether we also need to track "framesSinceQueued" in conjunction with `swapChainImageIndex`; this would be a concern only if it's possible for a swap chain to sparsely utilize its images; what does the Vulkan spec. say about this?
+} _Korl_Vulkan_TransientResource;
 #if 0//@TODO: introduce this later when we need render passes
 typedef enum _Korl_Vulkan_RenderPass_Attachment_SourceType
 {
@@ -172,35 +184,35 @@ typedef struct _Korl_Vulkan_Context
      * of a pointer, and the code which uses this member should be refactored 
      * appropriately when I decide to use a custom host memory allocator.
      */
-    VkAllocationCallbacks*      allocator;
-    VkInstance                  instance;
+    VkAllocationCallbacks*                        allocator;
+    VkInstance                                    instance;
     /* instance extension function pointers */
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR      vkGetPhysicalDeviceSurfaceSupportKHR;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
     PFN_vkGetPhysicalDeviceSurfaceFormatsKHR      vkGetPhysicalDeviceSurfaceFormatsKHR;
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
 #if KORL_DEBUG
-    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
-    VkDebugUtilsMessengerEXT            debugMessenger;
+    PFN_vkDestroyDebugUtilsMessengerEXT           vkDestroyDebugUtilsMessengerEXT;
+    VkDebugUtilsMessengerEXT                      debugMessenger;
 #endif// KORL_DEBUG
     //KORL-ISSUE-000-000-014: move everything below this point into \c _Korl_Vulkan_SurfaceContext ???
     /* for now we're just going to have a single window with Vulkan rendering, 
         so we only have to make one device, ergo we only need one global 
         instance of these variables */
-    VkPhysicalDevice         physicalDevice;
-    VkPhysicalDeviceFeatures physicalDeviceFeatures;// cache features so we can perform logic based on feature support of the physical device
-    VkDevice         device;
+    VkPhysicalDevice                              physicalDevice;
+    VkPhysicalDeviceFeatures                      physicalDeviceFeatures;// cache features so we can perform logic based on feature support of the physical device
+    VkDevice                                      device;
     /* we save this data member because once we query for this meta data in the 
         device creation routines, we basically never have to query for it again 
         (unless we need to create a device again for some reason), and this data 
         is needed for swap chain creation, which is very likely to happen 
         multiple times during program execution */
-    _Korl_Vulkan_QueueFamilyMetaData queueFamilyMetaData;
-    VkQueue queueGraphics;
-    VkQueue queuePresent;
-    _Korl_Vulkan_Shader*      stbDaShaders;
-    _Korl_Vulkan_ShaderTrash* stbDaShaderTrash;
-    _Korl_Vulkan_Pipeline*    stbDaPipelines;
+    _Korl_Vulkan_QueueFamilyMetaData              queueFamilyMetaData;
+    VkQueue                                       queueGraphics;
+    VkQueue                                       queuePresent;
+    _Korl_Vulkan_Shader*                          stbDaShaders;
+    _Korl_Vulkan_ShaderTrash*                     stbDaShaderTrash;
+    _Korl_Vulkan_Pipeline*                        stbDaPipelines;
     #if 0//@TODO: delete; replace with user-composable pipeline layouts; we know we're going to have to do this now since in order to make a pipeline, we need to be able to specify a RenderPass to bind to, ergo we need to first implement a RenderPass builder/system (render graph), then we need to implement a pipeline builder/system which utilizes the render graph system in order to draw anything again
     /* pipeline layouts (uniform data) are (potentially) shared between pipelines */
     VkPipelineLayout pipelineLayout;
@@ -214,7 +226,8 @@ typedef struct _Korl_Vulkan_Context
     #endif
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
-    Korl_StringPool stringPool;
+    Korl_StringPool                               stringPool;
+    Korl_Pool                                     poolTransientResources;// pool of _Korl_Vulkan_TransientResource objects
     #if 0//@TODO: introduce this later when we actually need render passes
     Korl_Pool       poolRenderPasses;// pool of _Korl_Vulkan_RenderPass objects
     #endif
@@ -317,6 +330,7 @@ typedef struct _Korl_Vulkan_SurfaceContext
 {
     VkSurfaceKHR                       surface;
     Korl_Math_V3f32                    frameBeginClearColor;
+    //@TODO: delete `frameSwapChainImageIndex`, in favor of using `wipFrames[wipFrameCurrent].swapChainImageIndex`
     u32                                frameSwapChainImageIndex;/** the index of the swap chain we are working with for the current frame */
     bool                               frameSwapChainImagePresented;// raised only if the last acquired swap chain image (via frameSwapChainImageIndex) was ever queued for presentation (via vkQueuePresentKHR)
     VkSurfaceFormatKHR                 swapChainSurfaceFormat;
@@ -326,13 +340,15 @@ typedef struct _Korl_Vulkan_SurfaceContext
     VkImage                            swapChainImages       [_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     _Korl_Vulkan_SwapChainImageContext swapChainImageContexts[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];
     u8                                 wipFrameCurrent;// this # will increase each frame, then get modded by swapChainImagesSize
+    //@TODO: delete `wipFrameCount`?  seems useless
     u8                                 wipFrameCount;  // the # of frames that are potentially WIP; this # will start at 0, then quickly grow until it == swapChainImagesSize, allowing us to know which frame fence to wait on (if at all) to acquire the next image
     struct
     {
-        VkSemaphore semaphoreTransfersDone;// tells the primary graphics command buffer submission that memory transfers are complete for this frame
-        VkSemaphore semaphoreImageAvailable;
-        VkSemaphore semaphoreRenderDone;
-        VkFence     fenceFrameComplete;
+        u32             swapChainImageIndex;
+        VkSemaphore     semaphoreTransfersDone;// tells the primary graphics command buffer submission that memory transfers are complete for this frame
+        VkSemaphore     semaphoreImageAvailable;
+        VkSemaphore     semaphoreRenderDone;
+        VkFence         fenceFrameComplete;
         VkCommandBuffer commandBufferTransfer;
         VkCommandBuffer commandBufferGraphics;
     } wipFrames[_KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE];

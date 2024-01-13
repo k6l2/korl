@@ -859,6 +859,30 @@ korl_internal VkDescriptorSet _korl_vulkan_newDescriptorSet(VkDescriptorSetLayou
     validDescriptorPool->setsAllocated++;
     return resultDescriptorSet;
 }
+/** releases & deletes all transient resources whose swap chain image index 
+ * matches that of the surface context's current WIP frame */
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_frameBegin_forEachTransientResource)
+{
+    _Korl_Vulkan_Context*const           context           = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const    surfaceContext    = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_TransientResource*const transientResource = KORL_C_CAST(_Korl_Vulkan_TransientResource*, item);
+    if(transientResource->swapChainImageIndex == surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].swapChainImageIndex)
+    {
+        const _Korl_Vulkan_TransientResource_Type transientResourceType = KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(transientResource->handle));
+        switch(transientResourceType)
+        {
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID:
+            korl_log(ERROR, "INVALID (uninitialized) transient resource type: %i", transientResourceType);
+            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
+            // this transient resource is managed by the swap chain; nothing to release here
+            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+        }
+        korl_log(ERROR, "unknown transient resource type: %i", transientResourceType);
+        return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+    }
+    return KORL_POOL_FOR_EACH_CONTINUE;
+}
 korl_internal void _korl_vulkan_frameBegin(void)
 {
     _Korl_Vulkan_Context*const          context               = &g_korl_vulkan_context;
@@ -915,7 +939,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
         _KORL_VULKAN_CHECK(vkWaitForFences(context->device, 1
                                           ,&surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete
                                           ,VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
-    // korl_assert(!"@TODO: checkpoint for transient resources; free transient render graph objects here");
+    korl_pool_forEach(&context->poolTransientResources, _korl_vulkan_frameBegin_forEachTransientResource, NULL);
     /* at this point, we know for certain that a frame has been processed, so we 
         can update our memory pools to reflect this history, allowing us to 
         reuse pools that we can deduce _must_ no longer be in use */
@@ -1007,6 +1031,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
                                                                      ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreImageAvailable
                                                                      ,VK_NULL_HANDLE/*fence*/
                                                                      ,/*return value address*/&surfaceContext->frameSwapChainImageIndex);
+        surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].swapChainImageIndex = surfaceContext->frameSwapChainImageIndex;
         _KORL_VULKAN_CHECK(resultAcquireNextImage);
         surfaceContext->frameSwapChainImagePresented = false;
         swapChainImageContext = &surfaceContext->swapChainImageContexts[surfaceContext->frameSwapChainImageIndex];
@@ -1199,6 +1224,7 @@ korl_internal void korl_vulkan_construct(void)
                                        context->allocator, &context->debugMessenger));
 #endif// KORL_DEBUG
     context->stringPool = korl_stringPool_create(context->allocatorHandle);
+    korl_pool_initialize(&context->poolTransientResources, context->allocatorHandle, sizeof(_Korl_Vulkan_TransientResource), 64);
     #if 0//@TODO: introduce this later when we need render passes
     korl_pool_initialize(&context->poolRenderPasses, context->allocatorHandle, sizeof(_Korl_Vulkan_RenderPass), 16);
     #endif
@@ -1206,6 +1232,7 @@ korl_internal void korl_vulkan_construct(void)
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
+    korl_pool_destroy(&context->poolTransientResources);
     #if 0//@TODO: introduce this later when we need render passes
     korl_pool_destroy(&context->poolRenderPasses);
     #endif
@@ -2710,3 +2737,15 @@ korl_internal void korl_vulkan_renderGraph_build(void)
     mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), stbDaRenderPasses);
 }
 #endif
+korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_getSwapchainImageView(void)
+{
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return KORL_POOL_INVALID_HANDLE;
+    _Korl_Vulkan_TransientResource* newResource = NULL;
+    Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE, &newResource);
+    newResource->handle              = newResourceHandle;
+    newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    return newResourceHandle;
+}
