@@ -146,12 +146,19 @@ typedef enum _Korl_Vulkan_TransientResource_Type
 {
     _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID,
     _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE,
+    _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS,
+    _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER,
 } _Korl_Vulkan_TransientResource_Type;
 typedef struct _Korl_Vulkan_TransientResource
 {
     Korl_Pool_Handle handle;// encoded with the _Korl_Vulkan_TransientResource_Type
     u8               swapChainImageIndex;// used in conjunction with `framesSinceQueued`; the index of the swap chain image that this resource's lifetime is tied to; once created, the resource will remain valid until synchronization occurs in `_korl_vulkan_frameBegin`, when a WIP frame's fence confirms that _all_ work on that frame is complete
     //@TODO: investigate whether we also need to track "framesSinceQueued" in conjunction with `swapChainImageIndex`; this would be a concern only if it's possible for a swap chain to sparsely utilize its images; what does the Vulkan spec. say about this?
+    union
+    {
+        VkRenderPass  pass;
+        VkFramebuffer framebuffer;
+    } subType;
 } _Korl_Vulkan_TransientResource;
 #if 0//@TODO: introduce this later when we need render passes
 typedef enum _Korl_Vulkan_RenderPass_Attachment_SourceType

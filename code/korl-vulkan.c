@@ -877,6 +877,12 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_frameBegin_forEachTransie
         case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
             // this transient resource is managed by the swap chain; nothing to release here
             return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
+            vkDestroyRenderPass(context->device, transientResource->subType.pass, context->allocator);
+            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
+            vkDestroyFramebuffer(context->device, transientResource->subType.framebuffer, context->allocator);
+            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
         }
         korl_log(ERROR, "unknown transient resource type: %i", transientResourceType);
         return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
@@ -939,6 +945,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
         _KORL_VULKAN_CHECK(vkWaitForFences(context->device, 1
                                           ,&surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete
                                           ,VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
+    // korl_log(VERBOSE, "context->poolTransientResources.itemCount=%u", context->poolTransientResources.itemCount);//@TODO: when we start presenting swap chain images, we need to run this to see if we're properly cleaning up transient resources
     korl_pool_forEach(&context->poolTransientResources, _korl_vulkan_frameBegin_forEachTransientResource, NULL);
     /* at this point, we know for certain that a frame has been processed, so we 
         can update our memory pools to reflect this history, allowing us to 
@@ -1232,7 +1239,7 @@ korl_internal void korl_vulkan_construct(void)
 korl_internal void korl_vulkan_destroy(void)
 {
     _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    korl_pool_destroy(&context->poolTransientResources);
+    korl_pool_destroy(&context->poolTransientResources);//@TODO: don't we have to destroy all the vulkan objects of these pool items first???
     #if 0//@TODO: introduce this later when we need render passes
     korl_pool_destroy(&context->poolRenderPasses);
     #endif
@@ -2574,139 +2581,89 @@ korl_internal void korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHan
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocatorHandle), context->stbDaShaderTrash, ((_Korl_Vulkan_ShaderTrash){.shader = *shader, .framesSinceQueued = 0}));
     shader->shaderModule = VK_NULL_HANDLE;
 }
-#if 0//@TODO: delete; see comment in korl-vulkan.h
-korl_internal VkFormat _korl_vulkan_gfxImageFormat_to_vulkan(Korl_Gfx_ImageFormat imageFormat)
+korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_getSwapchainImageView(void)
 {
-    switch(imageFormat)
-    {
-    case KORL_GFX_IMAGE_FORMAT_UNDEFINED    : return VK_FORMAT_UNDEFINED;
-    case KORL_GFX_IMAGE_FORMAT_B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_SRGB;
-    }
-    korl_log(ERROR, "invalid imageFormat: %u", imageFormat);
-    return VK_FORMAT_MAX_ENUM;
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return KORL_POOL_INVALID_HANDLE;
+    _Korl_Vulkan_TransientResource* newResource = NULL;
+    Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE, &newResource);
+    newResource->handle              = newResourceHandle;
+    newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    return newResourceHandle;
 }
-korl_internal VkAttachmentLoadOp _korl_vulkan_gfxRenderPassAttachmentLoadOperation_to_vulkan(Korl_Gfx_RenderPass_Attachment_LoadOperation loadOperation)
+korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize)
 {
-    switch(loadOperation)
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return KORL_POOL_INVALID_HANDLE;
+    _Korl_Vulkan_TransientResource* newResource = NULL;
+    Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS, &newResource);
+    newResource->handle              = newResourceHandle;
+    newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    /* ----- create Vulkan render pass ----- */
+    VkAttachmentDescription*               attachmentDescriptions        = korl_allocate(context->allocatorHandle, attachmentsSize * sizeof(*attachmentDescriptions));
+    VkAttachmentReference*                 attachmentReferenceColors     = korl_allocate(context->allocatorHandle, attachmentsSize * sizeof(*attachmentReferenceColors));
+    u8                                     attachmentReferenceColorsSize = 0;
+    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceDepth);// you can only have up to one depth attachment
+    bool                                   attachmentReferenceDepthPresent = false;
+    for(u8 i = 0; i < attachmentsSize; i++)
     {
-    case KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_LOAD     : return VK_ATTACHMENT_LOAD_OP_LOAD;
-    case KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_DONT_CARE: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    case KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_CLEAR    : return VK_ATTACHMENT_LOAD_OP_CLEAR;
-    }
-    korl_log(ERROR, "invalid loadOperation: %u", loadOperation);
-    return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
-}
-korl_internal VkAttachmentStoreOp _korl_vulkan_gfxRenderPassAttachmentStoreOperation_to_vulkan(Korl_Gfx_RenderPass_Attachment_StoreOperation storeOperation)
-{
-    switch(storeOperation)
-    {
-    case KORL_GFX_RENDER_PASS_ATTACHMENT_STORE_OPERATION_STORE    : return VK_ATTACHMENT_STORE_OP_STORE;
-    case KORL_GFX_RENDER_PASS_ATTACHMENT_STORE_OPERATION_DONT_CARE: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    }
-    korl_log(ERROR, "invalid storeOperation: %u", storeOperation);
-    return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
-}
-korl_internal Korl_Vulkan_RenderPassHandle korl_vulkan_renderGraph_addRenderPass(const Korl_Gfx_RenderPass* renderPass)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    _Korl_Vulkan_RenderPass* newRenderPass = NULL;
-    Korl_Vulkan_RenderPassHandle renderPassHandle = korl_pool_add(&context->poolRenderPasses, 0/*Pool_ItemType; unused for now*/, &newRenderPass);
-    newRenderPass->handle       = renderPassHandle;
-    newRenderPass->vulkanHandle = VK_NULL_HANDLE;// likely redundant, but that's okay
-    korl_assert(renderPass->attachmentsSize < korl_arraySize(newRenderPass->attachments));
-    newRenderPass->attachmentsSize = renderPass->attachmentsSize;
-    for(u8 i = 0; i < renderPass->attachmentsSize; i++)
-    {
-        newRenderPass->attachments[i].format         = _korl_vulkan_gfxImageFormat_to_vulkan                       (renderPass->attachments[i].imageFormat);
-        newRenderPass->attachments[i].loadOperation  = _korl_vulkan_gfxRenderPassAttachmentLoadOperation_to_vulkan (renderPass->attachments[i].loadOperation);
-        newRenderPass->attachments[i].storeOperation = _korl_vulkan_gfxRenderPassAttachmentStoreOperation_to_vulkan(renderPass->attachments[i].storeOperation);
-    }
-    return renderPassHandle;
-}
-korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_renderGraph_build_forEachRenderPass)
-{
-    _Korl_Vulkan_Context*const          context            = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const   surfaceContext     = &g_korl_vulkan_surfaceContext;
-    _Korl_Vulkan_RenderPass*const       renderPass         = KORL_C_CAST(_Korl_Vulkan_RenderPass*, item);
-    Korl_Vulkan_RenderPassHandle**const pStbDaRenderPasses = KORL_C_CAST(Korl_Vulkan_RenderPassHandle**, userData);
-    if(renderPass->vulkanHandle == VK_NULL_HANDLE)
-    {
-        mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), *pStbDaRenderPasses, renderPass->handle);
-        renderPass->surfaceWipFrameIndex = surfaceContext->wipFrameCurrent;
-    }
-    return KORL_POOL_FOR_EACH_CONTINUE;
-}
-korl_internal void korl_vulkan_renderGraph_addFrameBuffer(void)
-{
-    korl_assert(!"@TODO");
-    #if 0//@TODO: delete
-    /* create a frame buffer for all the swap chain image views */
-    VkImageView frameBufferAttachments[] = 
-        { surfaceContext->swapChainImageContexts[i].imageView
-        , allocationDepthStencilImageBuffer->subType.imageBuffer.imageView };
-    KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
-    createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    createInfoFrameBuffer.renderPass      = context->renderPass;
-    createInfoFrameBuffer.attachmentCount = korl_arraySize(frameBufferAttachments);
-    createInfoFrameBuffer.pAttachments    = frameBufferAttachments;
-    createInfoFrameBuffer.width           = surfaceContext->swapChainImageExtent.width;
-    createInfoFrameBuffer.height          = surfaceContext->swapChainImageExtent.height;
-    createInfoFrameBuffer.layers          = 1;
-    _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &surfaceContext->swapChainImageContexts[i].frameBuffer));
-    #endif
-}
-korl_internal void korl_vulkan_renderGraph_build(void)
-{
-    _Korl_Vulkan_Context*const context = &g_korl_vulkan_context;
-    /* loop over all RenderPasses that don't yet have a Vulkan handle to identify the new RenderGraph nodes */
-    Korl_Vulkan_RenderPassHandle* stbDaRenderPasses = NULL;
-    mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocator), stbDaRenderPasses, 16);
-    korl_pool_forEach(&context->poolRenderPasses, _korl_vulkan_renderGraph_build_forEachRenderPass, &stbDaRenderPasses);
-    /* perform topological sort to ensure that the graph is valid (directed, acyclic, rooted tree) */
-    #if 0//@TODO: ???
-    {
-        /* create the graph data structure */
-        /* build the graph edges by dereferencing each render graph node handle */
-        const Korl_Vulkan_RenderPassHandle*const stbDaRenderPassesEnd = stbDaRenderPasses + arrlen(stbDaRenderPasses);
-        for(Korl_Vulkan_RenderPassHandle* renderPass = stbDaRenderPasses; renderPass < stbDaRenderPassesEnd; renderPass++)
+        _Korl_Vulkan_TransientResource* transientResource = korl_pool_get(&context->poolTransientResources, attachments + i);
+        korl_assert(transientResource);
+        switch(KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(attachments[i])))
         {
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
+            /* setup the VkAttachmentDescription */
+            attachmentDescriptions[i].format         = surfaceContext->swapChainSurfaceFormat.format;
+            attachmentDescriptions[i].samples        = VK_SAMPLE_COUNT_1_BIT;
+            attachmentDescriptions[i].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
+            attachmentDescriptions[i].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+            attachmentDescriptions[i].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachmentDescriptions[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachmentDescriptions[i].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachmentDescriptions[i].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            /* add a color VkAttachmentReference */
+            korl_assert(attachmentReferenceColorsSize < attachmentsSize);
+            VkAttachmentReference*const newAttachmentReference = attachmentReferenceColors + attachmentReferenceColorsSize++;
+            newAttachmentReference->attachment = i;
+            newAttachmentReference->layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            continue;
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
+            korl_assert(!"@TODO: not yet implemented");
+            continue;
+            #if 0//@TODO: recycle; use this when building a depth attachment
+            KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
+            attachments[1].format         = formatDepthBuffer;
+            attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
+            attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass 
+            attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachments[1].finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceDepth);
+            attachmentReferenceDepth.attachment = 1;
+            attachmentReferenceDepth.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            #endif
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID:
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
+            korl_log(ERROR, "transient resource (type=%i) can't be a Pass Attachment", KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(attachments[i])));
+            continue;
         }
-        /* perform topological sort */
-        /* clean up temp graph data struct */
+        korl_log(ERROR, "unknown transient resource type: %i", KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(attachments[i])));
     }
-    #endif
-    /* determine the "presentation" RenderPass; the last RenderPass is attached to the swap chain framebuffer */
-    /* construct all the vulkan objects of the graph; VkRenderPass, VkCommandBuffer, transient VkFramebuffers */
-    #if 0//@TODO: recycle
-    /* ----- create render pass ----- */
-    KORL_ZERO_STACK_ARRAY(VkAttachmentDescription, attachments, 2);
-    attachments[0].format         = surfaceContext->swapChainSurfaceFormat.format;
-    attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
-    attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[0].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    attachments[1].format         = formatDepthBuffer;
-    attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass 
-    attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[1].finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceColor);
-    attachmentReferenceColor.attachment = 0;
-    attachmentReferenceColor.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    KORL_ZERO_STACK(VkAttachmentReference, attachmentReferenceDepth);
-    attachmentReferenceDepth.attachment = 1;
-    attachmentReferenceDepth.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     KORL_ZERO_STACK(VkSubpassDescription, subPass);
-    subPass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subPass.colorAttachmentCount    = 1;
-    subPass.pColorAttachments       = &attachmentReferenceColor;
-    subPass.pDepthStencilAttachment = &attachmentReferenceDepth;
+    subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    if(attachmentReferenceColorsSize)
+    {
+        subPass.colorAttachmentCount = attachmentReferenceColorsSize;
+        subPass.pColorAttachments    = attachmentReferenceColors;
+    }
+    if(attachmentReferenceDepthPresent)
+        subPass.pDepthStencilAttachment = &attachmentReferenceDepth;
     /* setup subpass dependencies for synchronization between frames; derived from:
         https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples#swapchain-image-acquire-and-present */
     KORL_ZERO_STACK_ARRAY(VkSubpassDependency, subpassDependency, 2);
@@ -2724,28 +2681,73 @@ korl_internal void korl_vulkan_renderGraph_build(void)
     subpassDependency[1].dstAccessMask = VK_ACCESS_NONE_KHR;
     KORL_ZERO_STACK(VkRenderPassCreateInfo, createInfoRenderPass);
     createInfoRenderPass.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    createInfoRenderPass.attachmentCount = korl_arraySize(attachments);
-    createInfoRenderPass.pAttachments    = attachments;
+    createInfoRenderPass.attachmentCount = attachmentsSize;
+    createInfoRenderPass.pAttachments    = attachmentDescriptions;
     createInfoRenderPass.subpassCount    = 1;
     createInfoRenderPass.pSubpasses      = &subPass;
     createInfoRenderPass.dependencyCount = korl_arraySize(subpassDependency);
     createInfoRenderPass.pDependencies   = subpassDependency;
-    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &context->renderPass));
-    #endif
-    /* initialize all the RenderPass CommandBuffers so that we can begin recording them, via vkCmdBeginRenderPass */
-    /* clean up */
-    mcarrfree(KORL_STB_DS_MC_CAST(context->allocator), stbDaRenderPasses);
+    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &newResource->subType.pass));
+    korl_free(context->allocatorHandle, attachmentDescriptions);
+    korl_free(context->allocatorHandle, attachmentReferenceColors);
+    return newResourceHandle;
 }
-#endif
-korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_getSwapchainImageView(void)
+korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebuffer(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource* imageViewAttachments, u32 imageViewAttachmentsSize)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
         return KORL_POOL_INVALID_HANDLE;
+    /* get the renderPass transient resource */
+    korl_assert(KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(renderPass)) == _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS);
+    _Korl_Vulkan_TransientResource*const renderPassResource = korl_pool_get(&context->poolTransientResources, &renderPass);
+    korl_assert(renderPassResource);
+    /* create the new transient resource */
     _Korl_Vulkan_TransientResource* newResource = NULL;
-    Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE, &newResource);
+    Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER, &newResource);
     newResource->handle              = newResourceHandle;
     newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    /* extract data needed to create Vulkan object from transient resources */
+    VkImageView* _imageViewAttachments = korl_allocate(context->allocatorHandle, imageViewAttachmentsSize * sizeof(*_imageViewAttachments));
+    u32          framebufferSizeX      = 0;
+    u32          framebufferSizeY      = 0;
+    for(u32 i = 0; i < imageViewAttachmentsSize; i++)
+    {
+        _Korl_Vulkan_TransientResource* transientResource = korl_pool_get(&context->poolTransientResources, imageViewAttachments + i);
+        korl_assert(transientResource);
+        switch(KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(imageViewAttachments[i])))
+        {
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
+            _imageViewAttachments[i] = surfaceContext->swapChainImageContexts[transientResource->swapChainImageIndex].imageView;
+            if(!framebufferSizeX || !framebufferSizeY)
+            {
+                korl_assert(!framebufferSizeX && !framebufferSizeY);
+                framebufferSizeX = surfaceContext->swapChainImageExtent.width;
+                framebufferSizeY = surfaceContext->swapChainImageExtent.height;
+            }
+            continue;
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
+            korl_assert(!"@TODO");
+            continue;
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
+        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID:
+            korl_log(ERROR, "transient resource (type=%i) can't be a Framebuffer Attachment", KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(imageViewAttachments[i])));
+            continue;
+        }
+        korl_log(ERROR, "unknown transient resource type: %i", KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(imageViewAttachments[i])));
+    }
+    /* create the Vulkan object */
+    KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
+    createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    createInfoFrameBuffer.renderPass      = renderPassResource->subType.pass;
+    createInfoFrameBuffer.attachmentCount = imageViewAttachmentsSize;
+    createInfoFrameBuffer.pAttachments    = _imageViewAttachments;
+    createInfoFrameBuffer.width           = framebufferSizeX;
+    createInfoFrameBuffer.height          = framebufferSizeY;
+    createInfoFrameBuffer.layers          = 1;
+    _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &newResource->subType.framebuffer));
+    /* free temporary resources */
+    korl_free(context->allocatorHandle, _imageViewAttachments);
+    /**/
     return newResourceHandle;
 }

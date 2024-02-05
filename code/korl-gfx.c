@@ -95,6 +95,14 @@ korl_internal KORL_FUNCTION_korl_gfx_getSwapchainImageView(korl_gfx_getSwapchain
 {
     return korl_vulkan_getSwapchainImageView();
 }
+korl_internal KORL_FUNCTION_korl_gfx_newTransientPass(korl_gfx_newTransientPass)
+{
+    return korl_vulkan_newTransientPass(attachments, attachmentsSize);
+}
+korl_internal KORL_FUNCTION_korl_gfx_newTransientFramebuffer(korl_gfx_newTransientFramebuffer)
+{
+    return korl_vulkan_newTransientFramebuffer(renderPass, imageViewAttachments, imageViewAttachmentsSize);
+}
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
     _Korl_Gfx_Context*const context = _korl_gfx_context;

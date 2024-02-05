@@ -358,6 +358,8 @@ typedef struct Korl_Gfx_Drawable
  * this can happen if the swapchain is in an invalid state, such as when the 
  * window is minimized */
 #define KORL_FUNCTION_korl_gfx_getSwapchainImageView(name)    Korl_Gfx_PlatformTransientResource name(void)
+#define KORL_FUNCTION_korl_gfx_newTransientPass(name)         Korl_Gfx_PlatformTransientResource name(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize)
+#define KORL_FUNCTION_korl_gfx_newTransientFramebuffer(name)  Korl_Gfx_PlatformTransientResource name(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource* imageViewAttachments, u32 imageViewAttachmentsSize)
 #define KORL_FUNCTION_korl_gfx_useCamera(name)                void                               name(Korl_Gfx_Camera camera)
 #define KORL_FUNCTION_korl_gfx_camera_getCurrent(name)        Korl_Gfx_Camera                    name(void)
 #define KORL_FUNCTION_korl_gfx_cameraOrthoGetSize(name)       Korl_Math_V2f32                    name(const Korl_Gfx_Camera*const context)

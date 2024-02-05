@@ -113,46 +113,6 @@ korl_internal void*                                     korl_vulkan_buffer_getSt
 korl_internal VkDescriptorBufferInfo                    korl_vulkan_buffer_getDescriptorBufferInfo(Korl_Vulkan_DeviceMemory_AllocationHandle bufferHandle);
 korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
 korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);
-#if 0//@TODO: delete; bad idea; render graph should not be in korl-vulkan; it should be an API within korl-gfx
-//@TODO: move all these enums/structs into korl-platform-gfx
-typedef enum Korl_Gfx_ImageFormat
-{
-    KORL_GFX_IMAGE_FORMAT_UNDEFINED,
-    KORL_GFX_IMAGE_FORMAT_B8G8R8A8_SRGB,
-} Korl_Gfx_ImageFormat;
-//@TODO: do we need this?
-// typedef enum Korl_Gfx_ImageLayout
-// {
-//     KORL_GFX_IMAGE_LAYOUT_UNDEFINED,
-//     KORL_GFX_IMAGE_LAYOUT_PRESENT_SOURCE,
-//     KORL_GFX_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT,
-// } Korl_Gfx_ImageLayout;
-typedef enum Korl_Gfx_RenderPass_Attachment_LoadOperation
-{
-    KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_LOAD,
-    KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_DONT_CARE,
-    KORL_GFX_RENDER_PASS_ATTACHMENT_LOAD_OPERATION_CLEAR,
-} Korl_Gfx_RenderPass_Attachment_LoadOperation;
-typedef enum Korl_Gfx_RenderPass_Attachment_StoreOperation
-{
-    KORL_GFX_RENDER_PASS_ATTACHMENT_STORE_OPERATION_STORE,
-    KORL_GFX_RENDER_PASS_ATTACHMENT_STORE_OPERATION_DONT_CARE,
-} Korl_Gfx_RenderPass_Attachment_StoreOperation;
-typedef struct Korl_Gfx_RenderPass_Attachment
-{
-    Korl_Gfx_ImageFormat                          imageFormat;
-    //@TODO: do we need this?
-    // Korl_Gfx_ImageLayout                          imageLayout;// the "input" layout of the attached image; "output" layout can be determined by the RenderGraph based on where the attachment is hooked to as an input
-    Korl_Gfx_RenderPass_Attachment_LoadOperation  loadOperation;
-    Korl_Gfx_RenderPass_Attachment_StoreOperation storeOperation;
-} Korl_Gfx_RenderPass_Attachment;
-typedef struct Korl_Gfx_RenderPass
-{
-    Korl_Gfx_RenderPass_Attachment* attachments;
-    u8                              attachmentsSize;
-} Korl_Gfx_RenderPass;
-korl_internal Korl_Vulkan_RenderPassHandle              korl_vulkan_renderGraph_addRenderPass(const Korl_Gfx_RenderPass* renderPass);
-korl_internal void                                      korl_vulkan_renderGraph_addFrameBuffer(void);
-korl_internal void                                      korl_vulkan_renderGraph_build(void);// initializes all previously generated Korl_Vulkan_RenderPassHandles such that commands can be recorded for them
-#endif
 korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_getSwapchainImageView(void);
+korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize);
+korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientFramebuffer(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource* imageViewAttachments, u32 imageViewAttachmentsSize);

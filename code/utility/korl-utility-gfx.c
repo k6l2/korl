@@ -17,7 +17,7 @@ typedef enum _Korl_Gfx_RenderGraph_Node_Attachment_Type
     _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE,
     _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_CHILD_NODE_ATTACHMENT,
 } _Korl_Gfx_RenderGraph_Node_Attachment_Type;
-typedef struct _Korl_Gfx_RenderGraph_Node_Attachment
+typedef struct _Korl_Gfx_RenderGraph_Node_Attachment// @TODO: should Node_Attachment just be a special type of Node?
 {
     _Korl_Gfx_RenderGraph_Node_Attachment_Type type;
     union
@@ -33,8 +33,10 @@ typedef struct _Korl_Gfx_RenderGraph_Node_Attachment
 typedef struct _Korl_Gfx_RenderGraph_Node
 {
     _Korl_Gfx_RenderGraph_Node_Type       type;
+    Korl_Gfx_RenderGraph_NodeHandle       parent;// @TODO: at some point in the future, we will need to be able to handle multiple parents; example: an attachment could be both a Framebuffer attachment, as well as hold a descriptor dependency to a completely different Pass
     _Korl_Gfx_RenderGraph_Node_Attachment attachments[_KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS];
     u8                                    attachmentsSize;
+    Korl_Gfx_PlatformTransientResource    platformObject;// constructed via `korl_gfx_renderGraph_build`; this is the actual opaque object handle representing this node object in the platform's renderer; example: if the platform renderer is korl-vulkan, a _FRAMEBUFFER Node would be a VkFramebuffer platform object
     union
     {
         struct
@@ -95,10 +97,61 @@ korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newPass(Korl_
     mcarrpush(KORL_STB_DS_MC_CAST(context->allocator), context->stbDaNodes, newNode);
     return newNodeHandle;
 }
+/** this function will recursively obtain the PlatformTransientResource of a specific Node's attachment */
+korl_internal Korl_Gfx_PlatformTransientResource _korl_gfx_renderGraph_build_getNodeAttachmentPlatformTransientResource(Korl_Gfx_RenderGraph* context, _Korl_Gfx_RenderGraph_Node* node, u8 attachmentIndex)
+{
+    switch(node->attachments[attachmentIndex].type)
+    {
+    case _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_INVALID:
+        korl_log(ERROR, "INVALID node attachment[%hhu]", attachmentIndex);
+        return 0;
+    case _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE:
+        return node->attachments[attachmentIndex].subType.platformTransientResource;
+    case _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_CHILD_NODE_ATTACHMENT:
+        /* if the attachment comes from another node, we have to traverse the nodes until we get a PLATFORM_TRANSIENT_RESOURCE */
+        _Korl_Gfx_RenderGraph_Node*const childNode = _korl_gfx_renderGraph_getNode(context, node->attachments[attachmentIndex].subType.childNodeAttachment.nodeHandle);
+        return _korl_gfx_renderGraph_build_getNodeAttachmentPlatformTransientResource(context, childNode, node->attachments[attachmentIndex].subType.childNodeAttachment.attachmentIndex);
+    }
+    korl_log(ERROR, "unknown node attachment[%hhu] type: %i", attachmentIndex, node->attachments[attachmentIndex].type);
+    return 0;
+}
 korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
 {
     korl_assert(!context->_built);
-    korl_assert(!"@TODO");
+    //@TODO: we need to actually do some kind of topological sort to ensure the user's graph is valid; right now, we're just iterating over the graph nodes in the order they were created!
+    const _Korl_Gfx_RenderGraph_Node*const nodesEnd = context->stbDaNodes + arrlen(context->stbDaNodes);
+    for(_Korl_Gfx_RenderGraph_Node* node = context->stbDaNodes; node < nodesEnd; node++)
+    {
+        switch(node->type)
+        {
+        case _KORL_GFX_RENDERGRAPH_NODE_TYPE_INVALID:
+            korl_log(ERROR, "INVALID node type");
+            continue;
+        case _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS:{
+            /* in order for the renderer to create a Pass, we need to give it an array of Korl_Gfx_PlatformTransientResource; 
+                in order to get this array, we have to extract this data from the RenderGraph */
+            korl_assert(node->attachmentsSize);// we can't create a Pass with 0 attachments
+            Korl_Gfx_PlatformTransientResource attachments[_KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS];
+            u8                                 attachmentsSize = 0;
+            for(u8 i = 0; i < node->attachmentsSize; i++)
+                attachments[i] = _korl_gfx_renderGraph_build_getNodeAttachmentPlatformTransientResource(context, node, i);
+            /* create the Pass platform object & free temporary data needed for this operation */
+            node->platformObject = korl_gfx_newTransientPass(attachments, node->attachmentsSize);
+            continue;}
+        case _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER:{
+            /* "dereference" all attachments into Korl_Gfx_PlatformTransientResource handles */
+            Korl_Gfx_PlatformTransientResource attachments[_KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS];
+            u8                                 attachmentsSize = 0;
+            for(u8 i = 0; i < node->attachmentsSize; i++)
+                attachments[i] = _korl_gfx_renderGraph_build_getNodeAttachmentPlatformTransientResource(context, node, i);
+            /* using the list of PlatformTransientResource handles, we can create the transient Framebuffer */
+            _Korl_Gfx_RenderGraph_Node*const parentNode = _korl_gfx_renderGraph_getNode(context, node->parent);
+            korl_assert(parentNode->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS);
+            node->platformObject = korl_gfx_newTransientFramebuffer(parentNode->platformObject, attachments, node->attachmentsSize);
+            continue;}
+        }
+        korl_log(ERROR, "unknown node type: %i", node->type);
+    }
     context->_built = true;
 }
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffer(Korl_Gfx_RenderGraph* context)
@@ -120,15 +173,16 @@ korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_Rende
     switch(attachmentInfo.type)
     {
     case KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_INVALID:
-        korl_log(ERROR, "invalid attachmentInfo.type: %i", attachmentInfo.type);
-        break;
+        korl_log(ERROR, "INVALID attachmentInfo.type");
+        return;
     case KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_SWAPCHAIN_IMAGE:
         korl_assert(node->attachmentsSize < korl_arraySize(node->attachments));
         _Korl_Gfx_RenderGraph_Node_Attachment*const newAttachment = node->attachments + (node->attachmentsSize++);
         newAttachment->type                              = _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE;
         newAttachment->subType.platformTransientResource = korl_gfx_getSwapchainImageView();
-        break;
+        return;
     }
+    korl_log(ERROR, "unknown attachmentInfo.type: %i", attachmentInfo.type);
 }
 korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChildHandle, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParentHandle, u8 attachIndexParent)
 {
@@ -138,6 +192,8 @@ korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* render
     _Korl_Gfx_RenderGraph_Node*const nodeParent = _korl_gfx_renderGraph_getNode(renderGraph, nodeParentHandle);
     korl_assert(nodeChild);
     korl_assert(nodeParent);
+    korl_assert(nodeChild->parent == 0);
+    nodeChild->parent = nodeParentHandle;
     /* add the child attachments to the parent */
     korl_assert(nodeChild->attachmentsSize > 0);
     korl_assert(nodeParent->attachmentsSize + nodeChild->attachmentsSize < korl_arraySize(nodeParent->attachments));

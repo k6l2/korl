@@ -157,7 +157,10 @@ korl_internal void* korl_heap_crt_allocate(_Korl_Heap_Crt* allocator, const wcha
         allocator->allocations = realloc(allocator->allocations, allocator->allocationsCapacity * sizeof(*allocator->allocations));
     }
     _Korl_Heap_Crt_Allocation*const heapCrtAllocation = allocator->allocations + allocator->allocationsSize++;
-    heapCrtAllocation->address    = _aligned_malloc(korl_math_roundUpPowerOf2(bytes, byteAlignment), byteAlignment);
+    // _aligned_recalloc()
+    heapCrtAllocation->address            = fastAndDirty 
+                                            ? _aligned_malloc(bytes, byteAlignment) 
+                                            : _aligned_recalloc(NULL, 1, bytes, byteAlignment);
     heapCrtAllocation->meta.bytes         = bytes;
     heapCrtAllocation->meta.byteAlignment = korl_checkCast_u$_to_u32(byteAlignment);
     heapCrtAllocation->meta.file          = file;
@@ -174,7 +177,9 @@ korl_internal void* korl_heap_crt_reallocate(_Korl_Heap_Crt* allocator, const wc
         if(allocator->allocations[i].address == allocation)
             heapCrtAllocation = allocator->allocations + i;
     korl_assert(heapCrtAllocation);
-    heapCrtAllocation->address    = _aligned_realloc(heapCrtAllocation->address, bytes, heapCrtAllocation->meta.byteAlignment);
+    heapCrtAllocation->address            = fastAndDirty
+                                            ? _aligned_realloc(heapCrtAllocation->address, bytes, heapCrtAllocation->meta.byteAlignment) 
+                                            : _aligned_recalloc(heapCrtAllocation->address, 1, bytes, heapCrtAllocation->meta.byteAlignment);
     heapCrtAllocation->meta.bytes         = bytes;
     heapCrtAllocation->meta.byteAlignment = korl_checkCast_u$_to_u32(byteAlignment);
     heapCrtAllocation->meta.file          = file;
