@@ -116,3 +116,4 @@ korl_internal void                                      korl_vulkan_shader_destr
 korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_getSwapchainImageView(void);
 korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize);
 korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientFramebuffer(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource* imageViewAttachments, u32 imageViewAttachmentsSize);
+korl_internal void                                      korl_vulkan_pass_submit(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource framebuffer);

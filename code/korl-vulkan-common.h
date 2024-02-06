@@ -156,8 +156,17 @@ typedef struct _Korl_Vulkan_TransientResource
     //@TODO: investigate whether we also need to track "framesSinceQueued" in conjunction with `swapChainImageIndex`; this would be a concern only if it's possible for a swap chain to sparsely utilize its images; what does the Vulkan spec. say about this?
     union
     {
-        VkRenderPass  pass;
-        VkFramebuffer framebuffer;
+        struct
+        {
+            VkRenderPass    renderPass;
+            VkCommandBuffer commandBuffer;
+        } pass;
+        struct
+        {
+            VkFramebuffer framebuffer;
+            u32           sizeX;
+            u32           sizeY;
+        } framebuffer;
     } subType;
 } _Korl_Vulkan_TransientResource;
 #if 0//@TODO: introduce this later when we need render passes

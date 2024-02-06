@@ -103,6 +103,10 @@ korl_internal KORL_FUNCTION_korl_gfx_newTransientFramebuffer(korl_gfx_newTransie
 {
     return korl_vulkan_newTransientFramebuffer(renderPass, imageViewAttachments, imageViewAttachmentsSize);
 }
+korl_internal KORL_FUNCTION_korl_gfx_pass_submit(korl_gfx_pass_submit)
+{
+    korl_vulkan_pass_submit(renderPass, framebuffer);
+}
 korl_internal KORL_FUNCTION_korl_gfx_useCamera(korl_gfx_useCamera)
 {
     _Korl_Gfx_Context*const context = _korl_gfx_context;

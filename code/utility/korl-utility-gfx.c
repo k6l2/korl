@@ -89,7 +89,7 @@ korl_internal Korl_Gfx_RenderGraph* korl_gfx_renderGraph_create(Korl_Memory_Allo
 }
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newPass(Korl_Gfx_RenderGraph* context)
 {
-    korl_assert(!context->_built);
+    korl_assert(context->_state == KORL_GFX_RENDERGRAPH_STATE_UNBUILT);
     const _Korl_Gfx_RenderGraph_Node               newNode               = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_Node){_KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS};
     const _Korl_Gfx_RenderGraph_NodeHandleUnpacked newNodeHandleUnpacked = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_NodeHandleUnpacked){korl_checkCast_u$_to_u8(arrlenu(context->stbDaNodes))
                                                                                                                                            ,newNode.type};
@@ -117,7 +117,7 @@ korl_internal Korl_Gfx_PlatformTransientResource _korl_gfx_renderGraph_build_get
 }
 korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
 {
-    korl_assert(!context->_built);
+    korl_assert(context->_state == KORL_GFX_RENDERGRAPH_STATE_UNBUILT);
     //@TODO: we need to actually do some kind of topological sort to ensure the user's graph is valid; right now, we're just iterating over the graph nodes in the order they were created!
     const _Korl_Gfx_RenderGraph_Node*const nodesEnd = context->stbDaNodes + arrlen(context->stbDaNodes);
     for(_Korl_Gfx_RenderGraph_Node* node = context->stbDaNodes; node < nodesEnd; node++)
@@ -152,11 +152,32 @@ korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
         }
         korl_log(ERROR, "unknown node type: %i", node->type);
     }
-    context->_built = true;
+    context->_state = KORL_GFX_RENDERGRAPH_STATE_COMPOSING;
+}
+korl_internal void korl_gfx_renderGraph_submit(Korl_Gfx_RenderGraph* context)
+{
+    korl_assert(context->_state == KORL_GFX_RENDERGRAPH_STATE_COMPOSING);
+    //@TODO: we need to actually do some kind of topological sort to ensure that we issue commands in the correct order; right now, we're just iterating over the graph nodes in the order they were created!
+    /* enumerate over all Framebuffer/Pass edges of the RenderGraph and:
+        - issue commands to end the Pass command buffers
+        - issue commands to begin Passes
+        - issue commands to execute the Pass command buffers
+        - issue commands to end Passes */
+    const _Korl_Gfx_RenderGraph_Node*const nodesEnd = context->stbDaNodes + arrlen(context->stbDaNodes);
+    for(_Korl_Gfx_RenderGraph_Node* node = context->stbDaNodes; node < nodesEnd; node++)
+    {
+        if(node->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER)
+        {
+            _Korl_Gfx_RenderGraph_Node*const parentNode = _korl_gfx_renderGraph_getNode(context, node->parent);
+            korl_assert(parentNode->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS);
+            korl_gfx_pass_submit(parentNode->platformObject, node->platformObject);
+        }
+    }
+    context->_state = KORL_GFX_RENDERGRAPH_STATE_SUBMITTED;
 }
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffer(Korl_Gfx_RenderGraph* context)
 {
-    korl_assert(!context->_built);
+    korl_assert(context->_state == KORL_GFX_RENDERGRAPH_STATE_UNBUILT);
     const _Korl_Gfx_RenderGraph_Node               newNode               = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_Node){_KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER};
     const _Korl_Gfx_RenderGraph_NodeHandleUnpacked newNodeHandleUnpacked = KORL_STRUCT_INITIALIZE(_Korl_Gfx_RenderGraph_NodeHandleUnpacked){korl_checkCast_u$_to_u8(arrlenu(context->stbDaNodes))
                                                                                                                                            ,newNode.type};
@@ -166,7 +187,7 @@ korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffe
 }
 korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle framebuffer, Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo attachmentInfo)
 {
-    korl_assert(!renderGraph->_built);
+    korl_assert(renderGraph->_state == KORL_GFX_RENDERGRAPH_STATE_UNBUILT);
     _Korl_Gfx_RenderGraph_Node*const node = _korl_gfx_renderGraph_getNode(renderGraph, framebuffer);
     korl_assert(node);
     korl_assert(node->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER);
@@ -186,7 +207,7 @@ korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_Rende
 }
 korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChildHandle, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParentHandle, u8 attachIndexParent)
 {
-    korl_assert(!renderGraph->_built);
+    korl_assert(renderGraph->_state == KORL_GFX_RENDERGRAPH_STATE_UNBUILT);
     /* obtail the parent & child RenderGraph_Nodes */
     _Korl_Gfx_RenderGraph_Node*const nodeChild  = _korl_gfx_renderGraph_getNode(renderGraph, nodeChildHandle);
     _Korl_Gfx_RenderGraph_Node*const nodeParent = _korl_gfx_renderGraph_getNode(renderGraph, nodeParentHandle);

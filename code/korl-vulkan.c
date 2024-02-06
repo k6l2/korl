@@ -359,6 +359,8 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY, const _Kor
             /* initialize a debug pool of device asset indices */
             mcarrsetcap(KORL_STB_DS_MC_CAST(context->allocatorHandle), surfaceContext->swapChainImageContexts[i].stbDaInUseDeviceAssetIndices, 2048);
         #endif
+        /* initialize WIP frames */
+        surfaceContext->wipFrames[i].swapChainImageIndex = _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE;
     }
     /* assume that our vulkan state is setup such that korl-vulkan can now 
         acquire the next swap chain image; prime korl-vulkan state so that this 
@@ -370,7 +372,7 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
-    // korl_assert(!"@TODO: invalidate/destroy render passes, since render passes need to have an up-to-date format of the swap chain");
+    // korl_assert(!"@TODO: invalidate/destroy render passes, since render passes need to have an up-to-date format of the swap chain; also destroy all transient resources");
     #if 0//@TODO: delete
     _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
     surfaceContext->depthStencilImageBuffer = 0;
@@ -878,10 +880,11 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_frameBegin_forEachTransie
             // this transient resource is managed by the swap chain; nothing to release here
             return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
         case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
-            vkDestroyRenderPass(context->device, transientResource->subType.pass, context->allocator);
+            vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &transientResource->subType.pass.commandBuffer);
+            vkDestroyRenderPass(context->device, transientResource->subType.pass.renderPass, context->allocator);
             return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
         case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
-            vkDestroyFramebuffer(context->device, transientResource->subType.framebuffer, context->allocator);
+            vkDestroyFramebuffer(context->device, transientResource->subType.framebuffer.framebuffer, context->allocator);
             return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
         }
         korl_log(ERROR, "unknown transient resource type: %i", transientResourceType);
@@ -1078,27 +1081,6 @@ korl_internal void _korl_vulkan_frameBegin(void)
     if(swapChainImageContext)
         _KORL_VULKAN_CHECK(vkBeginCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics, &beginInfoCommandBuffer));
     #if 0//@TODO: instead of beginning a monolithic RenderPass for the entire frame, let's allow the user to create multiple RenderPasses & maybe build a separate command buffer per-pass
-    if(swapChainImageContext)
-    {
-        // define the color we are going to clear the color attachment with when 
-        //    the render pass begins:
-        KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
-        clearValues[0].color.float32[0] = surfaceContext->frameBeginClearColor.elements[0];
-        clearValues[0].color.float32[1] = surfaceContext->frameBeginClearColor.elements[1];
-        clearValues[0].color.float32[2] = surfaceContext->frameBeginClearColor.elements[2];
-        clearValues[0].color.float32[3] = 1.f;
-        clearValues[1].depthStencil.depth   = _KORL_VULKAN_DEPTH_CLEAR_VALUE;
-        clearValues[1].depthStencil.stencil = 0;
-        KORL_ZERO_STACK(VkRenderPassBeginInfo, beginInfoRenderPass);
-        beginInfoRenderPass.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        beginInfoRenderPass.renderPass        = context->renderPass;
-        beginInfoRenderPass.framebuffer       = swapChainImageContext->frameBuffer;
-        beginInfoRenderPass.renderArea.extent = surfaceContext->swapChainImageExtent;
-        beginInfoRenderPass.clearValueCount   = korl_arraySize(clearValues);
-        beginInfoRenderPass.pClearValues      = clearValues;
-        vkCmdBeginRenderPass(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics
-                            ,&beginInfoRenderPass, VK_SUBPASS_CONTENTS_INLINE);
-    }
     /* clear the vertex batch metrics for the upcoming frame */
     KORL_ZERO_STACK(VkRect2D, scissorDefault);
     scissorDefault.offset = (VkOffset2D){.x = 0, .y = 0};
@@ -1680,12 +1662,7 @@ korl_internal void korl_vulkan_frameEnd(void)
     /* now we can finalize the primary command buffers for the current frame */
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferTransfer));
     if(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics)
-    {
-        #if 0//@TODO: delete
-        vkCmdEndRenderPass(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics);
-        #endif
         _KORL_VULKAN_CHECK(vkEndCommandBuffer(surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics));
-    }
     /* close the frame-complete indication fence in preparation to submit 
         commands to the graphics queue for the current WIP frame */
     _KORL_VULKAN_CHECK(vkResetFences(context->device, 1, &surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
@@ -1700,9 +1677,9 @@ korl_internal void korl_vulkan_frameEnd(void)
         semaphoreSubmitInfoSignal[0].semaphore = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreTransfersDone;
         semaphoreSubmitInfoSignal[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         KORL_ZERO_STACK_ARRAY(VkSubmitInfo2, submitInfoGraphics, 1);
-        submitInfoGraphics[0].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-        submitInfoGraphics[0].commandBufferInfoCount   = korl_arraySize(commandBufferSubmitInfo);
-        submitInfoGraphics[0].pCommandBufferInfos      = commandBufferSubmitInfo;
+        submitInfoGraphics[0].sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfoGraphics[0].commandBufferInfoCount = korl_arraySize(commandBufferSubmitInfo);
+        submitInfoGraphics[0].pCommandBufferInfos    = commandBufferSubmitInfo;
         /* we only want to signal to the graphics command queue submission that 
             transfers are done if there is no deferred resize 
             (we're doing graphics commands this frame) */
@@ -1736,27 +1713,22 @@ korl_internal void korl_vulkan_frameEnd(void)
         KORL_ZERO_STACK_ARRAY(VkCommandBufferSubmitInfo, commandBufferSubmitInfo, 1);
         commandBufferSubmitInfo[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
         commandBufferSubmitInfo[0].commandBuffer = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].commandBufferGraphics;
-        #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
         KORL_ZERO_STACK_ARRAY(VkSemaphoreSubmitInfo, semaphoreSubmitInfoSignal, 1);
         semaphoreSubmitInfoSignal[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
         semaphoreSubmitInfoSignal[0].semaphore = surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].semaphoreRenderDone;
         semaphoreSubmitInfoSignal[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-        #endif
         KORL_ZERO_STACK_ARRAY(VkSubmitInfo2, submitInfoGraphics, 1);
         submitInfoGraphics[0].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
         submitInfoGraphics[0].waitSemaphoreInfoCount   = korl_arraySize(semaphoreSubmitInfoWait);
         submitInfoGraphics[0].pWaitSemaphoreInfos      = semaphoreSubmitInfoWait;
         submitInfoGraphics[0].commandBufferInfoCount   = korl_arraySize(commandBufferSubmitInfo);
         submitInfoGraphics[0].pCommandBufferInfos      = commandBufferSubmitInfo;
-        #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
         submitInfoGraphics[0].signalSemaphoreInfoCount = korl_arraySize(semaphoreSubmitInfoSignal);
         submitInfoGraphics[0].pSignalSemaphoreInfos    = semaphoreSubmitInfoSignal;
-        #endif
         _KORL_VULKAN_CHECK(vkQueueSubmit2(context->queueGraphics, korl_arraySize(submitInfoGraphics), submitInfoGraphics
                                          ,surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete));
         korl_time_probeStop(submit_gfx_cmds_to_gfx_q);
     }
-    #if 0//@TODO: uncomment this when the user has the ability to push the swap chain images through a RenderPass that transforms the layout into {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR | VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR}
     /* present the swap chain */
     if(swapChainImageContext)
     {
@@ -1785,7 +1757,6 @@ korl_internal void korl_vulkan_frameEnd(void)
         surfaceContext->frameSwapChainImagePresented = true;
         korl_time_probeStop(present_swap_chain);
     }
-    #endif
     /* advance to the next WIP frame index */
     surfaceContext->wipFrameCurrent = (surfaceContext->wipFrameCurrent + 1) % surfaceContext->swapChainImagesSize;
     surfaceContext->wipFrameCount   = korl_checkCast_u$_to_u8(KORL_MATH_MIN(surfaceContext->wipFrameCount + 1u, surfaceContext->swapChainImagesSize));
@@ -2687,9 +2658,18 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientPass(Ko
     createInfoRenderPass.pSubpasses      = &subPass;
     createInfoRenderPass.dependencyCount = korl_arraySize(subpassDependency);
     createInfoRenderPass.pDependencies   = subpassDependency;
-    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &newResource->subType.pass));
+    _KORL_VULKAN_CHECK(vkCreateRenderPass(context->device, &createInfoRenderPass, context->allocator, &newResource->subType.pass.renderPass));
     korl_free(context->allocatorHandle, attachmentDescriptions);
     korl_free(context->allocatorHandle, attachmentReferenceColors);
+    /* allocate a secondary command buffer which will be used to indirectly 
+        issue graphics commands to this render pass */
+    KORL_ZERO_STACK(VkCommandBufferAllocateInfo, allocateInfoCommandBuffers);
+    allocateInfoCommandBuffers.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocateInfoCommandBuffers.commandPool        = surfaceContext->commandPool;
+    allocateInfoCommandBuffers.level              = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+    allocateInfoCommandBuffers.commandBufferCount = 1;
+    _KORL_VULKAN_CHECK(vkAllocateCommandBuffers(context->device, &allocateInfoCommandBuffers
+                                               ,&newResource->subType.pass.commandBuffer));
     return newResourceHandle;
 }
 korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebuffer(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource* imageViewAttachments, u32 imageViewAttachmentsSize)
@@ -2709,8 +2689,6 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebu
     newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
     /* extract data needed to create Vulkan object from transient resources */
     VkImageView* _imageViewAttachments = korl_allocate(context->allocatorHandle, imageViewAttachmentsSize * sizeof(*_imageViewAttachments));
-    u32          framebufferSizeX      = 0;
-    u32          framebufferSizeY      = 0;
     for(u32 i = 0; i < imageViewAttachmentsSize; i++)
     {
         _Korl_Vulkan_TransientResource* transientResource = korl_pool_get(&context->poolTransientResources, imageViewAttachments + i);
@@ -2719,11 +2697,11 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebu
         {
         case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
             _imageViewAttachments[i] = surfaceContext->swapChainImageContexts[transientResource->swapChainImageIndex].imageView;
-            if(!framebufferSizeX || !framebufferSizeY)
+            if(!newResource->subType.framebuffer.sizeX || !newResource->subType.framebuffer.sizeY)
             {
-                korl_assert(!framebufferSizeX && !framebufferSizeY);
-                framebufferSizeX = surfaceContext->swapChainImageExtent.width;
-                framebufferSizeY = surfaceContext->swapChainImageExtent.height;
+                korl_assert(!newResource->subType.framebuffer.sizeX && !newResource->subType.framebuffer.sizeY);
+                newResource->subType.framebuffer.sizeX = surfaceContext->swapChainImageExtent.width;
+                newResource->subType.framebuffer.sizeY = surfaceContext->swapChainImageExtent.height;
             }
             continue;
         case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
@@ -2739,15 +2717,70 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebu
     /* create the Vulkan object */
     KORL_ZERO_STACK(VkFramebufferCreateInfo, createInfoFrameBuffer);
     createInfoFrameBuffer.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    createInfoFrameBuffer.renderPass      = renderPassResource->subType.pass;
+    createInfoFrameBuffer.renderPass      = renderPassResource->subType.pass.renderPass;
     createInfoFrameBuffer.attachmentCount = imageViewAttachmentsSize;
     createInfoFrameBuffer.pAttachments    = _imageViewAttachments;
-    createInfoFrameBuffer.width           = framebufferSizeX;
-    createInfoFrameBuffer.height          = framebufferSizeY;
+    createInfoFrameBuffer.width           = newResource->subType.framebuffer.sizeX;
+    createInfoFrameBuffer.height          = newResource->subType.framebuffer.sizeY;
     createInfoFrameBuffer.layers          = 1;
-    _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &newResource->subType.framebuffer));
+    _KORL_VULKAN_CHECK(vkCreateFramebuffer(context->device, &createInfoFrameBuffer, context->allocator, &newResource->subType.framebuffer.framebuffer));
     /* free temporary resources */
     korl_free(context->allocatorHandle, _imageViewAttachments);
+    /* begin the render pass command buffer; this step happens here because we 
+        need the framebuffer for the SECONDARY command buffer inheritance info */
+    KORL_ZERO_STACK(VkCommandBufferInheritanceInfo, commandBufferInheritance);
+    commandBufferInheritance.sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+    commandBufferInheritance.renderPass  = renderPassResource->subType.pass.renderPass;
+    commandBufferInheritance.subpass     = 0;
+    commandBufferInheritance.framebuffer = newResource->subType.framebuffer.framebuffer;
+    KORL_ZERO_STACK(VkCommandBufferBeginInfo, beginInfoCommandBuffer);
+    beginInfoCommandBuffer.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfoCommandBuffer.flags            =   VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT 
+                                                // needed for SECONDARY command buffers, according to Vulkan spec:
+                                              | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+    beginInfoCommandBuffer.pInheritanceInfo = &commandBufferInheritance;
+    _KORL_VULKAN_CHECK(vkBeginCommandBuffer(renderPassResource->subType.pass.commandBuffer, &beginInfoCommandBuffer));
     /**/
     return newResourceHandle;
+}
+korl_internal void korl_vulkan_pass_submit(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource framebuffer)
+{
+    _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
+    if(surfaceContext->frameSwapChainImageIndex >= _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE)
+        return;
+    /* get the renderPass transient resource */
+    korl_assert(KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(renderPass)) == _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS);
+    _Korl_Vulkan_TransientResource*const renderPassResource = korl_pool_get(&context->poolTransientResources, &renderPass);
+    korl_assert(renderPassResource);
+    /* get the framebuffer transient resource */
+    korl_assert(KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(framebuffer)) == _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER);
+    _Korl_Vulkan_TransientResource*const framebufferResource = korl_pool_get(&context->poolTransientResources, &framebuffer);
+    korl_assert(framebufferResource);
+    /* end the pass' SECONDARY command buffer so that we can submit it to the device */
+    _KORL_VULKAN_CHECK(vkEndCommandBuffer(renderPassResource->subType.pass.commandBuffer));
+    /* issue the commands to the current WIP frame's primary graphics command 
+        buffer which will utilize the RenderPass' SECONDARY command buffer */
+    KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
+    clearValues[0].color.float32[0] = 0.f;
+    clearValues[0].color.float32[1] = 1.f;
+    clearValues[0].color.float32[2] = 0.f;
+    clearValues[0].color.float32[3] = 1.f;
+    clearValues[1].depthStencil.depth   = _KORL_VULKAN_DEPTH_CLEAR_VALUE;
+    clearValues[1].depthStencil.stencil = 0;
+    KORL_ZERO_STACK(VkExtent2D, renderAreaExtent);
+    renderAreaExtent.width  = framebufferResource->subType.framebuffer.sizeX;
+    renderAreaExtent.height = framebufferResource->subType.framebuffer.sizeY;
+    KORL_ZERO_STACK(VkRenderPassBeginInfo, beginInfoRenderPass);
+    beginInfoRenderPass.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    beginInfoRenderPass.renderPass        = renderPassResource->subType.pass.renderPass;
+    beginInfoRenderPass.framebuffer       = framebufferResource->subType.framebuffer.framebuffer;
+    beginInfoRenderPass.renderArea.extent = renderAreaExtent;
+    beginInfoRenderPass.clearValueCount   = korl_arraySize(clearValues);
+    beginInfoRenderPass.pClearValues      = clearValues;
+    vkCmdBeginRenderPass(surfaceContext->wipFrames[surfaceContext->frameSwapChainImageIndex].commandBufferGraphics
+                        ,&beginInfoRenderPass, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+    vkCmdExecuteCommands(surfaceContext->wipFrames[surfaceContext->frameSwapChainImageIndex].commandBufferGraphics
+                        ,1, &renderPassResource->subType.pass.commandBuffer);
+    vkCmdEndRenderPass(surfaceContext->wipFrames[surfaceContext->frameSwapChainImageIndex].commandBufferGraphics);
 }
