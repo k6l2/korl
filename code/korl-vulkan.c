@@ -29,6 +29,7 @@ korl_global_const VkCompareOp _KORL_VULKAN_DEPTH_COMPARE_OP  = VK_COMPARE_OP_GRE
 korl_global_const f32         _KORL_VULKAN_DEPTH_CLEAR_VALUE = 0.f;                  // 0 => back of the clip-space, 1 => the front; see above
 korl_global_const char* G_KORL_VULKAN_ENABLED_LAYERS[] = 
     { "VK_LAYER_KHRONOS_validation"
+    // , "VK_LAYER_LUNARG_api_dump"// uncomment this to generate full API dump; I suggest adding `lunarg_api_dump.file=true` and setting `lunarg_api_dump.log_filename` to `vk_layer_settings.txt` before running with this
     , "VK_LAYER_KHRONOS_synchronization2" };
 korl_global_const char* G_KORL_VULKAN_DEVICE_EXTENSIONS[] = 
     { VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -367,23 +368,46 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY, const _Kor
         is true: */
     surfaceContext->frameSwapChainImagePresented = true;
 }
+korl_internal void _korl_vulkan_transientResource_destroy(_Korl_Vulkan_TransientResource* transientResource)
+{
+    _Korl_Vulkan_Context*const           context           = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const    surfaceContext    = &g_korl_vulkan_surfaceContext;
+    const _Korl_Vulkan_TransientResource_Type transientResourceType = KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(transientResource->handle));
+    switch(transientResourceType)
+    {
+    case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID:
+        korl_log(ERROR, "INVALID (uninitialized) transient resource type: %i", transientResourceType);
+        return;
+    case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
+        // this transient resource is managed by the swap chain; nothing to release here
+        return;
+    case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
+        vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &transientResource->subType.pass.commandBuffer);
+        vkDestroyRenderPass(context->device, transientResource->subType.pass.renderPass, context->allocator);
+        return;
+    case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
+        vkDestroyFramebuffer(context->device, transientResource->subType.framebuffer.framebuffer, context->allocator);
+        return;
+    }
+    korl_log(ERROR, "unknown transient resource type: %i", transientResourceType);
+}
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_destroySwapChain_poolForEach_destroyAllTransientResources)
+{
+    _Korl_Vulkan_Context*const           context           = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const    surfaceContext    = &g_korl_vulkan_surfaceContext;
+    _Korl_Vulkan_TransientResource*const transientResource = KORL_C_CAST(_Korl_Vulkan_TransientResource*, item);
+    _korl_vulkan_transientResource_destroy(transientResource);
+    return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
+}
 korl_internal void _korl_vulkan_destroySwapChain(void)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
     _KORL_VULKAN_CHECK(vkDeviceWaitIdle(context->device));
-    // korl_assert(!"@TODO: invalidate/destroy render passes, since render passes need to have an up-to-date format of the swap chain; also destroy all transient resources");
-    #if 0//@TODO: delete
-    _korl_vulkan_deviceMemory_allocator_free(&surfaceContext->deviceMemoryRenderResources, surfaceContext->depthStencilImageBuffer);
-    surfaceContext->depthStencilImageBuffer = 0;
-    vkDestroyRenderPass(context->device, context->renderPass, context->allocator);
-    #endif
+    korl_pool_forEach(&context->poolTransientResources, _korl_vulkan_destroySwapChain_poolForEach_destroyAllTransientResources, NULL);
     for(u32 i = 0; i < surfaceContext->swapChainImagesSize; i++)
     {
         _Korl_Vulkan_SwapChainImageContext*const swapChainImageContext = &(surfaceContext->swapChainImageContexts[i]);
-        #if 0//@TODO: delete
-        vkDestroyFramebuffer(context->device,swapChainImageContext->frameBuffer, context->allocator);
-        #endif
         vkDestroyImageView  (context->device,swapChainImageContext->imageView  , context->allocator);
         for(u$ d = 0; d < arrlenu(swapChainImageContext->stbDaDescriptorPools); d++)
         {
@@ -391,12 +415,25 @@ korl_internal void _korl_vulkan_destroySwapChain(void)
             vkDestroyDescriptorPool(context->device, swapChainImageContext->stbDaDescriptorPools[d].vkDescriptorPool, context->allocator);
         }
         mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaDescriptorPools);
-#if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
-        mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices);
-#endif
+        #if KORL_DEBUG && _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE
+            mcarrfree(KORL_STB_DS_MC_CAST(context->allocatorHandle), swapChainImageContext->stbDaInUseDeviceAssetIndices);
+        #endif
+        /* since the swap chain is being destroyed, WIP frames can be cleared; 
+            note that we don't destroy the synchronization objects from the WIP 
+            frames until the entire surface context is destroyed */
+        vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &surfaceContext->wipFrames[i].commandBufferTransfer);
+        vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &surfaceContext->wipFrames[i].commandBufferGraphics);
+        surfaceContext->wipFrames[i].commandBufferTransfer = VK_NULL_HANDLE;
+        surfaceContext->wipFrames[i].commandBufferGraphics = VK_NULL_HANDLE;
+        surfaceContext->wipFrames[i].swapChainImageIndex   = _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE;
     }
     korl_memory_zero(surfaceContext->swapChainImageContexts, sizeof(surfaceContext->swapChainImageContexts));
     vkDestroySwapchainKHR(context->device, surfaceContext->swapChain, context->allocator);
+    /* once again, since the swap chain has been destroyed, we should clear WIP 
+        frame data, since these values no longer make sense anymore as 
+        everything that was in-progress has been destroyed */
+    surfaceContext->wipFrameCount   = 0;
+    surfaceContext->wipFrameCurrent = 0;// apparently _extremely_ important to clear this value; not doing this will result in insanely obscure CRT crashes
 }
 /** 
  * \param memoryTypeBits Flags representing the incides in a list of memory 
@@ -863,31 +900,14 @@ korl_internal VkDescriptorSet _korl_vulkan_newDescriptorSet(VkDescriptorSetLayou
 }
 /** releases & deletes all transient resources whose swap chain image index 
  * matches that of the surface context's current WIP frame */
-korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_frameBegin_forEachTransientResource)
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_vulkan_frameBegin_poolForEach_destroyWipFrameTransientResources)
 {
     _Korl_Vulkan_Context*const           context           = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const    surfaceContext    = &g_korl_vulkan_surfaceContext;
     _Korl_Vulkan_TransientResource*const transientResource = KORL_C_CAST(_Korl_Vulkan_TransientResource*, item);
     if(transientResource->swapChainImageIndex == surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].swapChainImageIndex)
     {
-        const _Korl_Vulkan_TransientResource_Type transientResourceType = KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(transientResource->handle));
-        switch(transientResourceType)
-        {
-        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID:
-            korl_log(ERROR, "INVALID (uninitialized) transient resource type: %i", transientResourceType);
-            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
-        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_CURRENT_SWAP_CHAIN_IMAGE:
-            // this transient resource is managed by the swap chain; nothing to release here
-            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
-        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
-            vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &transientResource->subType.pass.commandBuffer);
-            vkDestroyRenderPass(context->device, transientResource->subType.pass.renderPass, context->allocator);
-            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
-        case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
-            vkDestroyFramebuffer(context->device, transientResource->subType.framebuffer.framebuffer, context->allocator);
-            return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
-        }
-        korl_log(ERROR, "unknown transient resource type: %i", transientResourceType);
+        _korl_vulkan_transientResource_destroy(transientResource);
         return KORL_POOL_FOR_EACH_DELETE_AND_CONTINUE;
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
@@ -949,7 +969,7 @@ korl_internal void _korl_vulkan_frameBegin(void)
                                           ,&surfaceContext->wipFrames[surfaceContext->wipFrameCurrent].fenceFrameComplete
                                           ,VK_TRUE/*waitAll*/, UINT64_MAX/*timeout; max -> disable*/));
     // korl_log(VERBOSE, "context->poolTransientResources.itemCount=%u", context->poolTransientResources.itemCount);//@TODO: when we start presenting swap chain images, we need to run this to see if we're properly cleaning up transient resources
-    korl_pool_forEach(&context->poolTransientResources, _korl_vulkan_frameBegin_forEachTransientResource, NULL);
+    korl_pool_forEach(&context->poolTransientResources, _korl_vulkan_frameBegin_poolForEach_destroyWipFrameTransientResources, NULL);
     /* at this point, we know for certain that a frame has been processed, so we 
         can update our memory pools to reflect this history, allowing us to 
         reuse pools that we can deduce _must_ no longer be in use */
@@ -1569,8 +1589,6 @@ korl_internal void korl_vulkan_destroySurface(void)
         vkDestroySemaphore(context->device, surfaceContext->wipFrames[i].semaphoreImageAvailable, context->allocator);
         vkDestroySemaphore(context->device, surfaceContext->wipFrames[i].semaphoreRenderDone, context->allocator);
         vkDestroyFence(context->device, surfaceContext->wipFrames[i].fenceFrameComplete, context->allocator);
-        vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &(surfaceContext->wipFrames[i].commandBufferGraphics));
-        vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &(surfaceContext->wipFrames[i].commandBufferTransfer));
     }
     _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryDeviceLocal);
     _korl_vulkan_deviceMemory_allocator_destroy(&surfaceContext->deviceMemoryHostVisible);
