@@ -96,9 +96,18 @@
         - if RenderPasses are destroyed each frame, then all objects that use them will also be destroyed
         - this means that all Pipelines will be transient!
         - is this okay?  Is it okay to create/destroy all pipelines every frame?  That doesn't sound like a good idea to me...
+        - it's okay to be aware of this, but I shouldn't worry about this performance penalty at all until everything is working
+        - it's easy to imagine an optimization system/strategy where instead of just immediately allocating new resources when the user requests to do so, we instead check to see if the previous frame has such a resource with exactly the same properties
+            - if such a resource did exist: update the resource to be used this frame & return it to the user
+            - if no such resource existed: create a new resource & return it to the user
+            - at the frameEnd/Start point, destroy/release any unused transient resources
+        - in the beginning, without such optimization, we will obviously have performance penalties with more complex scenes, but who cares?  we might not have sufficiently complex scenes for a _long_ time (maybe even ever), so no need to even worry about this right now; just continue trying to get triangles drawing on the screen
 [ ] allow user to compose & manage custom DescriptorSetLayouts
     - DescriptorSetLayouts & PipelineLayouts can be created by the user once, and used as many times as necessary for pipeline creation
 [ ] allow user to compose & manage custom PipelineLayouts
+    - once again, these can be created by the user once, and used many times for pipeline creation
+[ ] allow user to compose & manage Pipelines
+    - NOTE: as mentioned above, Pipelines will be _transient_; we will be constantly creating/destroying Pipelines each frame; do not worry about performance ramifications until we actually encounter a performance bottleneck here, since intuitively I know a mitigation strategy for transient resources _can_ be implemented entirely within the korl-vulkan module
 [ ] refactor descriptors to access descriptor arrays in each shader using an instance or PushConstant index
 [ ] attempt to combine _all_ mesh data into a single buffer
 [ ] re-implement all korl-gui drawing operations
