@@ -368,11 +368,11 @@ korl_internal void _korl_vulkan_createSwapChain(u32 sizeX, u32 sizeY, const _Kor
         is true: */
     surfaceContext->frameSwapChainImagePresented = true;
 }
-korl_internal void _korl_vulkan_transientResource_destroy(_Korl_Vulkan_TransientResource* transientResource)
+korl_internal void _korl_vulkan_transientResource_destroy(_Korl_Vulkan_TransientResource* context)
 {
-    _Korl_Vulkan_Context*const           context           = &g_korl_vulkan_context;
-    _Korl_Vulkan_SurfaceContext*const    surfaceContext    = &g_korl_vulkan_surfaceContext;
-    const _Korl_Vulkan_TransientResource_Type transientResourceType = KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(transientResource->handle));
+    _Korl_Vulkan_Context*const                vulkanContext         = &g_korl_vulkan_context;
+    _Korl_Vulkan_SurfaceContext*const         surfaceContext        = &g_korl_vulkan_surfaceContext;
+    const _Korl_Vulkan_TransientResource_Type transientResourceType = KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(context->handle));
     switch(transientResourceType)
     {
     case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_INVALID:
@@ -382,11 +382,12 @@ korl_internal void _korl_vulkan_transientResource_destroy(_Korl_Vulkan_Transient
         // this transient resource is managed by the swap chain; nothing to release here
         return;
     case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS:
-        vkFreeCommandBuffers(context->device, surfaceContext->commandPool, 1, &transientResource->subType.pass.commandBuffer);
-        vkDestroyRenderPass(context->device, transientResource->subType.pass.renderPass, context->allocator);
+        vkFreeCommandBuffers(vulkanContext->device, surfaceContext->commandPool, 1, &context->subType.pass.commandBuffer);
+        vkDestroyRenderPass(vulkanContext->device, context->subType.pass.renderPass, vulkanContext->allocator);
+        korl_free(vulkanContext->allocatorHandle, context->subType.pass.clearValues);
         return;
     case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
-        vkDestroyFramebuffer(context->device, transientResource->subType.framebuffer.framebuffer, context->allocator);
+        vkDestroyFramebuffer(vulkanContext->device, context->subType.framebuffer.framebuffer, vulkanContext->allocator);
         return;
     }
     korl_log(ERROR, "unknown transient resource type: %i", transientResourceType);
@@ -2582,7 +2583,17 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_getSwapchainImageVi
     newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
     return newResourceHandle;
 }
-korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize)
+#pragma warning(push)
+#pragma warning(disable : 4701)//warning C4701: potentially uninitialized local variable 'result' used; don't worry, it's okay
+korl_internal VkClearValue _korl_vulkan_color4u8_to_clearValue(Korl_Gfx_Color4u8 color)
+{
+    VkClearValue result;
+    for(u8 i = 0; i < 4; i++)
+        result.color.float32[i] = KORL_C_CAST(f32, color.elements[i]) / KORL_U8_MAX;
+    return result;
+}
+#pragma warning(pop)
+korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize, const bool* clearAttachments, const Korl_Gfx_Color4u8* clearColors)
 {
     _Korl_Vulkan_Context*const        context        = &g_korl_vulkan_context;
     _Korl_Vulkan_SurfaceContext*const surfaceContext = &g_korl_vulkan_surfaceContext;
@@ -2590,8 +2601,10 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientPass(Ko
         return KORL_POOL_INVALID_HANDLE;
     _Korl_Vulkan_TransientResource* newResource = NULL;
     Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_PASS, &newResource);
-    newResource->handle              = newResourceHandle;
-    newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    newResource->handle                       = newResourceHandle;
+    newResource->swapChainImageIndex          = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    newResource->subType.pass.attachmentCount = attachmentsSize;
+    newResource->subType.pass.clearValues     = korl_allocate(context->allocatorHandle, attachmentsSize * sizeof(*newResource->subType.pass.clearValues));
     /* ----- create Vulkan render pass ----- */
     VkAttachmentDescription*               attachmentDescriptions        = korl_allocate(context->allocatorHandle, attachmentsSize * sizeof(*attachmentDescriptions));
     VkAttachmentReference*                 attachmentReferenceColors     = korl_allocate(context->allocatorHandle, attachmentsSize * sizeof(*attachmentReferenceColors));
@@ -2608,12 +2621,15 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientPass(Ko
             /* setup the VkAttachmentDescription */
             attachmentDescriptions[i].format         = surfaceContext->swapChainSurfaceFormat.format;
             attachmentDescriptions[i].samples        = VK_SAMPLE_COUNT_1_BIT;
-            attachmentDescriptions[i].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
+            attachmentDescriptions[i].loadOp         = clearAttachments[i] ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;// clears the attachment to the clear values passed to vkCmdBeginRenderPass
             attachmentDescriptions[i].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
             attachmentDescriptions[i].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             attachmentDescriptions[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             attachmentDescriptions[i].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
             attachmentDescriptions[i].finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            /* setup clear value of this attachment */
+            if(clearAttachments[i])
+                newResource->subType.pass.clearValues[i] = _korl_vulkan_color4u8_to_clearValue(clearColors[i]);
             /* add a color VkAttachmentReference */
             korl_assert(attachmentReferenceColorsSize < attachmentsSize);
             VkAttachmentReference*const newAttachmentReference = attachmentReferenceColors + attachmentReferenceColorsSize++;
@@ -2703,8 +2719,9 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebu
     /* create the new transient resource */
     _Korl_Vulkan_TransientResource* newResource = NULL;
     Korl_Gfx_PlatformTransientResource newResourceHandle = korl_pool_add(&context->poolTransientResources, _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER, &newResource);
-    newResource->handle              = newResourceHandle;
-    newResource->swapChainImageIndex = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    newResource->handle                              = newResourceHandle;
+    newResource->swapChainImageIndex                 = korl_checkCast_u$_to_u8(surfaceContext->frameSwapChainImageIndex);
+    newResource->subType.framebuffer.attachmentCount = imageViewAttachmentsSize;
     /* extract data needed to create Vulkan object from transient resources */
     VkImageView* _imageViewAttachments = korl_allocate(context->allocatorHandle, imageViewAttachmentsSize * sizeof(*_imageViewAttachments));
     for(u32 i = 0; i < imageViewAttachmentsSize; i++)
@@ -2720,6 +2737,11 @@ korl_internal Korl_Gfx_PlatformTransientResource korl_vulkan_newTransientFramebu
                 korl_assert(!newResource->subType.framebuffer.sizeX && !newResource->subType.framebuffer.sizeY);
                 newResource->subType.framebuffer.sizeX = surfaceContext->swapChainImageExtent.width;
                 newResource->subType.framebuffer.sizeY = surfaceContext->swapChainImageExtent.height;
+            }
+            else
+            {
+                korl_assert(newResource->subType.framebuffer.sizeX == surfaceContext->swapChainImageExtent.width);
+                korl_assert(newResource->subType.framebuffer.sizeY == surfaceContext->swapChainImageExtent.height);
             }
             continue;
         case _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER:
@@ -2775,17 +2797,16 @@ korl_internal void korl_vulkan_pass_submit(Korl_Gfx_PlatformTransientResource re
     korl_assert(KORL_C_CAST(_Korl_Vulkan_TransientResource_Type, KORL_POOL_HANDLE_ITEM_TYPE(framebuffer)) == _KORL_VULKAN_TRANSIENTRESOURCE_TYPE_FRAMEBUFFER);
     _Korl_Vulkan_TransientResource*const framebufferResource = korl_pool_get(&context->poolTransientResources, &framebuffer);
     korl_assert(framebufferResource);
+    /* sanity checks */
+    korl_assert(renderPassResource->subType.pass.attachmentCount == framebufferResource->subType.framebuffer.attachmentCount);
     /* end the pass' SECONDARY command buffer so that we can submit it to the device */
     _KORL_VULKAN_CHECK(vkEndCommandBuffer(renderPassResource->subType.pass.commandBuffer));
     /* issue the commands to the current WIP frame's primary graphics command 
         buffer which will utilize the RenderPass' SECONDARY command buffer */
-    KORL_ZERO_STACK_ARRAY(VkClearValue, clearValues, 2);
-    clearValues[0].color.float32[0] = 0.f;
-    clearValues[0].color.float32[1] = 1.f;
-    clearValues[0].color.float32[2] = 0.f;
-    clearValues[0].color.float32[3] = 1.f;
+    #if 0//@TODO: clear depth buffer
     clearValues[1].depthStencil.depth   = _KORL_VULKAN_DEPTH_CLEAR_VALUE;
     clearValues[1].depthStencil.stencil = 0;
+    #endif
     KORL_ZERO_STACK(VkExtent2D, renderAreaExtent);
     renderAreaExtent.width  = framebufferResource->subType.framebuffer.sizeX;
     renderAreaExtent.height = framebufferResource->subType.framebuffer.sizeY;
@@ -2794,8 +2815,8 @@ korl_internal void korl_vulkan_pass_submit(Korl_Gfx_PlatformTransientResource re
     beginInfoRenderPass.renderPass        = renderPassResource->subType.pass.renderPass;
     beginInfoRenderPass.framebuffer       = framebufferResource->subType.framebuffer.framebuffer;
     beginInfoRenderPass.renderArea.extent = renderAreaExtent;
-    beginInfoRenderPass.clearValueCount   = korl_arraySize(clearValues);
-    beginInfoRenderPass.pClearValues      = clearValues;
+    beginInfoRenderPass.clearValueCount   = renderPassResource->subType.pass.attachmentCount;
+    beginInfoRenderPass.pClearValues      = renderPassResource->subType.pass.clearValues;
     vkCmdBeginRenderPass(surfaceContext->wipFrames[surfaceContext->frameSwapChainImageIndex].commandBufferGraphics
                         ,&beginInfoRenderPass, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
     vkCmdExecuteCommands(surfaceContext->wipFrames[surfaceContext->frameSwapChainImageIndex].commandBufferGraphics

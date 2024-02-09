@@ -22,7 +22,11 @@ typedef struct _Korl_Gfx_RenderGraph_Node_Attachment// @TODO: should Node_Attach
     _Korl_Gfx_RenderGraph_Node_Attachment_Type type;
     union
     {
-        Korl_Gfx_PlatformTransientResource platformTransientResource;
+        struct
+        {
+            Korl_Gfx_PlatformTransientResource handle;
+            Korl_Gfx_Color4u8                  clearColor;
+        } platformTransientResource;
         struct
         {
             Korl_Gfx_RenderGraph_NodeHandle nodeHandle;
@@ -41,7 +45,8 @@ typedef struct _Korl_Gfx_RenderGraph_Node
     {
         struct
         {
-            void* dummy;//@TODO: delete
+            bool              clearAttachments[_KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS];
+            Korl_Gfx_Color4u8 clearColors[_KORL_GFX_RENDERGRAPH_NODE_MAX_ATTACHMENTS];
         } pass;
         struct
         {
@@ -106,7 +111,7 @@ korl_internal Korl_Gfx_PlatformTransientResource _korl_gfx_renderGraph_build_get
         korl_log(ERROR, "INVALID node attachment[%hhu]", attachmentIndex);
         return 0;
     case _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE:
-        return node->attachments[attachmentIndex].subType.platformTransientResource;
+        return node->attachments[attachmentIndex].subType.platformTransientResource.handle;
     case _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_CHILD_NODE_ATTACHMENT:
         /* if the attachment comes from another node, we have to traverse the nodes until we get a PLATFORM_TRANSIENT_RESOURCE */
         _Korl_Gfx_RenderGraph_Node*const childNode = _korl_gfx_renderGraph_getNode(context, node->attachments[attachmentIndex].subType.childNodeAttachment.nodeHandle);
@@ -136,7 +141,7 @@ korl_internal void korl_gfx_renderGraph_build(Korl_Gfx_RenderGraph* context)
             for(u8 i = 0; i < node->attachmentsSize; i++)
                 attachments[i] = _korl_gfx_renderGraph_build_getNodeAttachmentPlatformTransientResource(context, node, i);
             /* create the Pass platform object & free temporary data needed for this operation */
-            node->platformObject = korl_gfx_newTransientPass(attachments, node->attachmentsSize);
+            node->platformObject = korl_gfx_newTransientPass(attachments, node->attachmentsSize, node->subType.pass.clearAttachments, node->subType.pass.clearColors);
             continue;}
         case _KORL_GFX_RENDERGRAPH_NODE_TYPE_FRAMEBUFFER:{
             /* "dereference" all attachments into Korl_Gfx_PlatformTransientResource handles */
@@ -199,11 +204,21 @@ korl_internal void korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_Rende
     case KORL_GFX_RENDERGRAPH_FRAMEBUFFER_ATTACHMENT_TYPE_SWAPCHAIN_IMAGE:
         korl_assert(node->attachmentsSize < korl_arraySize(node->attachments));
         _Korl_Gfx_RenderGraph_Node_Attachment*const newAttachment = node->attachments + (node->attachmentsSize++);
-        newAttachment->type                              = _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE;
-        newAttachment->subType.platformTransientResource = korl_gfx_getSwapchainImageView();
+        newAttachment->type                                     = _KORL_GFX_RENDERGRAPH_NODE_ATTACHMENT_TYPE_PLATFORM_TRANSIENT_RESOURCE;
+        newAttachment->subType.platformTransientResource.handle = korl_gfx_getSwapchainImageView();
         return;
     }
     korl_log(ERROR, "unknown attachmentInfo.type: %i", attachmentInfo.type);
+}
+korl_internal void korl_gfx_renderGraph_pass_clearAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle pass, u8 attachIndex, Korl_Gfx_Color4u8 color)
+{
+    korl_assert(renderGraph->_state == KORL_GFX_RENDERGRAPH_STATE_UNBUILT);
+    _Korl_Gfx_RenderGraph_Node*const node = _korl_gfx_renderGraph_getNode(renderGraph, pass);
+    korl_assert(node);
+    korl_assert(node->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS);
+    korl_assert(node->attachmentsSize > attachIndex);
+    node->subType.pass.clearAttachments[attachIndex] = true;
+    node->subType.pass.clearColors     [attachIndex] = color;
 }
 korl_internal void korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChildHandle, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParentHandle, u8 attachIndexParent)
 {

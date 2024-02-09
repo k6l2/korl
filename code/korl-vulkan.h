@@ -114,6 +114,6 @@ korl_internal VkDescriptorBufferInfo                    korl_vulkan_buffer_getDe
 korl_internal Korl_Vulkan_ShaderHandle                  korl_vulkan_shader_create(const Korl_Vulkan_CreateInfoShader* createInfo, Korl_Vulkan_ShaderHandle requiredHandle);
 korl_internal void                                      korl_vulkan_shader_destroy(Korl_Vulkan_ShaderHandle shaderHandle);
 korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_getSwapchainImageView(void);
-korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize);
+korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientPass(Korl_Gfx_PlatformTransientResource* attachments, u8 attachmentsSize, const bool* clearAttachments, const Korl_Gfx_Color4u8* clearColors);
 korl_internal Korl_Gfx_PlatformTransientResource        korl_vulkan_newTransientFramebuffer(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource* imageViewAttachments, u32 imageViewAttachmentsSize);
 korl_internal void                                      korl_vulkan_pass_submit(Korl_Gfx_PlatformTransientResource renderPass, Korl_Gfx_PlatformTransientResource framebuffer);

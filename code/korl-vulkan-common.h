@@ -160,12 +160,15 @@ typedef struct _Korl_Vulkan_TransientResource
         {
             VkRenderPass    renderPass;
             VkCommandBuffer commandBuffer;
+            u32             attachmentCount;
+            VkClearValue*   clearValues;// array size == attachmentCount
         } pass;
         struct
         {
             VkFramebuffer framebuffer;
             u32           sizeX;
             u32           sizeY;
+            u32           attachmentCount;
         } framebuffer;
     } subType;
 } _Korl_Vulkan_TransientResource;

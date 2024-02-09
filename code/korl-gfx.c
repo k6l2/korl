@@ -97,7 +97,7 @@ korl_internal KORL_FUNCTION_korl_gfx_getSwapchainImageView(korl_gfx_getSwapchain
 }
 korl_internal KORL_FUNCTION_korl_gfx_newTransientPass(korl_gfx_newTransientPass)
 {
-    return korl_vulkan_newTransientPass(attachments, attachmentsSize);
+    return korl_vulkan_newTransientPass(attachments, attachmentsSize, clearAttachments, clearColors);
 }
 korl_internal KORL_FUNCTION_korl_gfx_newTransientFramebuffer(korl_gfx_newTransientFramebuffer)
 {

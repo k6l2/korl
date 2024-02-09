@@ -31,6 +31,7 @@ korl_internal void                            korl_gfx_renderGraph_build(Korl_Gf
 korl_internal void                            korl_gfx_renderGraph_submit(Korl_Gfx_RenderGraph* context);// end command buffers, begin/end render passes; once this fires, no more rendering operations can be recorded this frame
 korl_internal Korl_Gfx_RenderGraph_NodeHandle korl_gfx_renderGraph_newFramebuffer(Korl_Gfx_RenderGraph* context);
 korl_internal void                            korl_gfx_renderGraph_framebuffer_addAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle framebuffer, Korl_Gfx_RenderGraph_Framebuffer_AttachmentInfo attachmentInfo);
+korl_internal void                            korl_gfx_renderGraph_pass_clearAttachment(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle pass, u8 attachIndex, Korl_Gfx_Color4u8 color);
 korl_internal void                            korl_gfx_renderGraph_node_attach(Korl_Gfx_RenderGraph* renderGraph, Korl_Gfx_RenderGraph_NodeHandle nodeChildHandle, u8 attachIndexChild, Korl_Gfx_RenderGraph_NodeHandle nodeParentHandle, u8 attachIndexParent);
 /** \return \c true if the codepoint should be drawn, \c false otherwise */
 #define KORL_GFX_TEXT_CODEPOINT_TEST(name) bool name(void* userData, u32 codepoint, u8 codepointCodeUnits, const u8* currentCodeUnit, u8 bytesPerCodeUnit, Korl_Math_V4f32* o_currentLineColor)
