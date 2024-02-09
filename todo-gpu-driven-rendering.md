@@ -80,9 +80,9 @@
     - user assigns RenderPass inputs (attachments) to either transient/persistent resources, or attachments to other RenderPasses, creating a graph structure
     - Node => {RenderPass | Resource}
     - Edge => source Node (attachment | resource) -> destination Node attachment
-    [ ] allow user to create & manage RenderPass RenderNodes
+    [x] allow user to create & manage RenderPass RenderNodes
     <!-- [ ] create a default "presentation" RenderPass, whose handle is accessible via a special korl-vulkan API -->
-    [ ] allow user to create & manage FrameBuffer RenderNodes, using the previously-created RenderPass as input creation parameter
+    [x] allow user to create & manage FrameBuffer RenderNodes, using the previously-created RenderPass as input creation parameter
         - how do we create all the swap chain image framebuffers?
             - do we need swapChainImageCount special copies of just the final RenderNode?...  How/when do we determine this?... I am confus
             - do _all_ FrameBuffer RenderNodes just have swapChainImageCount copies?, and do we just pick the swapChainIndex sub-FrameBuffer of each FrameBuffer RenderNode of any given frame?  Seems... wasteful, but it would work I suppose
@@ -90,10 +90,15 @@
     <!-- [ ] create multiple default "swap chain framebuffers", whose handles are accessible via a special korl-vulkan API -->
     [ ] compose a default render graph to replicate the original behavior
         [ ] obtain swap chain color/depth attachments as RenderNode handles
-        [ ] create a "presentation" RenderPass, and configure it to use the swap chain framebuffer attachment
+        [x] create a "presentation" RenderPass, and configure it to use the swap chain framebuffer attachment
+    - the current implementation of the "render graph" is composed of many "transient resources" which are invalidated/destroyed at the end of each frame
+        - among those resources are RenderPasses
+        - if RenderPasses are destroyed each frame, then all objects that use them will also be destroyed
+        - this means that all Pipelines will be transient!
+        - is this okay?  Is it okay to create/destroy all pipelines every frame?  That doesn't sound like a good idea to me...
 [ ] allow user to compose & manage custom DescriptorSetLayouts
+    - DescriptorSetLayouts & PipelineLayouts can be created by the user once, and used as many times as necessary for pipeline creation
 [ ] allow user to compose & manage custom PipelineLayouts
-    - submit RenderPass RenderNode as a parameter to PipelineLayout creation
 [ ] refactor descriptors to access descriptor arrays in each shader using an instance or PushConstant index
 [ ] attempt to combine _all_ mesh data into a single buffer
 [ ] re-implement all korl-gui drawing operations

@@ -1984,6 +1984,7 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
         update/bind descriptor sets, since this is a very expensive operation! */
     VkDeviceSize byteOffsetStagingBuffer = 0;
     VkBuffer     bufferStaging           = VK_NULL_HANDLE;
+    #if 0//@TODO: recycle/delete
     KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet           , descriptorSetWrites         , _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_ZERO_STACK_ARRAY(_Korl_Vulkan_DescriptorSetIndex, descriptorSetWriteSetIndices, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     uint32_t descriptorWriteCount = 0;
@@ -1992,7 +1993,6 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
     KORL_MEMORY_POOL_ZERO(descriptorBufferInfos);
     KORL_MEMORY_POOL_DECLARE(VkDescriptorImageInfo, descriptorImageInfos, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_MEMORY_POOL_ZERO(descriptorImageInfos);
-    #if 0//@TODO: recycle/delete
     //KORL-ISSUE-000-000-184: vulkan: descriptor set flexibility; in here we are arbitrarily picking which data channels belong to each descriptor set; we _should_ be able to allow the user to define their own VkDescriptorSetLayouts & VkPipelineLayouts, which would certainly give Vulkan a much better idea of how to optimize, as well as give the user the ability to compose descriptors however they wish without having to modify this code :|; related to KORL-ISSUE-000-000-185
     // _KORL_VULKAN_DESCRIPTOR_SET_INDEX_SCENE //
     if(   surfaceContext->drawState.uboVertex[0].descriptorBufferInfo.buffer != VK_NULL_HANDLE 

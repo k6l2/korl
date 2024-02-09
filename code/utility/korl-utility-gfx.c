@@ -217,6 +217,7 @@ korl_internal void korl_gfx_renderGraph_pass_clearAttachment(Korl_Gfx_RenderGrap
     korl_assert(node);
     korl_assert(node->type == _KORL_GFX_RENDERGRAPH_NODE_TYPE_PASS);
     korl_assert(node->attachmentsSize > attachIndex);
+    //@TODO: ensure that the attachment is composed of color data
     node->subType.pass.clearAttachments[attachIndex] = true;
     node->subType.pass.clearColors     [attachIndex] = color;
 }

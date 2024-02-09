@@ -12,6 +12,7 @@
 #include "korl-interface-platform-gfx.h"
 #define _KORL_VULKAN_DEBUG_DEVICE_ASSET_IN_USE 0
 #define _KORL_VULKAN_SURFACECONTEXT_MAX_SWAPCHAIN_SIZE 4
+#if 0//@TODO: delete; replace with user-configurable DescriptorSetLayouts/PipelineLayouts/Pipelines system
 /** These enum values correspond directly to the `layout(set = x)` value for 
  * uniform blocks in GLSL */
 typedef enum _Korl_Vulkan_DescriptorSetIndex
@@ -90,6 +91,7 @@ korl_global_const VkPushConstantRange _KORL_VULKAN_PUSH_CONSTANT_RANGES[] =
     //KORL-ISSUE-000-000-202: vulkan; HACK; we're sending the PushConstantData::vertex data to the geometry stage just to test something; indirectly related to KORL-ISSUE-000-000-201
     {{.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, vertex  ), .size = sizeof(KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState_PushConstantData).vertex)}
     ,{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT                             , .offset = offsetof(Korl_Gfx_DrawState_PushConstantData, fragment), .size = sizeof(KORL_STRUCT_INITIALIZE_ZERO(Korl_Gfx_DrawState_PushConstantData).fragment)}};
+#endif
 typedef struct _Korl_Vulkan_QueueFamilyMetaData
 {
     /* unify the unique queue family index variables with an array so we can 
@@ -239,17 +241,10 @@ typedef struct _Korl_Vulkan_Context
      * (UBO, view projection, texture samplers, etc...) */
     VkDescriptorSetLayout descriptorSetLayouts[_KORL_VULKAN_DESCRIPTOR_SET_INDEX_ENUM_COUNT];
     #endif
-    #if 0//@TODO: delete; replace with a user-composable "render graph" system
-    /* render passes are (potentially) shared between pipelines */
-    VkRenderPass renderPass;
-    #endif
     /** Primarily used to store device asset names; not sure if this will be 
      * used for anything else in the future... */
     Korl_StringPool                               stringPool;
     Korl_Pool                                     poolTransientResources;// pool of _Korl_Vulkan_TransientResource objects
-    #if 0//@TODO: introduce this later when we actually need render passes
-    Korl_Pool       poolRenderPasses;// pool of _Korl_Vulkan_RenderPass objects
-    #endif
 } _Korl_Vulkan_Context;
 typedef struct _Korl_Vulkan_DescriptorPool
 {
