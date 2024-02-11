@@ -1982,9 +1982,9 @@ korl_internal void _korl_vulkan_flushDescriptors(void)
         if it does, we will compose the minimum # of descriptor set stages & 
         writes to update the device draw state appropriately;  only then will we 
         update/bind descriptor sets, since this is a very expensive operation! */
-    VkDeviceSize byteOffsetStagingBuffer = 0;
-    VkBuffer     bufferStaging           = VK_NULL_HANDLE;
     #if 0//@TODO: recycle/delete
+    // VkDeviceSize byteOffsetStagingBuffer = 0;
+    // VkBuffer     bufferStaging           = VK_NULL_HANDLE;
     KORL_ZERO_STACK_ARRAY(VkWriteDescriptorSet           , descriptorSetWrites         , _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     KORL_ZERO_STACK_ARRAY(_Korl_Vulkan_DescriptorSetIndex, descriptorSetWriteSetIndices, _KORL_VULKAN_DESCRIPTOR_BINDING_TOTAL);
     uint32_t descriptorWriteCount = 0;

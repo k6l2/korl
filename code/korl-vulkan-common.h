@@ -245,6 +245,7 @@ typedef struct _Korl_Vulkan_Context
      * used for anything else in the future... */
     Korl_StringPool                               stringPool;
     Korl_Pool                                     poolTransientResources;// pool of _Korl_Vulkan_TransientResource objects
+    //@TODO: maybe we just have a separate Pool of "persistent" resources; things that last for more than one frame typically, such as Shaders, DescriptorLayouts, PipelineLayouts
 } _Korl_Vulkan_Context;
 typedef struct _Korl_Vulkan_DescriptorPool
 {
