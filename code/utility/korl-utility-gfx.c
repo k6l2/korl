@@ -1116,7 +1116,7 @@ korl_internal Korl_Gfx_Drawable korl_gfx_drawSphere(Korl_Math_V3f32 position, Ko
     korl_gfx_draw(&immediate, material, 1);
     return immediate;
 }
-korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags materialModeFlagOverrides, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
+korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags materialModeFlagOverrides, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_colors, Korl_Math_V2f32** o_uvs)
 {
     korl_shared_const Korl_Math_V2f32 QUAD_POSITION_NORMALS_LOOP[4] = {{{0,0}}, {{1,0}}, {{1,1}}, {{0,1}}};
     if(material)
@@ -1130,6 +1130,8 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags material
         if(o_colors)
             createInfoDrawable.attributeDatatypes[KORL_GFX_VERTEX_ATTRIBUTE_BINDING_COLOR] = KORL_GFX_RUNTIME_DRAWABLE_ATTRIBUTE_DATATYPE_V4U8;
         Korl_Gfx_Drawable immediate = korl_gfx_drawableRectangle(&createInfoDrawable, anchorRatio, size);
+        if(o_positions)
+            *o_positions = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_POSITION, 0);
         if(o_uvs)
             *o_uvs = korl_gfx_drawable_attributeV2f32(&immediate, KORL_GFX_VERTEX_ATTRIBUTE_BINDING_UV, 0);
         if(o_colors)
@@ -1169,13 +1171,26 @@ korl_internal void _korl_gfx_drawRectangle(Korl_Gfx_Material_Mode_Flags material
         korl_gfx_draw(&immediateOutline, materialOutline, 1);
     }
 }
+korl_internal void korl_gfx_drawTexture2d(Korl_Resource_Handle resourceHandleTexture, Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 outlineThickness, const Korl_Gfx_Material* materialInner, const Korl_Gfx_Material* materialOutline, Korl_Math_V2f32** o_positions, Korl_Gfx_Color4u8** o_innerColors, Korl_Math_V2f32** o_innerUvs)
+{
+    Korl_Math_V2f32 size = KORL_MATH_V2F32_ZERO;
+    Korl_Gfx_Material material;
+    if(materialInner)
+    {
+        material      = *materialInner;
+        materialInner = &material;
+        material.maps.resourceHandleTextureBase = resourceHandleTexture;
+        size = korl_math_v2f32_fromV2u32(korl_resource_texture_getSize(resourceHandleTexture));
+    }
+    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAGS_NONE, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, o_positions, o_innerColors, o_innerUvs);
+}
 korl_internal void korl_gfx_drawRectangle2d(Korl_Math_V2f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* materialInner, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_innerColors, Korl_Math_V2f32** o_innerUvs)
 {
-    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAGS_NONE, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, o_innerColors, o_innerUvs);
+    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAGS_NONE, KORL_STRUCT_INITIALIZE(Korl_Math_V3f32){.xy = position}, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, NULL, o_innerColors, o_innerUvs);
 }
 korl_internal void korl_gfx_drawRectangle3d(Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, Korl_Math_V2f32 size, f32 outlineThickness, const Korl_Gfx_Material* materialInner, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_innerColors, Korl_Math_V2f32** o_innerUvs)
 {
-    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE, position, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, o_innerColors, o_innerUvs);
+    _korl_gfx_drawRectangle(KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_TEST | KORL_GFX_MATERIAL_MODE_FLAG_ENABLE_DEPTH_WRITE, position, versor, anchorRatio, size, outlineThickness, materialInner, materialOutline, NULL, o_innerColors, o_innerUvs);
 }
 korl_internal void _korl_gfx_drawCircle(Korl_Gfx_Material_Mode_Flags materialModeFlagOverrides, Korl_Math_V3f32 position, Korl_Math_Quaternion versor, Korl_Math_V2f32 anchorRatio, f32 radius, u32 circumferenceVertices, f32 outlineThickness, const Korl_Gfx_Material* material, const Korl_Gfx_Material* materialOutline, Korl_Gfx_Color4u8** o_colors)
 {
