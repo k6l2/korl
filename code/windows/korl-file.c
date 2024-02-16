@@ -17,8 +17,8 @@
 #undef _LOCAL_STRING_POOL_POINTER
 #endif
 #define _LOCAL_STRING_POOL_POINTER (&(_korl_file_context.stringPool))
-korl_global_const i8 _KORL_SAVESTATE_UNIQUE_FILE_ID[] = "KORL-SAVESTATE";
-korl_global_const u32 _KORL_SAVESTATE_VERSION = 0;
+korl_global_const i8  _KORL_SAVESTATE_UNIQUE_FILE_ID[] = "KORL-SAVESTATE";
+korl_global_const u32 _KORL_SAVESTATE_VERSION          = 0;
 typedef struct _Korl_File_SaveStateEnumerateContext_Allocator
 {
     u32 heaps;
@@ -32,31 +32,45 @@ typedef struct _Korl_File_SaveStateEnumerateContext
 } _Korl_File_SaveStateEnumerateContext;
 typedef struct _Korl_File_AsyncOpertion
 {
-    Korl_File_AsyncIoHandle handle;
-    OVERLAPPED overlapped;
-    DWORD bytesPending;
-    DWORD bytesTransferred;// a value of 0 indicates the operation is incomplete
+    Korl_File_AsyncIoHandle          handle;// composed of the current size of the list at the time of creation (+1, to keep the Korl_File_AsyncIoHandle value of 0 as invalid), as well as a rolling salt value
+    OVERLAPPED                       overlapped;
+    DWORD                            bytesPending;
+    DWORD                            bytesTransferred;// a value of 0 indicates the operation is incomplete
+    struct _Korl_File_AsyncOpertion* next;// next element of the linked list
 } _Korl_File_AsyncOpertion;
 typedef struct _Korl_File_Context
 {
-    Korl_Memory_AllocatorHandle allocatorHandle;
-    Korl_StringPool             stringPool;
-    Korl_StringPool_String      directoryStrings[KORL_FILE_PATHTYPE_ENUM_COUNT];
-    HANDLE                      directoryHandleOnSubtreeChange[KORL_FILE_PATHTYPE_ENUM_COUNT];
-    /** We cannot use a KORL_MEMORY_POOL here, because we need the memory 
-     * locations of used OVERLAPPED structs to remain completely STATIC once in 
-     * use by Windows.  
-     * The indices into this pool should be considered as "handles" to users of 
-     * this code module.
-     * Individual elements of this pool are considered to be "unused" if the 
-     * \c handle member == \c 0 .  */
-    _Korl_File_AsyncOpertion asyncPool[128];/// KORL-ISSUE-000-000-090: file: why did I have to change this 64=>128?  This feels so jank right now...
-    Korl_File_AsyncIoHandle nextAsyncIoHandle;
-    HANDLE handleIoCompletionPort;
-    u64* stbDaUsedFileAsyncKeys;
+    Korl_Memory_AllocatorHandle          allocatorHandle;
+    Korl_StringPool                      stringPool;
+    Korl_StringPool_String               directoryStrings[KORL_FILE_PATHTYPE_ENUM_COUNT];
+    HANDLE                               directoryHandleOnSubtreeChange[KORL_FILE_PATHTYPE_ENUM_COUNT];
+    _Korl_File_AsyncOpertion*            asyncOperationList;/** we use a linked list to store the OVERLAPPED structs because Windows requires them to remain completely still in memory once they are in use; we expect this list to consist of potentially >= 1'000 elements, and having this many allocations would currently result in _huge_ performance penalties with respect to korl-memory allocator operations such as defragmentation; fortunately, it seems we do not defragment `allocatorHandle` at all at the moment because we're just using a temporary CRT allocator, but if that changes we might want to revisit this */
+    u16                                  asyncOperationListSize;// _must_ never be >= KORL_U16_MAX - 1, since this would cause invalid handles to be created
+    u16                                  nextAsyncOperationSalt;// increments each time a new async op is created; helps to keep handles returned to the user as unique as possible
+    Korl_File_AsyncIoHandle              nextAsyncIoHandle;
+    HANDLE                               handleIoCompletionPort;
+    u64*                                 stbDaUsedFileAsyncKeys;
     _Korl_File_SaveStateEnumerateContext saveStateEnumContext;
 } _Korl_File_Context;
 korl_global_variable _Korl_File_Context _korl_file_context;
+typedef struct _Korl_File_AsyncIoHandle_Unpacked
+{
+    u16 index;// note that we can't actually use this to obtain the _Korl_File_AsyncOpertion object in constant time, since they are being stored in an immutable linked list to preserve memory locations of OVERLAPPED structs
+    u16 salt;
+} _Korl_File_AsyncIoHandle_Unpacked;
+korl_internal Korl_File_AsyncIoHandle _korl_file_asyncIoHandle_pack(_Korl_File_AsyncIoHandle_Unpacked unpacked)
+{
+    korl_assert(unpacked.index < KORL_U16_MAX);
+    return (KORL_C_CAST(Korl_File_AsyncIoHandle, unpacked.salt) << 16)
+          | KORL_C_CAST(Korl_File_AsyncIoHandle, unpacked.index + 1);
+}
+korl_internal _Korl_File_AsyncIoHandle_Unpacked _korl_file_asyncIoHandle_unpack(Korl_File_AsyncIoHandle handle)
+{
+    const u16 rawIndex = (handle >> 16) & KORL_U16_MAX;
+    korl_assert(rawIndex != 0);
+    return KORL_STRUCT_INITIALIZE(_Korl_File_AsyncIoHandle_Unpacked){.index = rawIndex - 1
+                                                                    ,.salt  = handle & KORL_U16_MAX};
+}
 korl_internal void _korl_file_sanitizeFilePath(Korl_StringPool_String* stringFilePath)
 {
     /* So apparently, when you are doing the weird "\\?\" prefix on file paths, 
@@ -631,66 +645,76 @@ korl_internal Korl_File_ResultRenameReplace korl_file_renameReplace(Korl_File_Pa
 korl_internal Korl_File_AsyncIoHandle korl_file_writeAsync(Korl_File_Descriptor fileDescriptor, const void* buffer, u$ bufferBytes)
 {
     _Korl_File_Context*const context = &_korl_file_context;
-    /* find an unused async io handle 
-        NOTE: this is basically copy-pasta from stringPool handle implementation */
-    const Korl_File_AsyncIoHandle maxHandles = KORL_U32_MAX - 1/*since 0 is an invalid handle*/;
-    Korl_File_AsyncIoHandle newHandle = 0;
-    for(Korl_File_AsyncIoHandle h = 0; h < maxHandles; h++)
-    {
-        newHandle = context->nextAsyncIoHandle;
-        /* If another async op has this handle, we nullify the newHandle so that 
-            we can move on to the next handle candidate */
-        for(u$ i = 0; i < korl_arraySize(context->asyncPool); i++)
-            if(context->asyncPool[i].handle == newHandle)
-            {
-                newHandle = 0;
-                break;
-            }
-        if(context->nextAsyncIoHandle == KORL_U32_MAX)
-            context->nextAsyncIoHandle = 1;
-        else
-            context->nextAsyncIoHandle++;
-        if(newHandle)
-            break;
-    }
-    korl_assert(newHandle);// sanity check
-    /* find an unused OVERLAPPED pool slot */
-    u$ i = 0;
-    for(; i < korl_arraySize(context->asyncPool); i++)
-        if(0 == context->asyncPool[i].handle)
-            break;
-    korl_assert(i < korl_arraySize(context->asyncPool));
-    _Korl_File_AsyncOpertion*const pAsyncOp = &(context->asyncPool[i]);
-    korl_memory_zero(pAsyncOp, sizeof(*pAsyncOp));
-    pAsyncOp->handle                = newHandle;
-    pAsyncOp->overlapped.Offset     = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
-    pAsyncOp->overlapped.OffsetHigh = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
-    pAsyncOp->bytesPending          = korl_checkCast_u$_to_u32(bufferBytes);
+    /* create a new _Korl_File_AsyncOpertion with a unique handle */
+    _Korl_File_AsyncOpertion*const newAsyncOp = korl_allocate(context->allocatorHandle, sizeof(*newAsyncOp));
+    newAsyncOp->handle                = _korl_file_asyncIoHandle_pack(KORL_STRUCT_INITIALIZE(_Korl_File_AsyncIoHandle_Unpacked){.index = context->asyncOperationListSize++
+                                                                                                                               ,.salt  = context->nextAsyncOperationSalt++});
+    newAsyncOp->next                  = context->asyncOperationList;
+    newAsyncOp->overlapped.Offset     = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
+    newAsyncOp->overlapped.OffsetHigh = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
+    newAsyncOp->bytesPending          = korl_checkCast_u$_to_u32(bufferBytes);
+    context->asyncOperationList = newAsyncOp;
     /* dispatch the async write command */
-    const BOOL resultWriteFile = WriteFile(fileDescriptor.handle, 
-                                           buffer, pAsyncOp->bytesPending, 
-                                           NULL/*# bytes written; ignored for async ops*/, 
-                                           &(pAsyncOp->overlapped));
+    const BOOL resultWriteFile = WriteFile(fileDescriptor.handle
+                                          ,buffer, newAsyncOp->bytesPending
+                                          ,NULL/*# bytes written; ignored for async ops*/
+                                          ,&(newAsyncOp->overlapped));
     if(!resultWriteFile)
         if(GetLastError() != ERROR_IO_PENDING)
             korl_logLastError("WriteFile failed!");
-    return newHandle;
+    return newAsyncOp->handle;
+}
+/** \return \c true if the \c abortOverlapped struct was found, \c false otherwise */
+korl_internal bool _korl_file_drainIoCompletionPort(bool blockUntilComplete, LPOVERLAPPED abortOverlapped, DWORD* abortOverlappedBytesTransferred)
+{
+    _Korl_File_Context*const context = &_korl_file_context;
+    /* pop I/O completion packets from the completion port until it is empty */
+    for(;;)
+    {
+        DWORD        bytesTransferred = 0;
+        ULONG_PTR    completionKey    = 0;
+        LPOVERLAPPED pOverlapped      = NULL;
+        const DWORD  waitMilliseconds = blockUntilComplete ? INFINITE : 0;
+        if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, waitMilliseconds))
+            if(GetLastError() != WAIT_TIMEOUT)
+                korl_logLastError("GetQueuedCompletionStatus failed");
+        if(pOverlapped == NULL)
+            break;
+        _Korl_File_AsyncOpertion* asyncOpIt2   = context->asyncOperationList;
+        bool                      foundAsyncOp = false;
+        for(; asyncOpIt2 && !foundAsyncOp
+            ; asyncOpIt2 = asyncOpIt2->next)
+        {
+            if(pOverlapped == &(asyncOpIt2->overlapped))
+            {
+                korl_assert(asyncOpIt2->bytesTransferred == 0);
+                korl_assert(bytesTransferred == asyncOpIt2->bytesPending);
+                asyncOpIt2->bytesTransferred = bytesTransferred;
+                foundAsyncOp = true;
+            }
+        }
+        if(pOverlapped == abortOverlapped)// there are cases where the IoCompletionPort has an OVERLAPPED that is _not_ in our asyncOperationList, so we check this _after_ looking for the op in the list
+        {
+            if(abortOverlappedBytesTransferred)
+                *abortOverlappedBytesTransferred = bytesTransferred;
+            return true;
+        }
+        korl_assert(foundAsyncOp);
+    }
+    return false;
 }
 korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_AsyncIoHandle* handle, bool blockUntilComplete)
 {
     _Korl_File_Context*const context = &_korl_file_context;
     /* find the async operation associated with *handle */
     korl_assert(*handle);
-    _Korl_File_AsyncOpertion* asyncOp = NULL;
-    for(u$ ap = 0; ap < korl_arraySize(context->asyncPool); ap++)
+    _Korl_File_AsyncOpertion* asyncOpItPrevious = NULL;
+    _Korl_File_AsyncOpertion* asyncOpIt         = context->asyncOperationList;
+    for(; asyncOpIt && asyncOpIt->handle != *handle
+        ; asyncOpItPrevious = asyncOpIt, asyncOpIt = asyncOpIt->next)
     {
-        if(context->asyncPool[ap].handle == *handle)
-        {
-            asyncOp = &(context->asyncPool[ap]);
-            break;
-        }
     }
-    if(!asyncOp)
+    if(!asyncOpIt)
     {
         korl_log(WARNING, "handle %u is invalid!", *handle);
         *handle = 0;// invalidate the caller's handle
@@ -699,42 +723,22 @@ korl_internal Korl_File_GetAsyncIoResult korl_file_getAsyncIoResult(Korl_File_As
     /* check to see if the async operation returned its completion status during 
         another call, since the async calls can be dequeued in any order (the 
         completion queue is _NOT_ FIFO or FILO or anything like that) */
-    if(asyncOp->bytesTransferred >= asyncOp->bytesPending)
+    if(asyncOpIt->bytesTransferred >= asyncOpIt->bytesPending)
         goto skipPopCompletionPackets;
-    /* pop I/O completion packets from the completion port until it is empty */
-    for(;;)
-    {
-        DWORD bytesTransferred       = 0;
-        ULONG_PTR completionKey      = 0;
-        LPOVERLAPPED pOverlapped     = NULL;
-        const DWORD waitMilliseconds = blockUntilComplete ? INFINITE : 0;
-        if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, waitMilliseconds))
-            if(GetLastError() != WAIT_TIMEOUT)
-                korl_logLastError("GetQueuedCompletionStatus failed");
-        if(pOverlapped == NULL)
-            break;
-        bool foundAsyncOp = false;
-        for(u$ ap = 0; ap < korl_arraySize(context->asyncPool); ap++)
-        {
-            if(context->asyncPool[ap].handle == 0)
-                continue;
-            if(pOverlapped == &(context->asyncPool[ap].overlapped))
-            {
-                korl_assert(context->asyncPool[ap].bytesTransferred == 0);
-                korl_assert(bytesTransferred == context->asyncPool[ap].bytesPending);
-                context->asyncPool[ap].bytesTransferred = bytesTransferred;
-                foundAsyncOp = true;
-                if(context->asyncPool[ap].handle == *handle)
-                    goto skipPopCompletionPackets;
-                break;
-            }
-        }
-        korl_assert(foundAsyncOp);
-    }
+    if(_korl_file_drainIoCompletionPort(blockUntilComplete, &asyncOpIt->overlapped, NULL))
+        goto skipPopCompletionPackets;
     skipPopCompletionPackets:
-    if(asyncOp->bytesTransferred >= asyncOp->bytesPending)
+    if(asyncOpIt->bytesTransferred >= asyncOpIt->bytesPending)
     {
-        asyncOp->handle = 0;// remove the async op from the pool
+        /* remove the async op from the list */
+        if(asyncOpItPrevious)// if there is a previous node, that means this node is _not_ the head of the list
+            asyncOpItPrevious->next = asyncOpIt->next;
+        else// otherwise, we're removing the head of the list
+            context->asyncOperationList = asyncOpIt->next;
+        korl_assert(context->asyncOperationListSize > 0);// sanity check
+        context->asyncOperationListSize--;
+        korl_free(context->allocatorHandle, asyncOpIt);
+        /**/
         *handle = 0;// invalidate the caller's handle
         return KORL_FILE_GET_ASYNC_IO_RESULT_DONE;
     }
@@ -748,55 +752,26 @@ korl_internal void korl_file_write(Korl_File_Descriptor fileDescriptor, const vo
 {
     _Korl_File_Context*const context = &_korl_file_context;
     DWORD bytesTransferred = 0;
-    if(fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_ASYNC)
+    if(fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_ASYNC)/* the user is calling a _synchronous_ function, but the File was created with the ASYNC flag; ergo, we _must_ use the async I/O systems regardless */
     {
         KORL_ZERO_STACK(OVERLAPPED, overlapped);
         overlapped.Offset     = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
         overlapped.OffsetHigh = KORL_U32_MAX;// setting both offsets to u32_max writes to the end of the file
-        const BOOL resultWriteFile = WriteFile(fileDescriptor.handle, 
-                                               data, korl_checkCast_u$_to_u32(dataBytes), 
-                                               NULL/*# bytes written; ignored for async ops*/, 
-                                               &overlapped);
+        const BOOL resultWriteFile = WriteFile(fileDescriptor.handle
+                                              ,data, korl_checkCast_u$_to_u32(dataBytes)
+                                              ,NULL/*# bytes written; ignored for async ops*/
+                                              ,&overlapped);
         if(!resultWriteFile)
             if(GetLastError() != ERROR_IO_PENDING)
                 korl_logLastError("WriteFile failed!");
-        /* repeatedly get completed OVERLAPPED operations until we get the one 
-            we just queued */
-        for(;;)
-        {
-            ULONG_PTR completionKey  = 0;
-            LPOVERLAPPED pOverlapped = NULL;
-            if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, INFINITE))
-                if(GetLastError() != WAIT_TIMEOUT)
-                    korl_logLastError("GetQueuedCompletionStatus failed");
-            if(pOverlapped == &overlapped)
-                break;
-            else
-            {
-                /* some other async io from the pool must have completed */
-                bool foundAsyncOp = false;
-                for(u$ ap = 0; ap < korl_arraySize(context->asyncPool); ap++)
-                {
-                    if(context->asyncPool[ap].handle == 0)
-                        continue;
-                    if(pOverlapped == &(context->asyncPool[ap].overlapped))
-                    {
-                        korl_assert(context->asyncPool[ap].bytesTransferred == 0);
-                        korl_assert(bytesTransferred == context->asyncPool[ap].bytesPending);
-                        context->asyncPool[ap].bytesTransferred = bytesTransferred;
-                        foundAsyncOp = true;
-                        break;
-                    }
-                }
-                korl_assert(foundAsyncOp);
-            }
-        }
+        /* repeatedly get completed OVERLAPPED operations until we get the one we just queued */
+        korl_assert(_korl_file_drainIoCompletionPort(true, &overlapped, &bytesTransferred));
         goto done_checkBytesWritten;
     }
     if(!WriteFile(fileDescriptor.handle, data, korl_checkCast_u$_to_u32(dataBytes), &bytesTransferred, NULL/*no overlapped*/))
         korl_logLastError("WriteFile failed!");
-done_checkBytesWritten:
-    korl_assert(bytesTransferred == korl_checkCast_u$_to_u32(dataBytes));
+    done_checkBytesWritten:
+        korl_assert(bytesTransferred == korl_checkCast_u$_to_u32(dataBytes));
 }
 korl_internal u32 korl_file_getTotalBytes(Korl_File_Descriptor fileDescriptor)
 {
@@ -850,51 +825,22 @@ korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, void* buf
 {
     _Korl_File_Context*const context = &_korl_file_context;
     DWORD bytesTransferred = 0;
-    if(fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_ASYNC)
+    if(fileDescriptor.flags & KORL_FILE_DESCRIPTOR_FLAG_ASYNC)/* the user is calling a _synchronous_ function, but the File was created with the ASYNC flag; ergo, we _must_ use the async I/O systems regardless */
     {
         KORL_ZERO_STACK(OVERLAPPED, overlapped);
         // we leave the overlapped offsets zeroed so we read from the beginning of the file
-        const BOOL resultReadFile = ReadFile(fileDescriptor.handle, 
-                                             buffer, bufferBytes, 
-                                             NULL/*# bytes read; ignored for async ops*/, 
-                                             &overlapped);
+        const BOOL resultReadFile = ReadFile(fileDescriptor.handle
+                                            ,buffer, bufferBytes
+                                            ,NULL/*# bytes read; ignored for async ops*/
+                                            ,&overlapped);
         if(!resultReadFile)
             if(GetLastError() != ERROR_IO_PENDING)
             {
                 korl_log(WARNING, "ReadFile failed; GetLastError=0x%X", GetLastError());
                 return false;
             }
-        /* repeatedly get completed OVERLAPPED operations until we get the one 
-            we just queued */
-        for(;;)
-        {
-            ULONG_PTR completionKey  = 0;
-            LPOVERLAPPED pOverlapped = NULL;
-            if(!GetQueuedCompletionStatus(context->handleIoCompletionPort, &bytesTransferred, &completionKey, &pOverlapped, INFINITE))
-                if(GetLastError() != WAIT_TIMEOUT)
-                    korl_logLastError("GetQueuedCompletionStatus failed");
-            if(pOverlapped == &overlapped)
-                break;
-            else
-            {
-                /* some other async io from the pool must have completed */
-                bool foundAsyncOp = false;
-                for(u$ ap = 0; ap < korl_arraySize(context->asyncPool); ap++)
-                {
-                    if(context->asyncPool[ap].handle == 0)
-                        continue;
-                    if(pOverlapped == &(context->asyncPool[ap].overlapped))
-                    {
-                        korl_assert(context->asyncPool[ap].bytesTransferred == 0);
-                        korl_assert(bytesTransferred == context->asyncPool[ap].bytesPending);
-                        context->asyncPool[ap].bytesTransferred = bytesTransferred;
-                        foundAsyncOp = true;
-                        break;
-                    }
-                }
-                korl_assert(foundAsyncOp);
-            }
-        }
+        /* repeatedly get completed OVERLAPPED operations until we get the one we just queued */
+        korl_assert(_korl_file_drainIoCompletionPort(true, &overlapped, &bytesTransferred));
         goto done_checkBytesRead;
     }
     if(!ReadFile(fileDescriptor.handle, buffer, bufferBytes, &bytesTransferred, NULL/*no overlapped*/))
@@ -902,71 +848,40 @@ korl_internal bool korl_file_read(Korl_File_Descriptor fileDescriptor, void* buf
         korl_log(WARNING, "ReadFile failed; GetLastError=0x%X", GetLastError());
         return false;
     }
-done_checkBytesRead:
-    korl_assert(bytesTransferred == bufferBytes);
+    done_checkBytesRead:
+        korl_assert(bytesTransferred == bufferBytes);
     return true;
 }
 korl_internal Korl_File_AsyncIoHandle korl_file_readAsync(Korl_File_Descriptor fileDescriptor, void* buffer, u32 bufferBytes)
 {
     _Korl_File_Context*const context = &_korl_file_context;
-    /* find an unused async io handle 
-        NOTE: this is basically copy-pasta from stringPool handle implementation */
-    const Korl_File_AsyncIoHandle maxHandles = KORL_U32_MAX - 1/*since 0 is an invalid handle*/;
-    Korl_File_AsyncIoHandle newHandle = 0;
-    for(Korl_File_AsyncIoHandle h = 0; h < maxHandles; h++)
-    {
-        newHandle = context->nextAsyncIoHandle;
-        /* If another async op has this handle, we nullify the newHandle so that 
-            we can move on to the next handle candidate */
-        for(u$ i = 0; i < korl_arraySize(context->asyncPool); i++)
-            if(context->asyncPool[i].handle == newHandle)
-            {
-                newHandle = 0;
-                break;
-            }
-        if(context->nextAsyncIoHandle == KORL_U32_MAX)
-            context->nextAsyncIoHandle = 1;
-        else
-            context->nextAsyncIoHandle++;
-        if(newHandle)
-            break;
-    }
-    korl_assert(newHandle);// sanity check
-    /* find an unused OVERLAPPED pool slot */
-    u$ i = 0;
-    for(; i < korl_arraySize(context->asyncPool); i++)
-        if(0 == context->asyncPool[i].handle)
-            break;
-    korl_assert(i < korl_arraySize(context->asyncPool));
-    _Korl_File_AsyncOpertion*const pAsyncOp = &(context->asyncPool[i]);
-    korl_memory_zero(pAsyncOp, sizeof(*pAsyncOp));
-    pAsyncOp->handle       = newHandle;
-    pAsyncOp->bytesPending = korl_checkCast_u$_to_u32(bufferBytes);
+    /* create a new _Korl_File_AsyncOpertion with a unique handle */
+    _Korl_File_AsyncOpertion*const newAsyncOp = korl_allocate(context->allocatorHandle, sizeof(*newAsyncOp));
+    newAsyncOp->handle       = _korl_file_asyncIoHandle_pack(KORL_STRUCT_INITIALIZE(_Korl_File_AsyncIoHandle_Unpacked){.index = context->asyncOperationListSize++
+                                                                                                                      ,.salt  = context->nextAsyncOperationSalt++});
+    newAsyncOp->next         = context->asyncOperationList;
+    newAsyncOp->bytesPending = korl_checkCast_u$_to_u32(bufferBytes);
     // we leave the overlapped offsets zeroed so we read from the beginning of the file
+    context->asyncOperationList = newAsyncOp;
     /* dispatch the async read command */
-    const BOOL resultReadFile = ReadFile(fileDescriptor.handle, 
-                                         buffer, pAsyncOp->bytesPending, 
-                                         NULL/*# bytes read; ignored for async ops*/, 
-                                         &(pAsyncOp->overlapped));
+    const BOOL resultReadFile = ReadFile(fileDescriptor.handle
+                                        ,buffer, newAsyncOp->bytesPending
+                                        ,NULL/*# bytes read; ignored for async ops*/
+                                        ,&(newAsyncOp->overlapped));
     if(!resultReadFile)
         if(GetLastError() != ERROR_IO_PENDING)
             korl_logLastError("ReadFile failed!");
-    return newHandle;
+    return newAsyncOp->handle;
 }
 korl_internal void korl_file_finishAllAsyncOperations(void)
 {
     _Korl_File_Context*const context = &_korl_file_context;
-    for(u16 a = 0; a < korl_arraySize(context->asyncPool); a++)
+    for(_Korl_File_AsyncOpertion* asyncOpIt = context->asyncOperationList; asyncOpIt;)
     {
-        if(0 == context->asyncPool[a].handle)
-            continue;
-        Korl_File_AsyncIoHandle handle = context->asyncPool[a].handle;
-        /* NOTE: here we are invalidating the original async io handle, but that 
-            should be okay since we expect that when the save state is loaded, 
-            it will likely contain any number of invalid async io handles, which 
-            are expected to be handled gracefully by whatever code modules which 
-            contain them */
-        korl_assert(KORL_FILE_GET_ASYNC_IO_RESULT_DONE == korl_file_getAsyncIoResult(&handle, true/*block until complete*/));
+        korl_assert(KORL_FILE_GET_ASYNC_IO_RESULT_DONE == korl_file_getAsyncIoResult(&asyncOpIt->handle, true/*block until complete*/));
+        _Korl_File_AsyncOpertion*const asyncOpItNext = asyncOpIt->next;
+        korl_free(context->allocatorHandle, asyncOpIt);
+        asyncOpIt = asyncOpItNext;
     }
 }
 korl_internal void korl_file_generateMemoryDump(void* exceptionData, Korl_File_PathType type, u32 maxDumpCount)

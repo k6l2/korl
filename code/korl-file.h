@@ -10,14 +10,14 @@ typedef enum Korl_File_PathType
 } Korl_File_PathType;
 typedef enum Korl_File_Descriptor_Flags
 {
-    KORL_FILE_DESCRIPTOR_FLAG_ASYNC = 1 << 0,
+    KORL_FILE_DESCRIPTOR_FLAG_ASYNC = 1 << 0,// NOTE: if the user sets this, the underlying File will utilize async file I/O systems even with synchronous calls, such as `korl_file_write` or `korl_file_read`
     KORL_FILE_DESCRIPTOR_FLAG_READ  = 1 << 1,
     KORL_FILE_DESCRIPTOR_FLAG_WRITE = 1 << 2,
 } Korl_File_Descriptor_Flags;
 typedef struct Korl_File_Descriptor
 {
-    void* handle;
-    u64 asyncKey;// A unique identifier to link async operations to file handles, in the off chance file handle values are re-used; 0 => invalid key
+    void*                      handle;
+    u64                        asyncKey;// A unique identifier to link async operations to file handles, in the off chance file handle values are re-used; 0 => invalid key
     Korl_File_Descriptor_Flags flags;
 } Korl_File_Descriptor;
 /** A handle to a pending asynchronous I/O operation.  A handle value of \c 0 is 
