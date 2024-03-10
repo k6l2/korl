@@ -25,11 +25,11 @@ typedef struct _Korl_Memory_RawString
 } _Korl_Memory_RawString;
 typedef struct _Korl_Memory_Context
 {
-    SYSTEM_INFO systemInfo;
-    DWORD mainThreadId;
-    Korl_Memory_AllocatorHandle allocatorHandle;                 // used for storing memory reports
-    Korl_Memory_AllocatorHandle allocatorHandlePersistentStrings;// used for cold storage of __FILEW__ strings; we use a separate allocator here to guarantee that the addresses of strings added to the pool remain _constant_ in the event that the character pool allocation changes page size during reallocation
-    u8* stbDaReportData;// the last generated memory report
+    SYSTEM_INFO                                      systemInfo;
+    DWORD                                            mainThreadId;
+    Korl_Memory_AllocatorHandle                      allocatorHandle;// used for storing memory reports
+    Korl_Memory_AllocatorHandle                      allocatorHandlePersistentStrings;// used for cold storage of __FILEW__ strings; we use a separate allocator here to guarantee that the addresses of strings added to the pool remain _constant_ in the event that the character pool allocation changes page size during reallocation
+    u8*                                              stbDaReportData;// the last generated memory report
     KORL_MEMORY_POOL_DECLARE(_Korl_Memory_Allocator, allocators, _KORL_MEMORY_MAX_ALLOCATORS);
     /* Although it would be more convenient to do so, it is not practical to 
         just store __FILEW__ pointers directly in allocation meta data for the 
@@ -40,9 +40,9 @@ typedef struct _Korl_Memory_Context
         - if we load a savestate, the file name string data is transient, so we 
           need a place to store them!  
         Ergo, we will accumulate all file name strings */
-    u16* stbDaFileNameCharacterPool;             // Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
-    _Korl_Memory_RawString* stbDaFileNameStrings;// Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
-    u$ stringHashKorlMemory;
+    u16*                                             stbDaFileNameCharacterPool;// Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
+    _Korl_Memory_RawString*                          stbDaFileNameStrings;// Although we _could_ use the StringPool module here, I want to try and minimize the performance impact since korl-memory code will be hitting this data a _lot_
+    u$                                               stringHashKorlMemory;
 } _Korl_Memory_Context;
 typedef struct _Korl_Memory_ReportMeta_Heap
 {

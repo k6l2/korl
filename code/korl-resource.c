@@ -109,6 +109,7 @@ korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_for
         const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
         korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
         fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
+        //@TODO: instead of doing this right here right now, spawn an async job to perform this work on another thread
         transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes, context->allocatorHandleTransient);
         resourceItem->backingSubType.assetCache.isTranscoded = true;
     }

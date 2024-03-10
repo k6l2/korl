@@ -24,6 +24,7 @@
 #include "korl-sfx.h"
 #include "korl-network.h"
 #include "korl-functionDynamo.h"
+#include "korl-jobQueue.h"
 #if 0//KORL-ISSUE-000-000-036: (low priority) configure STB & other code to not use CRT
 /** MSVC program entry point must use the __stdcall calling convension. */
 void __stdcall korl_windows_main(void)
@@ -65,6 +66,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     const acu8 platformModuleName = KORL_RAW_CONST_UTF8("korl-platform");
     korl_time_probeStart(init_module_functionDynamo); korl_functionDynamo_initialize(platformModuleName); korl_time_probeStop(init_module_functionDynamo);
     korl_time_probeStart(init_module_command);        korl_command_initialize(platformModuleName);        korl_time_probeStop(init_module_command);
+    korl_time_probeStart(init_module_job_queue);      korl_jobQueue_initialize();                         korl_time_probeStop(init_module_job_queue);
     korl_time_probeStart(init_module_audio);          korl_audio_initialize();                            korl_time_probeStop(init_module_audio);
     korl_time_probeStart(init_module_sfx);            korl_sfx_initialize();                              korl_time_probeStop(init_module_sfx);
     korl_time_probeStart(init_module_resource);       korl_resource_initialize();                         korl_time_probeStop(init_module_resource);
@@ -138,6 +140,7 @@ shutdownSuccess:
 #include "korl-resource-scene3d.c"
 #include "korl-resource-audio.c"
 #include "korl-functionDynamo.c"
+#include "korl-jobQueue.c"
 #include "utility/korl-stringPool.c"
 #include "utility/korl-utility-math.c"
 #include "utility/korl-checkCast.c"
