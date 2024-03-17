@@ -2,23 +2,8 @@
 #include "korl-windows-globalDefines.h"
 #include "korl-memory.h"
 #include "korl-interface-platform.h"
-#include "utility/korl-pool.h"
 #include "utility/korl-checkCast.h"
 #include "utility/korl-utility-string.h"
-/** Job_State will only ever increase, and once \c COMPLETED state is reached, 
- * the job can only be removed from the queue by the user via a ticket. */
-typedef enum _Korl_JobQueue_Job_State
-{
-    _KORL_JOBQUEUE_JOB_STATE_POSTED,// the job has been added to the job queue, but no thread has accepted/taken this job yet
-    _KORL_JOBQUEUE_JOB_STATE_TAKEN,// this job has been taken by a thread, and work is currently being performed via the job's `function` callback
-    _KORL_JOBQUEUE_JOB_STATE_COMPLETED,// the job is complete; we expect the code which originally posted the job to check for completion status at some point in the future; if the job poster never checks for the job's completion status, this should be considered a bug
-} _Korl_JobQueue_Job_State;
-typedef struct _Korl_JobQueue_Job
-{
-    _Korl_JobQueue_Job_State     state;
-    korl_fnSig_jobQueueFunction* function;
-    void*                        data;
-} _Korl_JobQueue_Job;
 typedef struct _Korl_JobQueue_WorkerThreadContext
 {
     bool exit;// we should be able to gracefully end a worker thread by raising this flag
@@ -26,42 +11,15 @@ typedef struct _Korl_JobQueue_WorkerThreadContext
 typedef struct _Korl_JobQueue_Context
 {
     Korl_Memory_AllocatorHandle         allocator;
-    CRITICAL_SECTION                    lock;// locker for access to `allocator`
+    CRITICAL_SECTION                    lock;// locker for access to all members of this struct _except_ `semaphore` I think; this includes all memory occupied by individual jobs inside `jobPool`
     HANDLE                              semaphore;// sync primitive for access to `jobPool`
-    Korl_Pool                           jobPool;
+    Korl_Pool                           jobPool;// pool of Korl_JobQueue_Job objects
     u16                                 workerThreadCount;
     _Korl_JobQueue_WorkerThreadContext* workerThreadContexts;
+    u32                                 incompleteJobCount;// the # of jobs in `jobPool` whose state is != `KORL_JOBQUEUE_JOB_STATE_COMPLETED`
+    u32                                 postedJobCount;// the # of jobs in `jobPool` whose state is == `KORL_JOBQUEUE_JOB_STATE_POSTED`
 } _Korl_JobQueue_Context;
 korl_global_variable _Korl_JobQueue_Context _korl_jobQueue_context;
-#if 0//@TODO; recycle
-struct JobQueue
-{
-    /* @robustness: consider changing the way jobs are posted & returned to the 
-        pool.  Currently, JobQueueTickets are composed of a job index & a 
-        rolling salt value.  This allows the JobQueue to reuse the same job 
-        index after the job is completed with reasonable certainty that the 
-        program's behavior will not break, since the JobQueue would have to 
-        issue a ton of jobs to roll the salt of that slot all the way back to 
-        the original value by the time the caller wants to redeem the completed 
-        ticket.  Wouldn't it be a lot simpler to just have each job be an 
-        allocation which remains unusable until the job ticket is redeemed by 
-        the caller (pool allocator)? */
-    /* @config: Setting a jobs array size >= 0xFFFF will require a bunch of code 
-        changes elsewhere due to the size of JobQueueTicket! */
-    JobQueueJob      jobs[256];
-    size_t           nextJobIndex;
-    size_t           availableJobCount;
-    size_t           incompleteJobCount;
-    CRITICAL_SECTION lock;
-    HANDLE           hSemaphore;
-};
-struct W32ThreadInfo
-{
-    bool running;
-    u32 index;
-    JobQueue* jobQueue;
-};
-#endif
 korl_internal DWORD WINAPI _korl_jobQueue_workerThread(_In_ LPVOID lpParameter)
 {
     _Korl_JobQueue_Context*const             context             = &_korl_jobQueue_context;
@@ -76,14 +34,12 @@ korl_internal DWORD WINAPI _korl_jobQueue_workerThread(_In_ LPVOID lpParameter)
     while(!workerThreadContext->exit)
     {
         korl_jobQueue_waitForWork();
-        #if 0// @TODO; recycle
-        JobQueueJob*const job = jobQueueTakeJob(workerThreadContext->jobQueue);
+        Korl_JobQueue_Job*const job = korl_jobQueue_takeJob();
         if(job)
         {
-            job->function(job->data, workerThreadContext->index);
-            jobQueueMarkJobCompleted(workerThreadContext->jobQueue, job);
+            job->function(job->data, workerThreadIndex);
+            korl_jobQueue_job_markCompleted(job);
         }
-        #endif
     }
     return 0;
 }
@@ -126,7 +82,7 @@ korl_internal void korl_jobQueue_initialize(void)
     context->allocator = allocator;
     context->semaphore = CreateSemaphore(NULL/*securityAttribs*/, 0/*initialCount*/, logicalCoreCount, NULL/*name*/);
     KORL_WINDOWS_CHECK(context->semaphore);
-    korl_pool_initialize(&context->jobPool, allocator, sizeof(_Korl_JobQueue_Job), 1024);
+    korl_pool_initialize(&context->jobPool, allocator, sizeof(Korl_JobQueue_Job), 1024);
     context->workerThreadCount = korl_checkCast_u$_to_u16(logicalCoreCount) - 1;
     if(context->workerThreadCount)
         context->workerThreadContexts = KORL_C_CAST(_Korl_JobQueue_WorkerThreadContext*, korl_allocate(allocator, context->workerThreadCount * sizeof(*context->workerThreadContexts)));
@@ -142,12 +98,60 @@ korl_internal void korl_jobQueue_initialize(void)
         KORL_WINDOWS_CHECK(CloseHandle(hThread));// we no longer need the HANDLE to the thread, so we can close it right now (this will not terminate the thread)
     }
 }
+korl_internal void korl_jobQueue_shutDown(void)
+{
+    _Korl_JobQueue_Context*const context = &_korl_jobQueue_context;
+    DeleteCriticalSection(&context->lock);
+    CloseHandle(context->semaphore);
+    korl_pool_destroy(&context->jobPool);
+    korl_memory_zero(context, sizeof(context));
+}
 korl_internal void korl_jobQueue_waitForWork(void)
 {
     _Korl_JobQueue_Context*const context = &_korl_jobQueue_context;
     const DWORD waitResult = WaitForSingleObject(context->semaphore, INFINITE);
     if(waitResult == WAIT_FAILED)
         korl_logLastError("Wait failed");
+}
+korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_jobQueue_takeJob_poolForEach_getPostedJob)
+{
+    Korl_JobQueue_Job**const postedJobResult = KORL_C_CAST(Korl_JobQueue_Job**, userData);
+    Korl_JobQueue_Job*const  job             = KORL_C_CAST(Korl_JobQueue_Job*, item);
+    if(job->state == KORL_JOBQUEUE_JOB_STATE_POSTED)
+    {
+        *postedJobResult = job;
+        return KORL_POOL_FOR_EACH_DONE;
+    }
+    return KORL_POOL_FOR_EACH_CONTINUE;
+}
+korl_internal Korl_JobQueue_Job* korl_jobQueue_takeJob(void)
+{
+    _Korl_JobQueue_Context*const context = &_korl_jobQueue_context;
+    Korl_JobQueue_Job*           result  = NULL;
+    EnterCriticalSection(&context->lock);
+    if(!context->postedJobCount)
+        goto return_result;// if there are no posted jobs, we can just return NULL
+    korl_pool_forEach(&context->jobPool, _korl_jobQueue_takeJob_poolForEach_getPostedJob, &result);
+    if(result)
+    {
+        result->state = KORL_JOBQUEUE_JOB_STATE_TAKEN;
+        context->postedJobCount--;
+    }
+    else
+        korl_log(ERROR, "postedJobCount == %u, but no jobs found!", context->postedJobCount);
+    return_result:
+        LeaveCriticalSection(&context->lock);
+        return result;
+}
+korl_internal void korl_jobQueue_job_markCompleted(Korl_JobQueue_Job* job)
+{
+    _Korl_JobQueue_Context*const context = &_korl_jobQueue_context;
+    EnterCriticalSection(&context->lock);
+    korl_assert(job->state == KORL_JOBQUEUE_JOB_STATE_TAKEN);
+    job->state = KORL_JOBQUEUE_JOB_STATE_COMPLETED;
+    korl_assert(context->incompleteJobCount > 0);
+    context->incompleteJobCount--;
+    LeaveCriticalSection(&context->lock);
 }
 #if 0//@TODO; recycle
 internal JobQueueTicket jobQueuePrintTicket(JobQueue* jobQueue, size_t jobIndex)
@@ -168,31 +172,6 @@ internal bool jobQueueParseTicket(
     *o_salt     = (*ticket) >> 16;
     *o_jobIndex = rawJobIndex - 1;
     return true;
-}
-internal bool jobQueueInit(JobQueue* jobQueue)
-{
-    *jobQueue = {};
-    /* ensure that the job queue index + 1 can fit in the # of bits required to 
-        fit the index into a JobQueueTicket */
-    static_assert(CARRAY_SIZE(jobQueue->jobs) < 0xFFFF);
-    InitializeCriticalSection(&jobQueue->lock);
-    jobQueue->hSemaphore = 
-        CreateSemaphore(nullptr, 0, CARRAY_SIZE(jobQueue->jobs), nullptr);
-    if(!jobQueue->hSemaphore)
-    {
-        KLOG(ERROR, "Failed to create job queue semaphore! getlasterror=%i",
-            GetLastError());
-        return false;
-    }
-    for(size_t ji = 0; ji < CARRAY_SIZE(jobQueue->jobs); ji++)
-        jobQueue->jobs[ji].completed = true;
-    return true;
-}
-internal void jobQueueDestroy(JobQueue* jobQueue)
-{
-    DeleteCriticalSection(&jobQueue->lock);
-    CloseHandle(jobQueue->hSemaphore);
-    jobQueue->hSemaphore = NULL;
 }
 internal JobQueueTicket jobQueuePostJob(
     JobQueue* jobQueue, fnSig_jobQueueFunction* function, void* data)
@@ -277,44 +256,10 @@ internal bool jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket)
     *ticket = 0;
     return true;
 }
-internal JobQueueJob* jobQueueTakeJob(JobQueue* jobQueue)
-{
-    EnterCriticalSection(&jobQueue->lock);
-    defer(LeaveCriticalSection(&jobQueue->lock));
-    if(!jobQueue->availableJobCount)
-    {
-        return nullptr;
-    }
-    for(size_t ji = 0; ji < CARRAY_SIZE(jobQueue->jobs); ji++)
-    {
-        const size_t jiNext = 
-            (jobQueue->nextJobIndex + ji) % CARRAY_SIZE(jobQueue->jobs);
-        JobQueueJob* job = &jobQueue->jobs[jiNext];
-        if(job->completed || job->taken)
-            continue;
-        jobQueue->nextJobIndex = 
-            (jiNext + 1) % CARRAY_SIZE(jobQueue->jobs);
-        jobQueue->availableJobCount--;
-        job->taken = true;
-        return job;
-    }
-    KLOG(ERROR, "jobQueue available job count == %i, but no jobs "
-        "found!", jobQueue->availableJobCount);
-    return nullptr;
-}
 internal bool jobQueueHasIncompleteJobs(JobQueue* jobQueue)
 {
     EnterCriticalSection(&jobQueue->lock);
     defer(LeaveCriticalSection(&jobQueue->lock));
     return jobQueue->incompleteJobCount;
-}
-internal void jobQueueMarkJobCompleted(JobQueue* jobQueue, JobQueueJob* job)
-{
-    EnterCriticalSection(&jobQueue->lock);
-    defer(LeaveCriticalSection(&jobQueue->lock));
-    job->taken     = false;
-    job->completed = true;
-    korlAssert(jobQueue->incompleteJobCount > 0);
-    jobQueue->incompleteJobCount--;
 }
 #endif
