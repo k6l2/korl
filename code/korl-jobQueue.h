@@ -1,12 +1,7 @@
 #pragma once
 #include "korl-globalDefines.h"
 #include "utility/korl-pool.h"
-
-//@TODO: move this stuff into korl-interface-platform.h, as we want this API exposed to KORL users
-typedef Korl_Pool_Handle Korl_JobQueue_JobTicket;
-#define KORL_JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
-typedef KORL_JOB_QUEUE_FUNCTION(korl_fnSig_jobQueueFunction);
-
+#include "korl-interface-platform.h"
 /** Job_State will only ever increase, and once \c COMPLETED state is reached, 
  * the job can only be removed from the queue by the user via a ticket. */
 typedef enum Korl_JobQueue_Job_State

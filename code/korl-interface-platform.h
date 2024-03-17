@@ -70,6 +70,15 @@ typedef KORL_ALGORITHM_COMPARE_CONTEXT(fnSig_korl_algorithm_compare_context);
 #define KORL_FUNCTION_korl_algorithm_sort_quick(name)                     void  name(void* array, u$ arraySize, u$ arrayStride, fnSig_korl_algorithm_compare* compare)
 #define KORL_FUNCTION_korl_algorithm_sort_quick_context(name)             void  name(void* array, u$ arraySize, u$ arrayStride, fnSig_korl_algorithm_compare_context* compare, void* context)
 // #define KORL_FUNCTION_korl_algorithm_boundingVolumeHierarchy_create(name) void* name(Korl_Memory_AllocatorHandle allocator, void* array, u$ arraySize, u$ arrayStride)
+/* korl-jobQueue interface ****************************************************/
+typedef Korl_Pool_Handle Korl_JobQueue_JobTicket;
+#define KORL_JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
+typedef KORL_JOB_QUEUE_FUNCTION(korl_fnSig_jobQueueFunction);
+#define KORL_FUNCTION_korl_jobQueue_post(name)      Korl_JobQueue_JobTicket name(korl_fnSig_jobQueueFunction* function, void* data)
+/** \param jobTicket _must_ be a valid JobTicket; passing an invalid or NULL handle should be considered an error 
+ * \return \c true if the job is confirmed to be completed and was removed from the job queue; \c jobTicket is automatically invalidated for the caller (set to \c 0 ); 
+ *         \c false if the job is valid and not yet completed */
+#define KORL_FUNCTION_korl_jobQueue_jobIsDone(name) bool                    name(Korl_JobQueue_JobTicket* jobTicket)
 /* FUNCTION TYPEDEFS **********************************************************/
 #define _KORL_PLATFORM_API_MACRO_OPERATION(x) typedef KORL_FUNCTION_##x (fnSig_##x);
     #include "korl-interface-platform-api.h"

@@ -37,6 +37,7 @@ typedef struct _Korl_Resource_Item
         {
             Korl_StringPool_String    fileName;
             Korl_AssetCache_Get_Flags assetCacheGetFlags;
+            Korl_JobQueue_JobTicket   transcodeJob;
             bool                      isTranscoded;
         } assetCache;
         struct
@@ -89,29 +90,52 @@ korl_internal void korl_resource_initialize(void)
     korl_resource_scene3d_register();
     korl_resource_audio_register();
 }
+korl_internal KORL_JOB_QUEUE_FUNCTION(_korl_resource_transcodeFileAssets_asyncTranscode)
+{
+    _Korl_Resource_Context*const context      = _korl_resource_context;
+    //@TODO: we can't do this; `context->resourcePool` can have resources added to it at any time on the main thread, which will invalidate this memory
+    // _Korl_Resource_Item*const    resourceItem = KORL_C_CAST(_Korl_Resource_Item*, data);
+}
 korl_internal KORL_POOL_CALLBACK_FOR_EACH(_korl_resource_transcodeFileAssets_forEach)
 {
     _Korl_Resource_Context*const context      = _korl_resource_context;
     _Korl_Resource_Item*const    resourceItem = KORL_C_CAST(_Korl_Resource_Item*, item);
-    if(resourceItem->backingType != _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE)
+    if(resourceItem->backingType != _KORL_RESOURCE_ITEM_BACKING_TYPE_ASSET_CACHE // this is not a file-asset-backed resource
+    || resourceItem->backingSubType.assetCache.isTranscoded)// resource is already transcoded
         return KORL_POOL_FOR_EACH_CONTINUE;// this is not a file-asset-backed resource
-    if(resourceItem->backingSubType.assetCache.isTranscoded)
-        return KORL_POOL_FOR_EACH_CONTINUE;// resource is already transcoded; move along
-    /* attempt to get the raw file data from korl-assetCache */
-    KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
-    const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resourceItem->backingSubType.assetCache.fileName), resourceItem->backingSubType.assetCache.assetCacheGetFlags, &assetData);
-    if(resourceItem->backingSubType.assetCache.assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
-        korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
-    /* if we have the assetCache data, we can do the transcoding */
-    if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
+    if(resourceItem->backingSubType.assetCache.transcodeJob)/* if we have an active transcode job, we need to poll it to see if it's done in order to close the ticket; once the ticket is done, we can mark it as being finally transcoded */
     {
-        korl_assert(resourceItem->descriptorIndex < arrlenu(context->stbDaDescriptors));
-        const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
-        korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
-        fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
-        //@TODO: instead of doing this right here right now, spawn an async job to perform this work on another thread
-        transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes, context->allocatorHandleTransient);
-        resourceItem->backingSubType.assetCache.isTranscoded = true;
+        if(korl_jobQueue_jobIsDone(resourceItem->backingSubType.assetCache.transcodeJob))
+        {
+            //@TODO: free any async job specific memory here?
+            resourceItem->backingSubType.assetCache.isTranscoded = true;
+        }
+    }
+    else/* otherwise, we need to load the AssetCache_AssetData, as this is an ASSET_CACHE-backed resource */
+    {
+        /* attempt to get the raw file data from korl-assetCache */
+        KORL_ZERO_STACK(Korl_AssetCache_AssetData, assetData);
+        const Korl_AssetCache_Get_Result assetCacheGetResult = korl_assetCache_get(string_getRawUtf16(&resourceItem->backingSubType.assetCache.fileName), resourceItem->backingSubType.assetCache.assetCacheGetFlags, &assetData);
+        if(resourceItem->backingSubType.assetCache.assetCacheGetFlags == KORL_ASSETCACHE_GET_FLAGS_NONE)
+            korl_assert(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED);
+        /* if we have the assetCache data, we can do the transcoding */
+        if(assetCacheGetResult == KORL_ASSETCACHE_GET_RESULT_LOADED)
+        {
+            if(resourceItem->backingSubType.assetCache.assetCacheGetFlags & KORL_ASSETCACHE_GET_FLAG_LAZY)/* if the user wants to lazy-load this resource, we can spawn an async transcode job */
+            {
+                //@TODO: allocate a transient "asyncTranscode context" that can stay static in memory for the duration of the async job?
+                resourceItem->backingSubType.assetCache.transcodeJob = korl_jobQueue_post(_korl_resource_transcodeFileAssets_asyncTranscode, );
+            }
+            else/* otherwise, we need to transcode this resource immediately */
+            {
+                korl_assert(resourceItem->descriptorIndex < arrlenu(context->stbDaDescriptors));
+                const _Korl_Resource_Descriptor*const descriptor = context->stbDaDescriptors + resourceItem->descriptorIndex;
+                korl_assert(descriptor->callbacks.transcode);// all file-asset-backed resources _must_ use a descriptor that has a `transcode` callback
+                fnSig_korl_resource_descriptorCallback_transcode*const transcode = KORL_C_CAST(fnSig_korl_resource_descriptorCallback_transcode*, korl_functionDynamo_get(descriptor->callbacks.transcode));
+                transcode(resourceItem->descriptorStruct, assetData.data, assetData.dataBytes, context->allocatorHandleTransient);
+                resourceItem->backingSubType.assetCache.isTranscoded = true;
+            }
+        }
     }
     return KORL_POOL_FOR_EACH_CONTINUE;
 }
