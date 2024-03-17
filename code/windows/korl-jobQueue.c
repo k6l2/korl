@@ -4,6 +4,7 @@
 #include "korl-interface-platform.h"
 #include "utility/korl-pool.h"
 #include "utility/korl-checkCast.h"
+#include "utility/korl-utility-string.h"
 /** Job_State will only ever increase, and once \c COMPLETED state is reached, 
  * the job can only be removed from the queue by the user via a ticket. */
 typedef enum _Korl_JobQueue_Job_State
@@ -69,13 +70,13 @@ korl_internal DWORD WINAPI _korl_jobQueue_workerThread(_In_ LPVOID lpParameter)
     korl_log(INFO, "korl-jobqueue worker thread %hu started!", workerThreadIndex);
     /* set the thread name to make it easier to debug */
     WCHAR threadNameBuffer[32];
-    KORL_WINDOWS_CHECK_HRESULT(StringCchPrintfW(threadNameBuffer, CARRAY_SIZE(threadNameBuffer), L"KORL-Windows-Worker-%hu", workerThreadIndex));
+    korl_assert(0 < korl_string_formatBufferUtf16(threadNameBuffer, sizeof(threadNameBuffer), L"KORL-Windows-Worker-%hu", workerThreadIndex));
     KORL_WINDOWS_CHECK_HRESULT(SetThreadDescription(GetCurrentThread(), threadNameBuffer));
     /* enter work loop */
     while(!workerThreadContext->exit)
     {
+        korl_jobQueue_waitForWork();
         #if 0// @TODO; recycle
-        jobQueueWaitForWork(workerThreadContext->jobQueue);
         JobQueueJob*const job = jobQueueTakeJob(workerThreadContext->jobQueue);
         if(job)
         {
@@ -140,6 +141,13 @@ korl_internal void korl_jobQueue_initialize(void)
         KORL_WINDOWS_CHECK(hThread);
         KORL_WINDOWS_CHECK(CloseHandle(hThread));// we no longer need the HANDLE to the thread, so we can close it right now (this will not terminate the thread)
     }
+}
+korl_internal void korl_jobQueue_waitForWork(void)
+{
+    _Korl_JobQueue_Context*const context = &_korl_jobQueue_context;
+    const DWORD waitResult = WaitForSingleObject(context->semaphore, INFINITE);
+    if(waitResult == WAIT_FAILED)
+        korl_logLastError("Wait failed");
 }
 #if 0//@TODO; recycle
 internal JobQueueTicket jobQueuePrintTicket(JobQueue* jobQueue, size_t jobIndex)
@@ -299,13 +307,6 @@ internal bool jobQueueHasIncompleteJobs(JobQueue* jobQueue)
     EnterCriticalSection(&jobQueue->lock);
     defer(LeaveCriticalSection(&jobQueue->lock));
     return jobQueue->incompleteJobCount;
-}
-internal void jobQueueWaitForWork(JobQueue* jobQueue)
-{
-    const DWORD waitResult = 
-        WaitForSingleObject(jobQueue->hSemaphore, INFINITE);
-    if(waitResult == WAIT_FAILED)
-        KLOG(ERROR, "Wait failed! getlasterror=%i", GetLastError());
 }
 internal void jobQueueMarkJobCompleted(JobQueue* jobQueue, JobQueueJob* job)
 {

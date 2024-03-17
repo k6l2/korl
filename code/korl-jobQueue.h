@@ -3,6 +3,7 @@
 #define KORL_JOB_QUEUE_FUNCTION(name) void name(void* data, u32 threadId)
 typedef KORL_JOB_QUEUE_FUNCTION(korl_fnSig_jobQueueFunction);
 korl_internal void korl_jobQueue_initialize(void);
+korl_internal void korl_jobQueue_waitForWork(void);
 #if 0//@TODO; recycle
 using JobQueueTicket = u32;
 /** 
@@ -35,8 +36,6 @@ internal bool
     jobQueueJobIsDone(JobQueue* jobQueue, JobQueueTicket* ticket);
 internal bool 
     jobQueueHasIncompleteJobs(JobQueue* jobQueue);
-internal void 
-    jobQueueWaitForWork(JobQueue* jobQueue);
 internal JobQueueJob* 
     jobQueueTakeJob(JobQueue* jobQueue);
 internal void 
